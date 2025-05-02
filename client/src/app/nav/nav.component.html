@@ -7,13 +7,13 @@
       <div class="collapse navbar-collapse" id="navbarColor02">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
           <li class="nav-item">
-            <a class="nav-link" href="#">Categories</a>
+            <a class="nav-link" routerLink="/categories" routerLinkActive="active">Categories</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link active" href="#">Official Site Predictions</a>
+            <a class="nav-link" routerLink="/site-predictions" routerLinkActive="active">Official Site Predictions</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#">Custom Trending Predictions</a>
+            <a class="nav-link" routerLink="/trending-predictions" routerLinkActive="active">Custom Trending Predictions</a>
           </li>
         </ul>
         <form class="d-flex me w-lg-auto">
@@ -27,7 +27,6 @@
             <a [routerLink]="['/create-prediction']" class="nav-link btn btn-primary text-white px-3">Create Custom Prediction</a>
           </li>
         </ul>
-
       </div>
     </div>
 </nav>
