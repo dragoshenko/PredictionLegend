@@ -1,19 +1,19 @@
 <nav class="navbar navbar-expand-lg bg-dark" data-bs-theme="dark">
   <div class="container-fluid">
-    <a class="navbar-brand" routerLink="/">Prediction Legend</a>
+    <a class="navbar-brand" routerLink="/">PredictionMaker</a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarColor02" aria-controls="navbarColor02" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
       <div class="collapse navbar-collapse" id="navbarColor02">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
           <li class="nav-item">
-            <a class="nav-link" href="#">About</a>
+            <a class="nav-link" href="#">Categories</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link active" href="#">Predictions</a>
+            <a class="nav-link active" href="#">Official Site Predictions</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#">Trending</a>
+            <a class="nav-link" href="#">Custom Trending Predictions</a>
           </li>
         </ul>
         <form class="d-flex me w-lg-auto">
@@ -24,9 +24,10 @@
         </form>
         <ul class="navbar-nav ms-lg-3 mt-2 mt-lg-0">
           <li class="nav-item">
-            <a href="" class="nav-link btn btn-primary text-white px-3">Predict Now</a>
+            <a [routerLink]="['/create-prediction']" class="nav-link btn btn-primary text-white px-3">Create Custom Prediction</a>
           </li>
         </ul>
+
       </div>
     </div>
 </nav>

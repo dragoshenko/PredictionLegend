@@ -1,0 +1,84 @@
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card border-primary shadow">
+        <div class="card-header bg-primary text-white">
+          <h2 class="text-center">Create Custom Prediction</h2>
+        </div>
+        <div class="card-body">
+          <form [formGroup]="predictionForm" (ngSubmit)="onSubmit()">
+            <!-- Prediction Type -->
+            <div class="mb-4">
+              <label class="form-label">Prediction Type</label>
+              <div class="d-flex flex-wrap gap-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" formControlName="predictionType" 
+                         id="rankingType" value="ranking">
+                  <label class="form-check-label" for="rankingType">
+                    <div class="d-flex align-items-center">
+                      <i class="fa fa-list-ol me-2"></i>
+                      <span>Ranking</span>
+                    </div>
+                    <small class="text-muted d-block">Order items from best to worst</small>
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" formControlName="predictionType" 
+                         id="bracketType" value="bracket">
+                  <label class="form-check-label" for="bracketType">
+                    <div class="d-flex align-items-center">
+                      <i class="fa fa-sitemap me-2"></i>
+                      <span>Bracket</span>
+                    </div>
+                    <small class="text-muted d-block">Tournament-style elimination</small>
+                  </label>
+                </div>
+              </div>
+              <div *ngIf="predictionForm.get('predictionType')?.invalid && 
+                         (predictionForm.get('predictionType')?.dirty || 
+                          predictionForm.get('predictionType')?.touched)" 
+                   class="text-danger mt-1">
+                Please select a prediction type
+              </div>
+            </div>
+
+            <!-- Title -->
+            <div class="mb-3 form-floating">
+              <input type="text" class="form-control" id="title" 
+                     formControlName="title" placeholder="Prediction Title">
+              <label for="title">Prediction Title</label>
+              <div *ngIf="predictionForm.get('title')?.invalid && 
+                         (predictionForm.get('title')?.dirty || 
+                          predictionForm.get('title')?.touched)" 
+                   class="text-danger mt-1">
+                Title is required (min 5 characters)
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div class="mb-3 form-floating">
+              <textarea class="form-control" id="description" 
+                        formControlName="description" style="height: 100px"
+                        placeholder="Description"></textarea>
+              <label for="description">Custom Description</label>
+              <div *ngIf="predictionForm.get('description')?.invalid && 
+                         (predictionForm.get('description')?.dirty || 
+                          predictionForm.get('description')?.touched)" 
+                   class="text-danger mt-1">
+                Description is required (min 10 characters)
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="d-grid mt-4">
+              <button type="submit" class="btn btn-primary" 
+                      [disabled]="predictionForm.invalid">
+                Create Prediction
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
