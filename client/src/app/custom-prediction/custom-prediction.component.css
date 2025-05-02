@@ -42,3 +42,33 @@
 .btn-primary:active {
   transform: translateY(0);
 }
+
+.form-check-inline {
+  min-width: 100px;
+  padding: 10px 15px;
+  margin-right: 10px;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.form-check-inline:hover {
+  background-color: rgba(13, 110, 253, 0.05);
+  border-color: rgba(13, 110, 253, 0.5);
+}
+
+.form-check-input:checked + .form-check-label .fa {
+  color: #0d6efd;
+}
+
+input[type="file"] {
+  padding: 10px;
+  border: 1px dashed #dee2e6;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+input[type="file"]:hover {
+  border-color: #0d6efd;
+  background-color: rgba(13, 110, 253, 0.05);
+}

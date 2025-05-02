@@ -12,7 +12,7 @@
               <label class="form-label">Prediction Type</label>
               <div class="d-flex flex-wrap gap-3">
                 <div class="form-check">
-                  <input class="form-check-input" type="radio" formControlName="predictionType" 
+                  <input class="form-check-input" type="radio" formControlName="predictionType"
                          id="rankingType" value="ranking">
                   <label class="form-check-label" for="rankingType">
                     <div class="d-flex align-items-center">
@@ -23,7 +23,7 @@
                   </label>
                 </div>
                 <div class="form-check">
-                  <input class="form-check-input" type="radio" formControlName="predictionType" 
+                  <input class="form-check-input" type="radio" formControlName="predictionType"
                          id="bracketType" value="bracket">
                   <label class="form-check-label" for="bracketType">
                     <div class="d-flex align-items-center">
@@ -34,9 +34,9 @@
                   </label>
                 </div>
               </div>
-              <div *ngIf="predictionForm.get('predictionType')?.invalid && 
-                         (predictionForm.get('predictionType')?.dirty || 
-                          predictionForm.get('predictionType')?.touched)" 
+              <div *ngIf="predictionForm.get('predictionType')?.invalid &&
+                         (predictionForm.get('predictionType')?.dirty ||
+                          predictionForm.get('predictionType')?.touched)"
                    class="text-danger mt-1">
                 Please select a prediction type
               </div>
@@ -44,12 +44,12 @@
 
             <!-- Title -->
             <div class="mb-3 form-floating">
-              <input type="text" class="form-control" id="title" 
+              <input type="text" class="form-control" id="title"
                      formControlName="title" placeholder="Prediction Title">
               <label for="title">Prediction Title</label>
-              <div *ngIf="predictionForm.get('title')?.invalid && 
-                         (predictionForm.get('title')?.dirty || 
-                          predictionForm.get('title')?.touched)" 
+              <div *ngIf="predictionForm.get('title')?.invalid &&
+                         (predictionForm.get('title')?.dirty ||
+                          predictionForm.get('title')?.touched)"
                    class="text-danger mt-1">
                 Title is required (min 5 characters)
               </div>
@@ -57,21 +57,107 @@
 
             <!-- Description -->
             <div class="mb-3 form-floating">
-              <textarea class="form-control" id="description" 
+              <textarea class="form-control" id="description"
                         formControlName="description" style="height: 100px"
                         placeholder="Description"></textarea>
               <label for="description">Custom Description</label>
-              <div *ngIf="predictionForm.get('description')?.invalid && 
-                         (predictionForm.get('description')?.dirty || 
-                          predictionForm.get('description')?.touched)" 
+              <div *ngIf="predictionForm.get('description')?.invalid &&
+                         (predictionForm.get('description')?.dirty ||
+                          predictionForm.get('description')?.touched)"
                    class="text-danger mt-1">
                 Description is required (min 10 characters)
               </div>
             </div>
 
+            <!-- Privacy Settings -->
+            <div class="mb-3">
+              <label class="form-label">Privacy Settings</label>
+              <div class="d-flex flex-wrap gap-2">
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" formControlName="privacyType"
+                         id="publicType" value="public">
+                  <label class="form-check-label" for="publicType">
+                    <i class="fa fa-globe me-1"></i> Public
+                  </label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" formControlName="privacyType"
+                         id="privateType" value="private">
+                  <label class="form-check-label" for="privateType">
+                    <i class="fa fa-lock me-1"></i> Private
+                  </label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" formControlName="privacyType"
+                         id="linkOnly" value="linkOnly">
+                  <label class="form-check-label" for="linkOnly">
+                    <i class="fa fa-link me-1"></i> Link Only
+                  </label>
+                </div>
+              </div>
+              <div *ngIf="predictionForm.get('privacyType')?.invalid &&
+                         (predictionForm.get('privacyType')?.dirty ||
+                          predictionForm.get('privacyType')?.touched)"
+                   class="text-danger mt-1">
+                Please select a privacy setting
+              </div>
+            </div>
+
+            <!-- Cover Photo -->
+            <div class="mb-3">
+              <label for="coverPhoto" class="form-label">Cover Photo</label>
+              <input class="form-control" type="file" id="coverPhoto"
+                     (change)="onFileSelected($event)" accept="image/*">
+              <div *ngIf="selectedFile" class="mt-2">
+                <div class="d-flex align-items-center">
+                  <span class="text-success me-2"><i class="fa fa-check-circle"></i></span>
+                  <span>{{ selectedFile.name }} ({{ formatFileSize(selectedFile.size) }})</span>
+                  <button type="button" class="btn btn-sm btn-outline-danger ms-auto"
+                          (click)="removeFile()">
+                    <i class="fa fa-times"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Grid Size (for bracket or ranking) -->
+            <div class="mb-3 row" *ngIf="predictionForm.get('predictionType')?.value">
+              <div class="col-md-6" *ngIf="predictionForm.get('predictionType')?.value === 'bracket'">
+                <label for="rows" class="form-label">Number of Rounds</label>
+                <select class="form-select" id="rows" formControlName="rows">
+                  <option value="2">2 rounds (4 participants)</option>
+                  <option value="3">3 rounds (8 participants)</option>
+                  <option value="4">4 rounds (16 participants)</option>
+                  <option value="5">5 rounds (32 participants)</option>
+                  <option value="6">6 rounds (64 participants)</option>
+                </select>
+              </div>
+              <div class="col-md-6" *ngIf="predictionForm.get('predictionType')?.value === 'ranking'">
+                <label for="rows" class="form-label">Number of Rows</label>
+                <input type="number" class="form-control" id="rows"
+                       formControlName="rows" min="2" max="100">
+                <div *ngIf="predictionForm.get('rows')?.invalid &&
+                           predictionForm.get('rows')?.touched"
+                     class="text-danger mt-1">
+                  Please enter a number between 2 and 100
+                </div>
+              </div>
+
+              <div class="col-md-6" *ngIf="predictionForm.get('predictionType')?.value === 'ranking'">
+                <label for="columns" class="form-label">Number of Columns</label>
+                <input type="number" class="form-control" id="columns"
+                       formControlName="columns" min="1" max="10">
+                <div *ngIf="predictionForm.get('columns')?.invalid &&
+                           predictionForm.get('columns')?.touched"
+                     class="text-danger mt-1">
+                  Please enter a number between 1 and 10
+                </div>
+              </div>
+            </div>
+
             <!-- Submit Button -->
             <div class="d-grid mt-4">
-              <button type="submit" class="btn btn-primary" 
+              <button type="submit" class="btn btn-primary"
                       [disabled]="predictionForm.invalid">
                 Create Prediction
               </button>

@@ -1,1 +1,47 @@
-<p>home works!</p>
+<div class="container py-5">
+  <!-- Hero Section -->
+  <div class="row mb-5">
+    <div class="col-lg-8 mx-auto text-center">
+      <h1 class="display-4 fw-bold mb-4 text-primary animation-slide-down">Predict. Share. Compare.</h1>
+      <p class="lead mb-5 animation-fade-in">Create your own predictions or join trending ones from around the world. See how your forecasting skills stack up!</p>
+      <button class="btn btn-primary btn-lg px-5 py-3 shadow-lg animation-bounce" routerLink="/create-prediction">
+        Create Template
+      </button>
+    </div>
+  </div>
+
+  <!-- Categories Section -->
+  <h2 class="text-center mb-4">Choose Your Category</h2>
+  <div class="row mb-5">
+    <div class="col-md-6 col-lg-3 mb-4" *ngFor="let category of categories">
+      <div class="card h-100 border-0 shadow-sm rounded-lg overflow-hidden category-card"
+           [class.active]="hoveredCategory === category.id"
+           (mouseenter)="hoveredCategory = category.id"
+           (mouseleave)="hoveredCategory = null">
+        <div class="card-body text-center p-4">
+          <div class="display-4 mb-3" [style.color]="category.color">{{category.icon}}</div>
+          <h3 class="card-title h5">{{category.name}}</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- How It Works -->
+  <div class="row mt-5 pt-5 border-top">
+    <div class="col-lg-8 mx-auto text-center">
+      <h2 class="mb-4">How It Works</h2>
+      <div class="row g-4">
+        <div class="col-md-4" *ngFor="let step of steps">
+          <div class="step-card">
+            <div class="p-3 rounded-circle bg-primary bg-opacity-10 d-inline-flex justify-content-center align-items-center mb-3"
+                style="width: 70px; height: 70px;">
+              <i class="fa {{step.icon}} fa-2x text-primary"></i>
+            </div>
+            <h5>{{step.title}}</h5>
+            <p class="text-muted">{{step.description}}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

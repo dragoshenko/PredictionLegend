@@ -5,12 +5,11 @@ import { NgxSpinnerComponent} from 'ngx-spinner';
 import { BusyService } from './_services/busy.service';
 import { delay } from 'rxjs';
 import { GoogleApiService } from './_services/google-api.service';
-import {NgcCookieConsentModule, NgcCookieConsentConfig} from 'ngx-cookieconsent';
-import { environment } from '../environments/environment';
+import { GlobalFooterComponent } from './global-footer/global-footer.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, NavComponent, NgxSpinnerComponent],
+  imports: [RouterOutlet, NavComponent, NgxSpinnerComponent, GlobalFooterComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
@@ -35,8 +34,5 @@ export class AppComponent implements OnInit {
   loadSpinner() {
     this.busy.busy();
     delay(1000);
-    //this.busy.idle();
-    //return Promise.resolve();
   }
-
 }
