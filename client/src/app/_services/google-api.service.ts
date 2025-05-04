@@ -1,52 +1,44 @@
-import { inject, Injectable, signal } from '@angular/core';
+// _services/google-api.service.ts
+import { inject, Injectable } from '@angular/core';
 import { AuthConfig, OAuthService } from 'angular-oauth2-oidc';
+import { environment } from '../../environments/environment';
+import { Observable, from, of } from 'rxjs';
 
 const oAuthConfig: AuthConfig = {
   issuer: 'https://accounts.google.com',
-  strictDiscoveryDocumentValidation: false, // not the case for google
+  strictDiscoveryDocumentValidation: false,
   redirectUri: window.location.origin,
   clientId: '851814011332-ms64nqi5l5uqqk1rmord8um053fmf8u8.apps.googleusercontent.com',
   scope: 'openid profile email',
-}
-
-export interface UserProfile{
-  info : {
-    sub: string,
-    name: string,
-    email: string,
-    picture: string
-  }
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class GoogleApiService {
-
   private readonly oAuthService = inject(OAuthService);
-  userProfile = signal<UserProfile | null>(null);
 
-  configure(): void {
+  constructor() {
     this.oAuthService.configure(oAuthConfig);
-    this.oAuthService.loadDiscoveryDocument().then(() => {
-      this.oAuthService.tryLoginImplicitFlow().then(()=>{
-        if(this.oAuthService.hasValidAccessToken() === false){
+  }
+
+  configure(): Observable<string | null> {
+    return from(this.oAuthService.loadDiscoveryDocument()
+      .then(() => {
+        return this.oAuthService.tryLoginImplicitFlow();
+      })
+      .then(() => {
+        if(!this.oAuthService.hasValidAccessToken()) {
           this.oAuthService.initLoginFlow();
+          return null;
+        } else {
+          return this.oAuthService.getIdToken();
         }
-        else
-        {
-          this.oAuthService.loadUserProfile().then((userProfile)=>{
-            this.userProfile.set(userProfile as UserProfile);
-          });
-          const idToken = this.oAuthService.getIdToken();
-          console.log('idToken', idToken);
-        }
-      });
-    });
+      })
+    );
   }
 
   logOut(): void {
     this.oAuthService.logOut();
   }
-
 }

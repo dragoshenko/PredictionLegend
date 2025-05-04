@@ -1,10 +1,12 @@
+// _services/account.service.ts
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
-import { map, BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, map, Observable, of, tap } from 'rxjs';
 import { User } from '../_models/user';
 import { CookieService } from 'ngx-cookie-service';
-import { RegisterResponse } from '../_models/registerResponse';
+import { Router } from '@angular/router';
+import { ToastrService } from 'ngx-toastr';
 
 @Injectable({
   providedIn: 'root'
@@ -13,38 +15,33 @@ export class AccountService {
   private currentUserSource = new BehaviorSubject<User | null>(null);
   currentUser$ = this.currentUserSource.asObservable();
 
-  private sessionKeyExists = new BehaviorSubject<boolean>(false);
-  sessionKeyExists$ = this.sessionKeyExists.asObservable();
-
-  private emailVerificationRequired = new BehaviorSubject<boolean>(false);
-  emailVerificationRequired$ = this.emailVerificationRequired.asObservable();
-
   private http = inject(HttpClient);
   private cookieService = inject(CookieService);
+  private router = inject(Router);
+  private toastr = inject(ToastrService);
+  
   baseUrl = environment.apiUrl;
 
   constructor() {
-    this.checkSessionStatus();
+    this.loadCurrentUser();
   }
 
-  private checkSessionStatus() {
+  loadCurrentUser() {
     const userJson = this.cookieService.get('user');
     if (userJson) {
       const user: User = JSON.parse(userJson);
       this.currentUserSource.next(user);
-      this.sessionKeyExists.next(true);
-    } else {
-      this.currentUserSource.next(null);
-      this.sessionKeyExists.next(false);
+      return of(user);
     }
+    return of(null);
   }
 
   login(model: any) {
     return this.http.post<User>(this.baseUrl + 'account/login', model).pipe(
       map(user => {
-        this.emailVerificationRequired.next(user.isEmailVerified === false);
-        if (user.isEmailVerified) {
+        if (user) {
           this.setCurrentUser(user);
+          this.toastr.success('Logged in successfully');
           return user;
         }
         return null;
@@ -53,31 +50,53 @@ export class AccountService {
   }
 
   register(model: any) {
-    return this.http.post<RegisterResponse>(this.baseUrl + 'account/register', model).pipe(
+    return this.http.post<any>(this.baseUrl + 'account/register', model).pipe(
       map(response => {
         if (response.isRegistered) {
-          this.login(model);
+          this.toastr.success('Registration successful');
+          return response;
         }
+        if (response.requiresEmailConfirmation) {
+          this.toastr.info('Please check your email to verify your account');
+        }
+        return response;
+      })
+    );
+  }
+
+  googleLogin(idToken: string) {
+    return this.http.post<User>(this.baseUrl + 'account/google-auth', { idToken }).pipe(
+      map(user => {
+        if (user) {
+          this.setCurrentUser(user);
+          this.toastr.success('Logged in with Google successfully');
+          return user;
+        }
+        return null;
+      })
+    );
+  }
+
+  verifyEmail(id: number, token: string) {
+    return this.http.get(this.baseUrl + `account/confirm-email?id=${id}&token=${token}`).pipe(
+      map(() => {
+        this.toastr.success('Email verified successfully');
+        return true;
       })
     );
   }
 
   setCurrentUser(user: User) {
     if (user) {
-      this.cookieService.set('user', JSON.stringify(user), 7);
+      this.cookieService.set('user', JSON.stringify(user), 7); // 7 days expiry
       this.currentUserSource.next(user);
-      this.sessionKeyExists.next(true);
     }
   }
 
   logout() {
     this.cookieService.delete('user');
     this.currentUserSource.next(null);
-    this.sessionKeyExists.next(false);
-  }
-
-  getCurrentUser(): User | null {
-    const userJson = this.cookieService.get('user');
-    return userJson ? JSON.parse(userJson) : null;
+    this.router.navigateByUrl('/');
+    this.toastr.success('Logged out successfully');
   }
 }

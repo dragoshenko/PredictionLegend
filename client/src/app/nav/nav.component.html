@@ -1,32 +1,51 @@
+<!-- nav.component.html -->
 <nav class="navbar navbar-expand-lg bg-dark" data-bs-theme="dark">
   <div class="container-fluid">
     <a class="navbar-brand" routerLink="/">PredictionMaker</a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarColor02" aria-controls="navbarColor02" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
-      <div class="collapse navbar-collapse" id="navbarColor02">
-        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-          <li class="nav-item">
-            <a class="nav-link" routerLink="/categories" routerLinkActive="active">Categories</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" routerLink="/site-predictions" routerLinkActive="active">Official Site Predictions</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" routerLink="/trending-predictions" routerLinkActive="active">Custom Trending Predictions</a>
-          </li>
-        </ul>
-        <form class="d-flex me w-lg-auto">
-          <div class="input-group w-lg-auto">
-            <input class="form-control" type="search" placeholder="Search" aria-label="Search">
-            <button class="btn btn-outline-light" type="submit">Search</button>
-          </div>
-        </form>
-        <ul class="navbar-nav ms-lg-3 mt-2 mt-lg-0">
-          <li class="nav-item">
-            <a [routerLink]="['/create-prediction']" class="nav-link btn btn-primary text-white px-3">Create Custom Prediction</a>
-          </li>
-        </ul>
-      </div>
+    <div class="collapse navbar-collapse" id="navbarColor02">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/categories" routerLinkActive="active">Categories</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/site-predictions" routerLinkActive="active">Official Site Predictions</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/trending-predictions" routerLinkActive="active">Custom Trending Predictions</a>
+        </li>
+      </ul>
+      <form class="d-flex me-2">
+        <div class="input-group">
+          <input class="form-control" type="search" placeholder="Search" aria-label="Search">
+          <button class="btn btn-outline-light" type="submit">Search</button>
+        </div>
+      </form>
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item me-2">
+          <a [routerLink]="['/create-prediction']" class="nav-link btn btn-primary text-white px-3">Create Custom Prediction</a>
+        </li>
+        <!-- Authentication Menu -->
+        <li class="nav-item dropdown" *ngIf="(accountService.currentUser$ | async)">
+          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <span *ngIf="(accountService.currentUser$ | async)?.photoUrl">
+              <img src="{{(accountService.currentUser$ | async)?.photoUrl}}" alt="user" class="rounded-circle me-1" style="height: 30px; width: 30px; object-fit: cover;">
+            </span>
+            {{(accountService.currentUser$ | async)?.displayName}}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" routerLink="/profile">My Profile</a></li>
+            <li><a class="dropdown-item" routerLink="/my-predictions">My Predictions</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" (click)="accountService.logout()" style="cursor: pointer">Logout</a></li>
+          </ul>
+        </li>
+        <li class="nav-item" *ngIf="!(accountService.currentUser$ | async)">
+          <a class="btn btn-outline-light" routerLink="/auth">Login</a>
+        </li>
+      </ul>
     </div>
+  </div>
 </nav>

@@ -1,28 +1,34 @@
-import { Component, EventEmitter, inject, OnInit, Output } from '@angular/core';
-import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
-import { TextInputComponent } from "../_forms/text-input/text-input.component";
+// auth/auth.component.ts
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router, RouterModule } from '@angular/router';
+import { TextInputComponent } from '../_forms/text-input/text-input.component';
+import { AccountService } from '../_services/account.service';
+import { GoogleApiService } from '../_services/google-api.service';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-auth',
   standalone: true,
-  imports: [ReactiveFormsModule, TextInputComponent, CommonModule],
+  imports: [CommonModule, ReactiveFormsModule, TextInputComponent, RouterModule],
   templateUrl: './auth.component.html',
-  styleUrl: './auth.component.scss'
+  styleUrl: './auth.component.css'
 })
 export class AuthComponent implements OnInit {
   private fb = inject(FormBuilder);
   private router = inject(Router);
-
-  @Output() cancelAuth = new EventEmitter<boolean>();
+  private accountService = inject(AccountService);
+  private googleService = inject(GoogleApiService);
+  private toastr = inject(ToastrService);
 
   isLoginMode = true;
   verifyMode = false;
-  loginForm: FormGroup = new FormGroup({});
-  registerForm: FormGroup = new FormGroup({});
-  verifyForm: FormGroup = new FormGroup({});
+  loginForm!: FormGroup;
+  registerForm!: FormGroup;
+  verifyForm!: FormGroup;
   validationErrors: string[] | undefined;
+  loading = false;
 
   ngOnInit(): void {
     this.initializeForms();
@@ -32,32 +38,21 @@ export class AuthComponent implements OnInit {
     // Login form
     this.loginForm = this.fb.group({
       usernameOrEmail: ['', Validators.required],
-      password: ['', [Validators.required, Validators.minLength(6), Validators.maxLength(20)]]
+      password: ['', [Validators.required, Validators.minLength(8)]]
     });
 
     // Register form
     this.registerForm = this.fb.group({
-      username: ['', Validators.required],
+      username: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(32)]],
+      displayName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(32)]],
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(6), Validators.maxLength(20)]],
-      confirmPassword: ['', [Validators.required, this.matchValues('password')]]
+      password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(32)]]
     });
 
     // Verification form
     this.verifyForm = this.fb.group({
-      code: ['', [Validators.required, Validators.minLength(6), Validators.maxLength(6)]]
+      code: ['', [Validators.required]]
     });
-
-    // Subscribe to password value changes to constantly check against it
-    this.registerForm.controls['password'].valueChanges.subscribe({
-      next: () => this.registerForm.controls['confirmPassword'].updateValueAndValidity()
-    });
-  }
-
-  matchValues(matchTo: string): ValidatorFn {
-    return (control: AbstractControl) => {
-      return control.value === control.parent?.get(matchTo)?.value ? null : {isMatching: true};
-    }
   }
 
   toggleMode(): void {
@@ -67,47 +62,62 @@ export class AuthComponent implements OnInit {
 
   login() {
     if (this.loginForm.valid) {
-      // TODO: Implement your login logic here
-      console.log('Login form submitted:', this.loginForm.value);
-
-      // Simulate successful login - replace with actual API call
-      this.router.navigate(['/dashboard']);
+      this.loading = true;
+      this.accountService.login(this.loginForm.value).subscribe({
+        next: () => {
+          this.router.navigateByUrl('/');
+          this.loading = false;
+        },
+        error: error => {
+          this.validationErrors = error.error ? [error.error] : ['Login failed'];
+          this.loading = false;
+        }
+      });
     }
   }
 
   register() {
     if (this.registerForm.valid) {
-      // TODO: Implement your register logic here
-      console.log('Register form submitted:', this.registerForm.value);
-
-      // Simulate successful registration - replace with actual API call
-      this.verifyMode = true;
+      this.loading = true;
+      this.accountService.register(this.registerForm.value).subscribe({
+        next: response => {
+          if (response.requiresEmailConfirmation) {
+            this.verifyMode = true;
+          } else {
+            this.router.navigateByUrl('/');
+          }
+          this.loading = false;
+        },
+        error: error => {
+          this.validationErrors = error.error ? [error.error] : ['Registration failed'];
+          this.loading = false;
+        }
+      });
     }
   }
 
-  verifyEmail() {
-    if (this.verifyForm.valid) {
-      // TODO: Implement your verification logic here
-      console.log('Verification form submitted:', this.verifyForm.value);
-
-      // Simulate successful verification - replace with actual API call
-      this.router.navigate(['/dashboard']);
-    }
+  loginWithGoogle() {
+    this.googleService.configure().subscribe(idToken => {
+      if (idToken) {
+        this.accountService.googleLogin(idToken).subscribe({
+          next: () => {
+            this.router.navigateByUrl('/');
+          },
+          error: error => {
+            this.validationErrors = error.error ? [error.error] : ['Google login failed'];
+          }
+        });
+      }
+    });
   }
 
   submitForm() {
     this.validationErrors = undefined;
 
-    if (this.verifyMode) {
-      this.verifyEmail();
-    } else if (this.isLoginMode) {
+    if (this.isLoginMode) {
       this.login();
     } else {
       this.register();
     }
-  }
-
-  cancel() {
-    this.cancelAuth.emit(false);
   }
 }
