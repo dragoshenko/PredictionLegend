@@ -79,9 +79,12 @@ export class AuthComponent implements OnInit {
   register() {
     if (this.registerForm.valid) {
       this.loading = true;
+      this.validationErrors = undefined;
+
       this.accountService.register(this.registerForm.value).subscribe({
         next: response => {
           if (response.requiresEmailConfirmation) {
+            this.toastr.info('Please check your email to verify your account');
             this.verifyMode = true;
           } else {
             this.router.navigateByUrl('/');
@@ -89,7 +92,17 @@ export class AuthComponent implements OnInit {
           this.loading = false;
         },
         error: error => {
-          this.validationErrors = error.error ? [error.error] : ['Registration failed'];
+          // Handle different types of errors
+          if (typeof error === 'string') {
+            // Single error string from the backend (like "Username is already taken")
+            this.validationErrors = [error];
+          } else if (Array.isArray(error)) {
+            // Array of error messages
+            this.validationErrors = error;
+          } else {
+            // Fallback for unexpected error format
+            this.validationErrors = ['Registration failed. Please try again.'];
+          }
           this.loading = false;
         }
       });

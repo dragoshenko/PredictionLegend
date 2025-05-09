@@ -1,8 +1,7 @@
-// _services/account.service.ts
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
-import { BehaviorSubject, map, Observable, of, tap } from 'rxjs';
+import { BehaviorSubject, map, Observable, of, catchError, throwError, tap } from 'rxjs';
 import { User } from '../_models/user';
 import { CookieService } from 'ngx-cookie-service';
 import { Router } from '@angular/router';
@@ -19,7 +18,7 @@ export class AccountService {
   private cookieService = inject(CookieService);
   private router = inject(Router);
   private toastr = inject(ToastrService);
-  
+
   baseUrl = environment.apiUrl;
 
   constructor() {
@@ -45,6 +44,15 @@ export class AccountService {
           return user;
         }
         return null;
+      }),
+      catchError(error => {
+        if (error.status === 400 || error.status === 401) {
+          const errorMessage = error.error;
+          this.toastr.error(errorMessage);
+          return throwError(() => errorMessage);
+        }
+        this.toastr.error('An unexpected error occurred');
+        return throwError(() => 'An unexpected error occurred. Please try again later.');
       })
     );
   }
@@ -60,6 +68,20 @@ export class AccountService {
           this.toastr.info('Please check your email to verify your account');
         }
         return response;
+      }),
+      catchError(error => {
+        if (error.status === 400) {
+          if (typeof error.error === 'string') {
+            this.toastr.error(error.error);
+            return throwError(() => error.error);
+          }
+          else if (error.error && Array.isArray(error.error)) {
+            return throwError(() => error.error);
+          }
+        }
+        // For other errors, return a generic message
+        this.toastr.error('Registration failed');
+        return throwError(() => 'An unexpected error occurred. Please try again later.');
       })
     );
   }
@@ -73,6 +95,10 @@ export class AccountService {
           return user;
         }
         return null;
+      }),
+      catchError(error => {
+        this.toastr.error('Google login failed');
+        return throwError(() => 'Google login failed. Please try again.');
       })
     );
   }
@@ -82,6 +108,10 @@ export class AccountService {
       map(() => {
         this.toastr.success('Email verified successfully');
         return true;
+      }),
+      catchError(error => {
+        this.toastr.error('Email verification failed');
+        return throwError(() => 'Email verification failed. Please try again.');
       })
     );
   }

@@ -21,7 +21,6 @@ export class TextInputComponent implements ControlValueAccessor {
   registerOnTouched(fn: any): void {}
   setDisabledState?(isDisabled: boolean): void {}
 
-  // ✅ Fix: Define a getter for `control`
   get control(): FormControl {
     return this.ngControl.control as FormControl;
   }

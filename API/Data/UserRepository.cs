@@ -41,6 +41,15 @@ public class UserRespository(UserManager<AppUser> userManager, IMapper mapper) :
         return await userManager.GenerateEmailConfirmationTokenAsync(user);
     }
 
+    public async Task<bool> IsUsernameTakenAsync(string username)
+    {
+        return await userManager.Users.AnyAsync(x => x.UserName == username);
+    }
+
+    public async Task<bool> IsEmailTakenAsync(string email)
+    {
+        return await userManager.Users.AnyAsync(x => x.Email == email);
+    }
     public async Task<AppUser?> GetUserByIdAsync(int id, bool refreshTokens = false, bool includePostsAndComments = false, bool includePhoto = false)
     {
         IQueryable<AppUser> query = userManager.Users;
@@ -80,25 +89,14 @@ public class UserRespository(UserManager<AppUser> userManager, IMapper mapper) :
         return await query.ToListAsync();
     }
 
-    public async Task<AppUser?> GetUserByUsernameOrEmailAsync(string usernameOrEmail, bool refreshTokens, bool includePostsAndComments = false, bool includePhoto = false)
+    public async Task<AppUser?> GetUserByUsernameAsync(string username)
     {
-        IQueryable<AppUser> query = userManager.Users;
-        if (refreshTokens)
-        {
-            query = query.Include(u => u.RefreshTokens);
-        }
-        if (includePostsAndComments)
-        {
-            query = query.Include(u => u.Posts).ThenInclude(p => p.Comments);
-        }
-        if (includePhoto)
-        {
-            query = query.Include(u => u.Photo);
-        }
-        var foundEmail = await query.SingleOrDefaultAsync(x => x.Email == usernameOrEmail);
-        var foundUsername = await query.SingleOrDefaultAsync(x => x.UserName == usernameOrEmail);
+        return await userManager.Users.SingleOrDefaultAsync(x => x.UserName == username);
+    }
 
-        return foundEmail ?? foundUsername;
+    public async Task<AppUser?> GetUserByEmailAsync(string email)
+    {
+        return await userManager.Users.SingleOrDefaultAsync(x => x.Email == email);
     }
 
     public async Task<IList<string>> GetUserRolesAsync(AppUser user)

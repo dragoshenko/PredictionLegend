@@ -18,7 +18,10 @@ public interface IUserRepository
     Task<IEnumerable<AppUser>> GetUsersAsync(bool includePostsAndComments = false, bool includePhoto = false);
     Task<bool> IsEmailConfirmedAsync(AppUser user);
     Task<IList<string>> GetUserRolesAsync(AppUser user);
-    Task<AppUser?> GetUserByUsernameOrEmailAsync(string usernameOrEmail, bool refreshTokens, bool includePostsAndComments = false, bool includePhoto = false);
+    Task<AppUser?> GetUserByUsernameAsync(string username);
+    Task<AppUser?> GetUserByEmailAsync(string email);
+    Task<bool> IsUsernameTakenAsync(string username);
+    Task<bool> IsEmailTakenAsync(string email);
     Task<IdentityResult> ConfirmEmailAsync(AppUser user, string token);
     Task<bool> CheckPasswordAsync(AppUser user, string password);
     

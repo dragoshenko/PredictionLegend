@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
 builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddIdentityServices(builder.Configuration);
 
@@ -14,9 +16,16 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
-
+app.UseCors("CorsPolicy");
 app.UseHttpsRedirection();
-
+app.UseCookiePolicy(
+    new CookiePolicyOptions
+    {
+        MinimumSameSitePolicy = SameSiteMode.None,
+        Secure = CookieSecurePolicy.Always
+    }
+);
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

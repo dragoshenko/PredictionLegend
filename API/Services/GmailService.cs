@@ -10,6 +10,7 @@ using API.Interfaces;
 using API.DTO;
 using Microsoft.Extensions.Options;
 using API.Helpers;
+using Microsoft.AspNetCore.Mvc;
 
 namespace API.Services;
 
@@ -23,15 +24,13 @@ public class GmailService : IEmailService
         _googleSettings = googleSettings.Value;
     }
 
-    public async Task SendEmailAsync(SendEmailRequest sendEmailRequest)
+    public async Task<IActionResult> SendEmailAsync(SendEmailRequest sendEmailRequest)
     {   
-        // Add this debug check
         if (string.IsNullOrEmpty(sendEmailRequest.Recipient))
         {
-            throw new ArgumentException("Recipient email is null or empty");
+            return new BadRequestObjectResult("Recipient email is null or empty");
         }
 
-        // If you reach here, the email is not null or empty, but might still be invalid
         try
         {
             MailMessage mailMessage = new MailMessage(_googleSettings.Gmail, sendEmailRequest.Recipient)
@@ -48,11 +47,11 @@ public class GmailService : IEmailService
             smtpClient.EnableSsl = true; 
 
             await smtpClient.SendMailAsync(mailMessage);
+            return new OkObjectResult("Email sent successfully");
         }
         catch (Exception ex)
         {
-            // Add more specific logging for this error
-            throw new Exception($"Failed to send email to '{sendEmailRequest.Recipient}'. Error: {ex.Message}", ex);
+            return new BadRequestObjectResult($"Failed to send email: {ex.Message}");
         }
     }
 }

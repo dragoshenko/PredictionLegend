@@ -12,5 +12,5 @@ public interface IUserService
     Task<ActionResult<RegisterResponseDTO>> RegisterUser(RegisterDTO registerDTO);
     Task<ActionResult<UserDTO>> LoginUser(LoginDTO loginDTO);
     Task<ActionResult<UserDTO>> GoogleAuth(GoogleDTO googleDTO);
-    Task<bool> ConfirmEmailAsync(EmailConfirmationDTO emailConfirmationDTO);
+    Task<ActionResult> ConfirmEmailAsync(EmailConfirmationDTO emailConfirmationDTO);
 }

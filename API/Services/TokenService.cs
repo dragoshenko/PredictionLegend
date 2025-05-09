@@ -52,7 +52,7 @@ public class TokenService(IUnitOfWork unitOfWork, IConfiguration config) : IToke
         {
             return new UnauthorizedObjectResult("Invalid token");
         }
-        var user = await unitOfWork.UserRepository.GetUserByUsernameOrEmailAsync(principal.Identity.Name, true, false, false);
+        var user = await unitOfWork.UserRepository.GetUserByUsernameAsync(principal.Identity.Name!);
         if(user == null)
         {
             return new UnauthorizedObjectResult("Invalid token");

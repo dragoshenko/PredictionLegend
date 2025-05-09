@@ -26,7 +26,7 @@ public class TokenController(IUnitOfWork unitOfWork, ITokenService tokenService)
     [HttpPost("revoke-token")]
     public async Task<ActionResult> RevokeToken(RevokeTokenDTO revokeTokenDTO)
     {   
-        var user = await unitOfWork.UserRepository.GetUserByUsernameOrEmailAsync(User.GetUsername(), false, true);
+        var user = await unitOfWork.UserRepository.GetUserByUsernameAsync(User.GetUsername());
 
         if(user == null) 
         {

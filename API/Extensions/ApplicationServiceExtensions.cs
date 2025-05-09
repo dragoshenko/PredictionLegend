@@ -15,7 +15,13 @@ public static class ApplicationServiceExtensions
         {
             opt.UseSqlServer(config.GetConnectionString("DefaultConnection"));
         });
-        services.AddCors();
+        services.AddCors(options =>
+        {
+            options.AddPolicy("CorsPolicy", policy =>
+            {
+                policy.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin();
+            });
+        });
         services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
         services.AddScoped<IEmailService, GmailService>();
         services.Configure<CloudinarySettings>(config.GetSection(CloudinarySettings.CloudinarySettingsKey));

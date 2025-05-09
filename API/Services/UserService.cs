@@ -21,21 +21,33 @@ public class UserService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
     }
     public async Task<ActionResult<RegisterResponseDTO>> RegisterUser(RegisterDTO registerDTO)
     {
-        var existingUser = await unitOfWork.UserRepository.GetUserByUsernameOrEmailAsync(registerDTO.Username, true, false, false);
+        var existingUser = await GetUserByUsernameOrEmailAsync(registerDTO.Username!, registerDTO.Email!);
+
         if(existingUser != null)
         {
-            return new RegisterResponseDTO
+            if(existingUser.UserName == registerDTO.Username && existingUser.Email != registerDTO.Email)
             {
-                IsRegistered = true,
-                RequiresEmailConfirmation = existingUser.EmailConfirmed == false
-            };
+                return new BadRequestObjectResult("Username is already taken");
+            }
+            if(existingUser.UserName != registerDTO.Username && existingUser.Email == registerDTO.Email)
+            {
+                return new BadRequestObjectResult("Email is already taken");
+            }
+            if(existingUser.UserName == registerDTO.Username && existingUser.Email == registerDTO.Email)
+            {
+                return new RegisterResponseDTO {
+                    IsRegistered = true,
+                    RequiresEmailConfirmation = existingUser.EmailConfirmed == false,
+                };
+            }
+
         }
 
         var user = mapper.Map<AppUser>(registerDTO);
-        var result = await unitOfWork.UserRepository.CreateAsync(user, registerDTO.Password!);
-        if(result.Succeeded == false)
+        var createResult = await unitOfWork.UserRepository.CreateAsync(user, registerDTO.Password!);
+        if(createResult.Succeeded == false)
         {
-            return new BadRequestObjectResult("Problem creating user account " + result.Errors.Select(x => x.Description).ToList());
+            return new BadRequestObjectResult("Problem creating user account");
         }
 
         var emailToken = await unitOfWork.UserRepository.GenerateEmailConfirmationTokenAsync(user);
@@ -43,7 +55,12 @@ public class UserService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
             "Confirm your email", 
             $"<h1>Confirm your email</h1><p>Click <a href='{config["APIUrl"]}/account/confirm-email?id={user.Id}&token={emailToken}'>here</a> to confirm your email.</p>"
         );
-        await emailService.SendEmailAsync(sendEmailRequest);
+        var emailResult = await emailService.SendEmailAsync(sendEmailRequest);
+
+        if(emailResult is BadRequestObjectResult badRequestResult)
+        {
+            return new BadRequestObjectResult("Problem sending email confirmation link: " + badRequestResult.Value);
+        }
 
         return new RegisterResponseDTO
         {
@@ -59,10 +76,18 @@ public class UserService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
             return new BadRequestObjectResult("Invalid credentials");
         }
 
-        var user = await unitOfWork.UserRepository.GetUserByUsernameOrEmailAsync(loginDTO.UsernameOrEmail, true, false, false);
+        var userByUsername = await unitOfWork.UserRepository.GetUserByUsernameAsync(loginDTO.UsernameOrEmail!);
+        var userByEmail = await unitOfWork.UserRepository.GetUserByEmailAsync(loginDTO.UsernameOrEmail!);
+
+        if(userByUsername != null && userByEmail != null)
+        {
+            return new BadRequestObjectResult("Invalid credentials");
+        }
+
+        var user = userByUsername ?? userByEmail;
         if(user == null)
         {
-            return new UnauthorizedObjectResult("Invalid credentials");
+            return new BadRequestObjectResult("Invalid credentials");
         }
 
         var emailConfirmed = await unitOfWork.UserRepository.IsEmailConfirmedAsync(user);
@@ -73,7 +98,11 @@ public class UserService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
                 "Email confirmation code", 
                 $"<h1>Confirm your email</h1><p>Here is your email confirmation code {emailToken}</p><p>Use this code to confirm your email.</p>"
             );
-            await emailService.SendEmailAsync(sendEmailRequest);
+            var emailServiceResult = await emailService.SendEmailAsync(sendEmailRequest);
+            if (emailServiceResult is BadRequestObjectResult)
+            {
+                return new BadRequestObjectResult("Problem sending email confirmation link");
+            }
             return new UnauthorizedObjectResult("Email not confirmed. Check your email for confirmation link.");
         }
 
@@ -120,7 +149,7 @@ public class UserService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
         {
             return new UnauthorizedObjectResult("Invalid credentials");
         }
-        var user = await unitOfWork.UserRepository.GetUserByUsernameOrEmailAsync(payload.Email, true, false, false);
+        var user = await GetUserByUsernameOrEmailAsync(null!, payload.Email!);
         if(user == null)
         {
             user = new AppUser
@@ -156,18 +185,38 @@ public class UserService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
             EmailConfirmed = user.EmailConfirmed,
         };
     }
-    public async Task<bool> ConfirmEmailAsync(EmailConfirmationDTO emailConfirmationDTO)
+    public async Task<ActionResult> ConfirmEmailAsync(EmailConfirmationDTO emailConfirmationDTO)
     {
         var user = await unitOfWork.UserRepository.GetUserByIdAsync(emailConfirmationDTO.Id, false, false, false);
         if(user == null)
         {
-            return false;
+            return new BadRequestObjectResult("Invalid credentials");
         }
         var result = await unitOfWork.UserRepository.ConfirmEmailAsync(user, emailConfirmationDTO.Token);
         if(result.Succeeded == false)
         {
-            return false;
+            return new BadRequestObjectResult("Problem confirming email");
         }
-        return true;
+        return new OkObjectResult("Email confirmed successfully");
+    }
+
+
+    private async Task<AppUser?> GetUserByUsernameOrEmailAsync(string? username, string? email)
+    {
+        AppUser? user;
+        if(!string.IsNullOrEmpty(username))
+        {
+            user = await unitOfWork.UserRepository.GetUserByUsernameAsync(username);
+            if(user != null)
+            {
+                return user;
+            }
+        }
+        if(!string.IsNullOrEmpty(email))
+        {
+            user = await unitOfWork.UserRepository.GetUserByEmailAsync(email);
+            return user;
+        }
+        return null;
     }
 }

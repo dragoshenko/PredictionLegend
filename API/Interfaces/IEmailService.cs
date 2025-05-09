@@ -2,10 +2,11 @@ using System;
 using API.DTO;
 using API.Entities;
 using API.Helpers;
+using Microsoft.AspNetCore.Mvc;
 
 namespace API.Interfaces;
 
 public interface IEmailService
 {
-    Task SendEmailAsync(SendEmailRequest sendEmailRequest);
+    Task<IActionResult> SendEmailAsync(SendEmailRequest sendEmailRequest);
 }

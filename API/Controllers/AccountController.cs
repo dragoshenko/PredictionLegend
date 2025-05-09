@@ -2,56 +2,65 @@ using Microsoft.AspNetCore.Mvc;
 using API.DTOs;
 using API.DTO;
 using API.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Google;
 namespace API.Controllers;
-public class AccountController(IUserService userService):BaseAPIController
+public class AccountController(IUserService userService): BaseAPIController
 {
     [HttpPost("register")]
     public async Task<ActionResult<RegisterResponseDTO>> Register(RegisterDTO registerDTO)
     {
         var registerRespone = await userService.RegisterUser(registerDTO);
-        if(registerRespone.Value == null) 
-        {
-            return BadRequest("Problem creating user account");
-        }
-        
-        return registerRespone.Value;
+        return registerRespone;
 
     }
 
     [HttpGet("confirm-email")]
-    public async Task<ActionResult> ConfirmEmail(EmailConfirmationDTO emailConfirmationDTO)
+    public async Task<ActionResult<bool>> ConfirmEmail(EmailConfirmationDTO emailConfirmationDTO)
     {
 
-        var result = await userService.ConfirmEmailAsync(emailConfirmationDTO);
-
-        if(result == false) 
-        {
-            return BadRequest("Problem confirming email");
-        }
-
-        return Ok( new { message = "Email confirmed" });
+        var confirmEmailResponse = await userService.ConfirmEmailAsync(emailConfirmationDTO);
+        return confirmEmailResponse;
 
     }
 
     [HttpPost("login")]
     public async Task<ActionResult<UserDTO>> Login(LoginDTO loginDTO)
     {
-        var userDTO = await userService.LoginUser(loginDTO);
-        if(userDTO.Value == null) 
-        {
-            return Unauthorized("Invalid credentials");
-        }
-        return userDTO.Value;
+        var loginResponse = await userService.LoginUser(loginDTO);
+        return loginResponse;
     }
 
-    [HttpPost("google-auth")]
-    public async Task<ActionResult<UserDTO>> GoogleAuth(GoogleDTO googleDTO)
+     [HttpGet("google-login")]
+    public IActionResult GoogleLogin()
     {
-        var userDTO = await userService.GoogleAuth(googleDTO);
-        if(userDTO.Value == null) 
+        var props = new AuthenticationProperties
         {
-            return Unauthorized("Invalid credentials");
-        }
-        return userDTO.Value;
+            RedirectUri = Url.Action(nameof(GoogleResponse))
+        };
+        return Challenge(props, GoogleDefaults.AuthenticationScheme);
+    }
+
+    [HttpGet("google-response")]
+    public async Task<IActionResult> GoogleResponse()
+    {
+
+        var result = await HttpContext.AuthenticateAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme);
+
+        if (!result.Succeeded)
+            return BadRequest("Google authentication failed");
+
+        var idToken = result.Properties.GetTokenValue("id_token");
+        if (string.IsNullOrEmpty(idToken))
+            return BadRequest("No ID token");
+
+        var googleDTO = new GoogleDTO { IdToken = idToken };
+        var actionResult = await userService.GoogleAuth(googleDTO);
+
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+        return actionResult.Result!;
     }
 }
