@@ -1,0 +1,47 @@
+/* In src/app/_forms/text-input/text-input.component.css */
+
+.input-container {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.custom-input {
+  width: 100%;
+  padding: 12px 15px;
+  font-size: 16px;
+  border: 1px solid #ced4da;
+  border-radius: 5px;
+  transition: all 0.3s;
+  background-color: #fff;
+}
+
+.custom-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  outline: none;
+}
+
+.input-label {
+  position: absolute;
+  top: -8px;
+  left: 10px;
+  background-color: #fff;
+  padding: 0 6px;
+  font-size: 14px;
+  color: #6366f1;
+  transition: all 0.3s;
+}
+
+.input-error {
+  color: #dc3545;
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.is-invalid {
+  border-color: #dc3545;
+}
+
+.is-invalid:focus {
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.25);
+}

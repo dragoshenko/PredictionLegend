@@ -90,6 +90,12 @@ public class UserService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
             return new BadRequestObjectResult("Invalid credentials");
         }
 
+        var result = await unitOfWork.UserRepository.CheckPasswordAsync(user, loginDTO.Password);
+        if(result == false)
+        {
+            return new UnauthorizedObjectResult("Invalid credentials");
+        }
+
         var emailConfirmed = await unitOfWork.UserRepository.IsEmailConfirmedAsync(user);
         if(emailConfirmed == false)
         {
@@ -106,11 +112,6 @@ public class UserService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
             return new UnauthorizedObjectResult("Email not confirmed. Check your email for confirmation link.");
         }
 
-        var result = await unitOfWork.UserRepository.CheckPasswordAsync(user, loginDTO.Password);
-        if(result == false)
-        {
-            return new UnauthorizedObjectResult("Invalid credentials");
-        }
 
         var token = await tokenService.CreateToken(user);
         var refreshToken = tokenService.CreateRefreshToken();

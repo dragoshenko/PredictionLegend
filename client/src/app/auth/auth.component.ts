@@ -7,6 +7,7 @@ import { TextInputComponent } from '../_forms/text-input/text-input.component';
 import { AccountService } from '../_services/account.service';
 import { GoogleApiService } from '../_services/google-api.service';
 import { ToastrService } from 'ngx-toastr';
+import { createPasswordStrengthValidator } from '../_helpers/password-validator';
 
 @Component({
   selector: 'app-auth',
@@ -46,7 +47,12 @@ export class AuthComponent implements OnInit {
       username: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(32)]],
       displayName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(32)]],
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(32)]]
+      password: ['', [
+        Validators.required,
+        Validators.minLength(8),
+        Validators.maxLength(32),
+        createPasswordStrengthValidator()
+      ]]
     });
 
     // Verification form
