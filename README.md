@@ -1,10 +1,10 @@
-# PredictionLegend
+# PredictionMaker
 
 A modern, interactive platform for creating and sharing predictions about anything!
 
 ## 🔮 About
 
-PredictionLegend is a social application that lets users create custom prediction templates, make their own forecasts, and compete with others based on prediction accuracy. Whether you're predicting sports outcomes, entertainment awards, or world events, PredictionLegend makes it fun to test your foresight and share results with friends.
+PredictionMaker is a social application that lets users create custom prediction templates, make their own forecasts, and compete with others based on prediction accuracy. Whether you're predicting sports outcomes, entertainment awards, or world events, PredictionLegend makes it fun to test your foresight and share results with friends.
 
 ## ✨ Features
 
@@ -28,4 +28,5 @@ PredictionLegend is a social application that lets users create custom predictio
 
 - .NET 9 SDK
 - Node.js & npm
+- Angular
 - SQL Server (local or remote)
