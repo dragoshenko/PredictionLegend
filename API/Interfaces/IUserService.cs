@@ -13,4 +13,6 @@ public interface IUserService
     Task<ActionResult<UserDTO>> LoginUser(LoginDTO loginDTO);
     Task<ActionResult<UserDTO>> GoogleAuth(GoogleDTO googleDTO);
     Task<ActionResult> ConfirmEmailAsync(EmailConfirmationDTO emailConfirmationDTO);
+    Task<ActionResult<bool>> VerifyEmailAsync(EmailVerificationDTO verificationDTO);
+    Task<ActionResult> ResendVerificationCodeAsync(ResendVerificationCodeDTO resendDTO);
 }

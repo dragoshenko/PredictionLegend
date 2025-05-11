@@ -1,4 +1,4 @@
-// auth/auth.component.ts
+// client/src/app/auth/auth.component.ts
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -24,10 +24,8 @@ export class AuthComponent implements OnInit {
   private toastr = inject(ToastrService);
 
   isLoginMode = true;
-  verifyMode = false;
   loginForm!: FormGroup;
   registerForm!: FormGroup;
-  verifyForm!: FormGroup;
   validationErrors: string[] | undefined;
   loading = false;
 
@@ -54,28 +52,36 @@ export class AuthComponent implements OnInit {
         createPasswordStrengthValidator()
       ]]
     });
-
-    // Verification form
-    this.verifyForm = this.fb.group({
-      code: ['', [Validators.required]]
-    });
   }
 
   toggleMode(): void {
     this.isLoginMode = !this.isLoginMode;
     this.validationErrors = undefined;
   }
-
   login() {
     if (this.loginForm.valid) {
       this.loading = true;
-      this.accountService.login(this.loginForm.value).subscribe({
+
+      // Store credentials for automatic login after verification
+      const credentials = {
+        usernameOrEmail: this.loginForm.value.usernameOrEmail,
+        password: this.loginForm.value.password
+      };
+
+      this.accountService.login(credentials).subscribe({
         next: () => {
           this.router.navigateByUrl('/');
           this.loading = false;
         },
         error: error => {
-          this.validationErrors = error.error ? [error.error] : ['Login failed'];
+          if (error && error.requiresVerification) {
+            // Store credentials for after verification
+            sessionStorage.setItem('pendingLoginCredentials', JSON.stringify(credentials));
+            // Redirect to verification page
+            this.router.navigateByUrl('/verify-email');
+          } else {
+            this.validationErrors = typeof error === 'string' ? [error] : ['Login failed'];
+          }
           this.loading = false;
         }
       });
@@ -87,26 +93,43 @@ export class AuthComponent implements OnInit {
       this.loading = true;
       this.validationErrors = undefined;
 
+      console.log('Submitting registration form:', this.registerForm.value);
+
       this.accountService.register(this.registerForm.value).subscribe({
         next: response => {
+          console.log('Registration response:', response);
+
           if (response.requiresEmailConfirmation) {
-            this.toastr.info('Please check your email to verify your account');
-            this.verifyMode = true;
+            console.log('Email confirmation required, userId:', response.userId);
+
+            // Store user ID for verification
+            if (response.userId) {
+              sessionStorage.setItem('verificationUserId', response.userId.toString());
+              this.toastr.info('Please verify your email. Check your inbox for a verification code.');
+
+              // Force navigation to verification page
+              setTimeout(() => {
+                this.router.navigateByUrl('/verify-email');
+              }, 500);
+            } else {
+              console.error('No userId in response:', response);
+              this.toastr.error('Registration completed but verification is not available');
+            }
           } else {
+            this.toastr.success('Registration successful!');
             this.router.navigateByUrl('/');
           }
           this.loading = false;
         },
         error: error => {
+          console.error('Registration error:', error);
+
           // Handle different types of errors
           if (typeof error === 'string') {
-            // Single error string from the backend (like "Username is already taken")
             this.validationErrors = [error];
           } else if (Array.isArray(error)) {
-            // Array of error messages
             this.validationErrors = error;
           } else {
-            // Fallback for unexpected error format
             this.validationErrors = ['Registration failed. Please try again.'];
           }
           this.loading = false;

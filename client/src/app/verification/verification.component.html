@@ -1,0 +1,68 @@
+<!-- verification.component.html -->
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+      <div class="card border-primary shadow rounded-4">
+        <div class="card-header bg-primary text-white">
+          <h2 class="text-center">Verify Your Email</h2>
+        </div>
+
+        <div class="card-body">
+          <div class="text-center mb-4">
+            <div class="alert alert-info">
+              <p class="mb-0">We've sent a 6-digit verification code to your email address.</p>
+            </div>
+          </div>
+
+          <form [formGroup]="verificationForm" (ngSubmit)="submitVerification()" autocomplete="off">
+            <div class="mb-4">
+              <label class="form-label">Enter Verification Code</label>
+              <div class="form-group">
+                <input
+                  type="text"
+                  class="form-control form-control-lg text-center verification-code"
+                  formControlName="code"
+                  placeholder="000000"
+                  maxlength="6"
+                  autocomplete="off">
+
+                @if (verificationForm.get('code')?.invalid && verificationForm.get('code')?.touched) {
+                  <div class="invalid-feedback d-block">
+                    @if (verificationForm.get('code')?.errors?.['required']) {
+                      Verification code is required
+                    } @else if (verificationForm.get('code')?.errors?.['pattern']) {
+                      Verification code must contain only numbers
+                    } @else if (verificationForm.get('code')?.errors?.['minlength'] || verificationForm.get('code')?.errors?.['maxlength']) {
+                      Verification code must be 6 digits
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+
+            @if (errorMessage) {
+              <div class="alert alert-danger">{{ errorMessage }}</div>
+            }
+
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-primary btn-lg" [disabled]="!verificationForm.valid || loading">
+                @if (loading) {
+                  <span class="spinner-border spinner-border-sm me-1"></span>
+                  Verifying...
+                } @else {
+                  Verify Email
+                }
+              </button>
+              <button type="button" class="btn btn-outline-secondary" (click)="resendCode()" [disabled]="loading">
+                Resend Code
+              </button>
+              <button type="button" class="btn btn-link" (click)="goToLogin()">
+                Back to Login
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

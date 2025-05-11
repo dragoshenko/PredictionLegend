@@ -38,6 +38,7 @@ public class UserService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
                 return new RegisterResponseDTO {
                     IsRegistered = true,
                     RequiresEmailConfirmation = existingUser.EmailConfirmed == false,
+                    UserId = existingUser.Id
                 };
             }
 
@@ -45,17 +46,22 @@ public class UserService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
 
         var user = mapper.Map<AppUser>(registerDTO);
         var createResult = await unitOfWork.UserRepository.CreateAsync(user, registerDTO.Password!);
-        if(createResult.Succeeded == false)
-        {
-            return new BadRequestObjectResult("Problem creating user account");
-        }
+    if(createResult.Succeeded == false)
+    {
+        return new BadRequestObjectResult("Problem creating user account");
+    }
 
-        var emailToken = await unitOfWork.UserRepository.GenerateEmailConfirmationTokenAsync(user);
-        SendEmailRequest sendEmailRequest = new SendEmailRequest(user.Email!, 
-            "Confirm your email", 
-            $"<h1>Confirm your email</h1><p>Click <a href='{config["APIUrl"]}/account/confirm-email?id={user.Id}&token={emailToken}'>here</a> to confirm your email.</p>"
-        );
-        var emailResult = await emailService.SendEmailAsync(sendEmailRequest);
+    // Generate a 6-digit verification code instead of a token
+    var verificationCode = await unitOfWork.UserRepository.GenerateEmailVerificationCodeAsync(user);
+    
+    // Send email with verification code
+    SendEmailRequest sendEmailRequest = new SendEmailRequest(
+        user.Email!, 
+        "Verify Your Email", 
+        $"<h1>Verify Your Email</h1><p>Your verification code is: <strong>{verificationCode}</strong></p><p>This code will expire in 15 minutes.</p>"
+    );
+    
+    var emailResult = await emailService.SendEmailAsync(sendEmailRequest);
 
         if(emailResult is BadRequestObjectResult badRequestResult)
         {
@@ -65,7 +71,8 @@ public class UserService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
         return new RegisterResponseDTO
         {
             IsRegistered = false,
-            RequiresEmailConfirmation = true
+            RequiresEmailConfirmation = true,
+            UserId = user.Id 
         };
     }
     public async Task<ActionResult<UserDTO>> LoginUser(LoginDTO loginDTO)
@@ -99,19 +106,26 @@ public class UserService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
         var emailConfirmed = await unitOfWork.UserRepository.IsEmailConfirmedAsync(user);
         if(emailConfirmed == false)
         {
-            var emailToken = await unitOfWork.UserRepository.GenerateEmailConfirmationTokenAsync(user);
+            // Use the 6-digit code method instead of token
+            var verificationCode = await unitOfWork.UserRepository.GenerateEmailVerificationCodeAsync(user);
+            
             SendEmailRequest sendEmailRequest = new SendEmailRequest(user.Email!, 
-                "Email confirmation code", 
-                $"<h1>Confirm your email</h1><p>Here is your email confirmation code {emailToken}</p><p>Use this code to confirm your email.</p>"
+                "Email Verification Code", 
+                $"<h1>Verify Your Email</h1><p>Your verification code is: <strong>{verificationCode}</strong></p><p>This code will expire in 15 minutes.</p>"
             );
+            
             var emailServiceResult = await emailService.SendEmailAsync(sendEmailRequest);
             if (emailServiceResult is BadRequestObjectResult)
             {
-                return new BadRequestObjectResult("Problem sending email confirmation link");
+                return new BadRequestObjectResult("Problem sending verification code");
             }
-            return new UnauthorizedObjectResult("Email not confirmed. Check your email for confirmation link.");
+            
+            // Return unauthorized with user ID for verification
+            return new UnauthorizedObjectResult(new { 
+                message = "Email not confirmed. Check your email for verification code.", 
+                userId = user.Id 
+            });
         }
-
 
         var token = await tokenService.CreateToken(user);
         var refreshToken = tokenService.CreateRefreshToken();
@@ -200,7 +214,49 @@ public class UserService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
         }
         return new OkObjectResult("Email confirmed successfully");
     }
+        public async Task<ActionResult<bool>> VerifyEmailAsync(EmailVerificationDTO verificationDTO)
+    {
+        var user = await unitOfWork.UserRepository.GetUserByIdAsync(verificationDTO.Id, false, false, false);
+        if(user == null)
+        {
+            return new BadRequestObjectResult("Invalid user ID");
+        }
+        
+        var result = await unitOfWork.UserRepository.VerifyEmailVerificationCodeAsync(user, verificationDTO.Code);
+        if(!result)
+        {
+            return new BadRequestObjectResult("Invalid or expired verification code");
+        }
+        
+        return new OkObjectResult(true);
+    }
 
+    public async Task<ActionResult> ResendVerificationCodeAsync(ResendVerificationCodeDTO resendDTO)
+    {
+        var user = await unitOfWork.UserRepository.GetUserByIdAsync(resendDTO.UserId, false, false, false);
+        if (user == null)
+        {
+            return new BadRequestObjectResult("Invalid user ID");
+        }
+
+        // Generate a new verification code
+        var verificationCode = await unitOfWork.UserRepository.GenerateEmailVerificationCodeAsync(user);
+        
+        // Send a new email
+        SendEmailRequest sendEmailRequest = new SendEmailRequest(
+            user.Email!, 
+            "Verify Your Email", 
+            $"<h1>Verify Your Email</h1><p>Your new verification code is: <strong>{verificationCode}</strong></p><p>This code will expire in 15 minutes.</p>"
+        );
+        
+        var emailResult = await emailService.SendEmailAsync(sendEmailRequest);
+        if(emailResult is BadRequestObjectResult badRequestResult)
+        {
+            return new BadRequestObjectResult("Problem sending verification code: " + badRequestResult.Value);
+        }
+        
+        return new OkResult();
+    }
 
     private async Task<AppUser?> GetUserByUsernameOrEmailAsync(string? username, string? email)
     {

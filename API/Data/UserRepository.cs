@@ -118,4 +118,42 @@ public class UserRespository(UserManager<AppUser> userManager, IMapper mapper) :
     {
         return await userManager.CheckPasswordAsync(user, password);
     }
+
+    public async Task<string> GenerateEmailVerificationCodeAsync(AppUser user)
+{
+        // Generate a random 6-digit code
+        var random = new Random();
+        var code = random.Next(100000, 999999).ToString();
+        
+        // Store the code in user properties
+        user.EmailVerificationCode = code;
+        user.EmailVerificationCodeExpiry = DateTime.UtcNow.AddMinutes(15);
+        
+        // Update the user
+        await userManager.UpdateAsync(user);
+        
+        return code;
+}
+    
+    public async Task<bool> VerifyEmailVerificationCodeAsync(AppUser user, string code)
+    {
+        // Check if code is valid and not expired
+        if (user.EmailVerificationCode == code && 
+            user.EmailVerificationCodeExpiry.HasValue && 
+            user.EmailVerificationCodeExpiry.Value > DateTime.UtcNow)
+        {
+            // Clear the verification code
+            user.EmailVerificationCode = null;
+            user.EmailVerificationCodeExpiry = null;
+            
+            // Set email as confirmed
+            user.EmailConfirmed = true;
+            await userManager.UpdateAsync(user);
+            
+            return true;
+        }
+        
+        return false;
+    }
+
 }

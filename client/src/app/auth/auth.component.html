@@ -1,4 +1,4 @@
-<!-- auth/auth.component.html -->
+<!-- auth/auth.component.html (simplified, verification is in its own component now) -->
 <div class="container mt-5">
   <div class="row justify-content-center">
     <div class="col-md-6 col-lg-5">
@@ -36,7 +36,7 @@
           }
 
           <!-- Register Form -->
-          @if (!isLoginMode && !verifyMode) {
+          @if (!isLoginMode) {
             <form [formGroup]="registerForm" (ngSubmit)="submitForm()" autocomplete="off">
               <app-text-input
                 [formControl]="$any(registerForm.controls['username'])"
@@ -58,7 +58,6 @@
                 [label]="'Password'"
                 [type]="'password'">
               </app-text-input>
-
 
               <div class="form-group text-center mt-4">
                 <button [disabled]="!registerForm.valid || loading" class="btn btn-primary w-100" type="submit">

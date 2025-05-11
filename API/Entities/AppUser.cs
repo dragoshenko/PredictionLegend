@@ -9,6 +9,8 @@ public class AppUser : IdentityUser<int>
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public DateTime LastActive { get; set; } = DateTime.Now;
     public Photo? Photo { get; set; }
+    public string? EmailVerificationCode { get; set; }
+    public DateTime? EmailVerificationCodeExpiry { get; set; }
     // Refresh token
     public List<RefreshToken> RefreshTokens { get; set; } = [];
     public List<Post> Posts { get; set; } = [];

@@ -24,5 +24,7 @@ public interface IUserRepository
     Task<bool> IsEmailTakenAsync(string email);
     Task<IdentityResult> ConfirmEmailAsync(AppUser user, string token);
     Task<bool> CheckPasswordAsync(AppUser user, string password);
+    Task<string> GenerateEmailVerificationCodeAsync(AppUser user);
+    Task<bool> VerifyEmailVerificationCodeAsync(AppUser user, string code);
     
 }

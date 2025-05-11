@@ -8,10 +8,12 @@ import { TrendingPredictionsComponent } from './trending-predictions/trending-pr
 import { AuthComponent } from './auth/auth.component';
 import { ProfileComponent } from './profile/profile.component';
 import { AuthGuard } from './_guards/auth.guard';
+import { VerificationComponent } from './verification/verification.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'auth', component: AuthComponent },
+  { path: 'verify-email', component: VerificationComponent },
   {
     path: '',
     runGuardsAndResolvers: 'always',
