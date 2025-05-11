@@ -11,6 +11,8 @@ public class AppUser : IdentityUser<int>
     public Photo? Photo { get; set; }
     public string? EmailVerificationCode { get; set; }
     public DateTime? EmailVerificationCodeExpiry { get; set; }
+    public string? PasswordResetCode { get; set; }
+    public DateTime? PasswordResetCodeExpiry { get; set; }
     // Refresh token
     public List<RefreshToken> RefreshTokens { get; set; } = [];
     public List<Post> Posts { get; set; } = [];

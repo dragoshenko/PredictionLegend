@@ -26,5 +26,9 @@ public interface IUserRepository
     Task<bool> CheckPasswordAsync(AppUser user, string password);
     Task<string> GenerateEmailVerificationCodeAsync(AppUser user);
     Task<bool> VerifyEmailVerificationCodeAsync(AppUser user, string code);
+    Task<string> GeneratePasswordResetTokenAsync(AppUser user);
+    Task<string> GeneratePasswordResetCodeAsync(AppUser user);
+    Task<bool> VerifyPasswordResetCodeAsync(AppUser user, string code);
+    Task<IdentityResult> ResetPasswordAsync(AppUser user, string token, string newPassword);
     
 }

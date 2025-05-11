@@ -276,4 +276,62 @@ public class UserService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
         }
         return null;
     }
+    public async Task<ActionResult> ForgotPasswordAsync(ForgotPasswordDTO forgotPasswordDTO)
+{
+    // Find user by email
+    var user = await unitOfWork.UserRepository.GetUserByEmailAsync(forgotPasswordDTO.Email);
+    if (user == null)
+    {
+        // Return success even if user not found for security reasons
+        return new OkObjectResult(new { message = "If your email is registered, you will receive a password reset code" });
+    }
+
+    // Generate a 6-digit verification code
+    var resetCode = await unitOfWork.UserRepository.GeneratePasswordResetCodeAsync(user);
+    
+    // Send the code via email
+    SendEmailRequest sendEmailRequest = new SendEmailRequest(
+        user.Email!, 
+        "Reset Your Password", 
+        $"<h1>Reset Your Password</h1><p>Your password reset code is: <strong>{resetCode}</strong></p><p>This code will expire in 15 minutes.</p>"
+    );
+    
+    var emailResult = await emailService.SendEmailAsync(sendEmailRequest);
+    if(emailResult is BadRequestObjectResult badRequestResult)
+    {
+        // Log the error but don't expose it to user
+        Console.WriteLine($"Error sending password reset email: {badRequestResult.Value}");
+    }
+    
+    // Always return success for security
+    return new OkObjectResult(new { message = "If your email is registered, you will receive a password reset code" });
+}
+
+public async Task<ActionResult> ResetPasswordAsync(ResetPasswordDTO resetPasswordDTO)
+{
+    // Find user by email
+    var user = await unitOfWork.UserRepository.GetUserByEmailAsync(resetPasswordDTO.Email);
+    if (user == null)
+    {
+        return new BadRequestObjectResult("Invalid reset request");
+    }
+    
+    // Verify the reset code
+    var isCodeValid = await unitOfWork.UserRepository.VerifyPasswordResetCodeAsync(user, resetPasswordDTO.Code);
+    if (!isCodeValid)
+    {
+        return new BadRequestObjectResult("Invalid or expired reset code");
+    }
+    
+    // Reset the password
+    var token = await unitOfWork.UserRepository.GeneratePasswordResetTokenAsync(user);
+    var result = await unitOfWork.UserRepository.ResetPasswordAsync(user, token, resetPasswordDTO.NewPassword);
+    
+    if (!result.Succeeded)
+    {
+        return new BadRequestObjectResult("Failed to reset password: " + string.Join(", ", result.Errors.Select(e => e.Description)));
+    }
+    
+    return new OkObjectResult(new { message = "Password has been reset successfully" });
+}
 }

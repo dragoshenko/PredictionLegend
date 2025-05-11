@@ -155,5 +155,50 @@ public class UserRespository(UserManager<AppUser> userManager, IMapper mapper) :
         
         return false;
     }
+    public async Task<string> GeneratePasswordResetTokenAsync(AppUser user)
+    {
+        return await userManager.GeneratePasswordResetTokenAsync(user);
+    }
+    
+    public async Task<string> GeneratePasswordResetCodeAsync(AppUser user)
+    {
+        // Generate a random 6-digit code
+        var random = new Random();
+        var code = random.Next(100000, 999999).ToString();
+        
+        // Store the code in user properties (similar to email verification)
+        user.PasswordResetCode = code;
+        user.PasswordResetCodeExpiry = DateTime.UtcNow.AddMinutes(15);
+        
+        // Update the user
+        await userManager.UpdateAsync(user);
+        
+        return code;
+    }
+    
+    public async Task<bool> VerifyPasswordResetCodeAsync(AppUser user, string code)
+    {
+        // Check if code is valid and not expired
+        if (user.PasswordResetCode == code && 
+            user.PasswordResetCodeExpiry.HasValue && 
+            user.PasswordResetCodeExpiry.Value > DateTime.UtcNow)
+        {
+            // Clear the verification code
+            user.PasswordResetCode = null;
+            user.PasswordResetCodeExpiry = null;
+            
+            // Update the user
+            await userManager.UpdateAsync(user);
+            
+            return true;
+        }
+        
+        return false;
+    }
+    
+    public async Task<IdentityResult> ResetPasswordAsync(AppUser user, string token, string newPassword)
+    {
+        return await userManager.ResetPasswordAsync(user, token, newPassword);
+    }
 
 }

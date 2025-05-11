@@ -7,6 +7,7 @@ import { CookieService } from 'ngx-cookie-service';
 import { Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import { EmailVerificationDTO, ResendVerificationCodeDTO } from '../_models/emailVerification';
+import { ResetPasswordRequest } from '../_models/password-reset';
 
 @Injectable({
   providedIn: 'root'
@@ -69,6 +70,7 @@ export class AccountService {
       })
     );
   }
+
   register(model: any) {
     console.log('Sending registration request to:', this.baseUrl + 'account/register');
     console.log('Registration data:', model);
@@ -189,6 +191,34 @@ export class AccountService {
           return user;
         }
         return null;
+      })
+    );
+  }
+
+  forgotPassword(email: string) {
+    return this.http.post(this.baseUrl + 'account/forgot-password', { email }).pipe(
+      map(() => {
+        this.toastr.info('If your email is registered, you will receive a password reset code');
+        return true;
+      }),
+      catchError(error => {
+        console.error('Forgot password error:', error);
+        this.toastr.error('Failed to process forgot password request');
+        return throwError(() => 'Failed to process forgot password request');
+      })
+    );
+  }
+
+  resetPassword(resetData: ResetPasswordRequest) {
+    return this.http.post(this.baseUrl + 'account/reset-password', resetData).pipe(
+      map(() => {
+        this.toastr.success('Your password has been reset successfully');
+        return true;
+      }),
+      catchError(error => {
+        console.error('Reset password error:', error);
+        this.toastr.error(error.error || 'Failed to reset password');
+        return throwError(() => error.error || 'Failed to reset password');
       })
     );
   }

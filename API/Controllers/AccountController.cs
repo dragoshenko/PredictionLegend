@@ -26,18 +26,18 @@ public class AccountController(IUserService userService): BaseAPIController
     }
 
     [HttpPost("verify-email")]
-public async Task<ActionResult<bool>> VerifyEmail(EmailVerificationDTO verificationDTO)
-{
-    var result = await userService.VerifyEmailAsync(verificationDTO);
-    return result;
-}
+    public async Task<ActionResult<bool>> VerifyEmail(EmailVerificationDTO verificationDTO)
+    {
+        var result = await userService.VerifyEmailAsync(verificationDTO);
+        return result;
+    }
 
-[HttpPost("resend-verification-code")]
-public async Task<ActionResult> ResendVerificationCode([FromBody] ResendVerificationCodeDTO request)
-{
-    var result = await userService.ResendVerificationCodeAsync(request);
-    return result;
-}
+    [HttpPost("resend-verification-code")]
+    public async Task<ActionResult> ResendVerificationCode([FromBody] ResendVerificationCodeDTO request)
+    {
+        var result = await userService.ResendVerificationCodeAsync(request);
+        return result;
+    }
 
     [HttpPost("login")]
     public async Task<ActionResult<UserDTO>> Login(LoginDTO loginDTO)
@@ -76,5 +76,16 @@ public async Task<ActionResult> ResendVerificationCode([FromBody] ResendVerifica
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
         return actionResult.Result!;
+    }
+    [HttpPost("forgot-password")]
+    public async Task<ActionResult> ForgotPassword(ForgotPasswordDTO forgotPasswordDTO)
+    {
+        return await userService.ForgotPasswordAsync(forgotPasswordDTO);
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<ActionResult> ResetPassword(ResetPasswordDTO resetPasswordDTO)
+    {
+        return await userService.ResetPasswordAsync(resetPasswordDTO);
     }
 }

@@ -15,4 +15,6 @@ public interface IUserService
     Task<ActionResult> ConfirmEmailAsync(EmailConfirmationDTO emailConfirmationDTO);
     Task<ActionResult<bool>> VerifyEmailAsync(EmailVerificationDTO verificationDTO);
     Task<ActionResult> ResendVerificationCodeAsync(ResendVerificationCodeDTO resendDTO);
+    Task<ActionResult> ForgotPasswordAsync(ForgotPasswordDTO forgotPasswordDTO);
+    Task<ActionResult> ResetPasswordAsync(ResetPasswordDTO resetPasswordDTO);
 }
