@@ -12,6 +12,7 @@ export class UserService {
   constructor(private http: HttpClient) { }
 
   updateProfile(model: any): Observable<any> {
+    console.log('Sending update to server:', model);
     return this.http.put(this.baseUrl + 'user', model);
   }
 

@@ -193,6 +193,10 @@ export class AccountService {
           return user;
         }
         return null;
+      }),
+      catchError(error => {
+        this.toastr.error('Failed to refresh user data');
+        return throwError(() => error);
       })
     );
   }

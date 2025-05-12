@@ -50,6 +50,17 @@ public class UserRespository(UserManager<AppUser> userManager, IMapper mapper) :
     {
         return await userManager.Users.AnyAsync(x => x.Email == email);
     }
+    
+    public async Task<bool> IsDisplayNameTakenAsync(string displayName)
+    {
+        return await userManager.Users.AnyAsync(x => x.DisplayName.ToLower() == displayName.ToLower());
+    }
+    
+    public async Task<AppUser?> GetUserByDisplayNameAsync(string displayName)
+    {
+        return await userManager.Users.FirstOrDefaultAsync(x => x.DisplayName.ToLower() == displayName.ToLower());
+    }
+    
     public async Task<AppUser?> GetUserByIdAsync(int id, bool refreshTokens = false, bool includePostsAndComments = false, bool includePhoto = false)
     {
         IQueryable<AppUser> query = userManager.Users;

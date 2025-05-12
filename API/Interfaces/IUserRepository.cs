@@ -20,8 +20,10 @@ public interface IUserRepository
     Task<IList<string>> GetUserRolesAsync(AppUser user);
     Task<AppUser?> GetUserByUsernameAsync(string username);
     Task<AppUser?> GetUserByEmailAsync(string email);
+    Task<AppUser?> GetUserByDisplayNameAsync(string displayName);
     Task<bool> IsUsernameTakenAsync(string username);
     Task<bool> IsEmailTakenAsync(string email);
+    Task<bool> IsDisplayNameTakenAsync(string displayName);
     Task<IdentityResult> ConfirmEmailAsync(AppUser user, string token);
     Task<bool> CheckPasswordAsync(AppUser user, string password);
     Task<string> GenerateEmailVerificationCodeAsync(AppUser user);

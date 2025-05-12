@@ -10,6 +10,7 @@ namespace API.DTOs
         public DateTime RefreshTokenExpiry { get; set; }
         public string? PhotoUrl { get; set; }
         public bool EmailConfirmed { get; set; } = false;
+        public DateTime CreatedAt { get; set; }
 
     }
 }

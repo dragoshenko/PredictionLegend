@@ -84,7 +84,8 @@ public class TokenService(IUnitOfWork unitOfWork, IConfiguration config) : IToke
             DisplayName = user.DisplayName!,
             Token = token,
             RefreshToken = newRefreshToken.Token,
-            PhotoUrl = user.Photo?.Url
+            PhotoUrl = user.Photo?.Url,
+            CreatedAt = user.CreatedAt
         };
         
     }

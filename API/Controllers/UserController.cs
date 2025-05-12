@@ -49,6 +49,7 @@ public class UserController : BaseAPIController
             RefreshToken = null, // Don't need to generate a refresh token here
             PhotoUrl = user.Photo?.Url,
             EmailConfirmed = user.EmailConfirmed,
+            CreatedAt = user.CreatedAt
         };
     }
 
@@ -71,22 +72,40 @@ public class UserController : BaseAPIController
         
         if (user == null) return NotFound();
 
-        // Update user properties
-        if (!string.IsNullOrEmpty(memberUpdateDTO.DisplayName))
+        // Check if display name is being updated
+        if (!string.IsNullOrEmpty(memberUpdateDTO.DisplayName) && 
+            memberUpdateDTO.DisplayName != user.DisplayName)
+        {
+            // Check if display name is already in use by another user
+            var existingUser = await _unitOfWork.UserRepository.GetUserByDisplayNameAsync(memberUpdateDTO.DisplayName);
+            if (existingUser != null && existingUser.Id != user.Id)
+            {
+                return BadRequest("Display name is already in use");
+            }
+            
             user.DisplayName = memberUpdateDTO.DisplayName;
+        }
         
+        // Update other user properties
         if (!string.IsNullOrEmpty(memberUpdateDTO.Bio))
             user.Bio = memberUpdateDTO.Bio;
 
         // Save changes
         var result = await _unitOfWork.UserRepository.UpdateAsync(user);
         
-        if (!result.Succeeded) return BadRequest("Failed to update user");
+        if (!result.Succeeded) return BadRequest("Failed to update user profile");
         
         // Only update completed if changes done
-        if (await _unitOfWork.Complete()) return NoContent();
+        if (await _unitOfWork.Complete()) 
+        {
+            // Return the updated user info
+            return Ok(new { 
+                displayName = user.DisplayName,
+                message = "Profile updated successfully"
+            });
+        }
         
-        return BadRequest("Failed to update user");
+        return BadRequest("Failed to update user profile");
     }
 
     // Request password change with verification code

@@ -1,7 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AccountService } from '../_services/account.service';
-import { UserService } from '../_services/user.service'; // Add this or use AccountService if you added methods there
+import { UserService } from '../_services/user.service';
 import { User } from '../_models/user';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TextInputComponent } from '../_forms/text-input/text-input.component';
@@ -18,7 +18,7 @@ import { CensorEmailPipe } from "../_pipes/censor-email.pipe";
 })
 export class ProfileComponent implements OnInit {
   private accountService = inject(AccountService);
-  private userService = inject(UserService); // Or use accountService if you added methods there
+  private userService = inject(UserService);
   private fb = inject(FormBuilder);
   private toastr = inject(ToastrService);
 
@@ -54,7 +54,6 @@ export class ProfileComponent implements OnInit {
     });
   }
 
-  // And in loadUser:
   loadUser() {
     this.accountService.currentUser$.subscribe(user => {
       this.user = user;
@@ -125,13 +124,18 @@ export class ProfileComponent implements OnInit {
   saveChanges() {
     if (this.profileForm.valid) {
       this.loading = true;
+      console.log('Form values:', this.profileForm.value);
+      console.log('Display name value:', this.profileForm.get('displayName')?.value);
 
       // Handle display name change
-      const displayNameChanged = this.profileForm.get('displayName')?.value !== this.user?.displayName;
+      const displayName = this.profileForm.get('displayName')?.value;
+      const displayNameChanged = displayName !== this.user?.displayName;
 
       if (displayNameChanged) {
+        console.log('Display name changed to:', displayName);
+
         const updateModel = {
-          displayName: this.profileForm.get('displayName')?.value
+          displayName: displayName
         };
 
         this.userService.updateProfile(updateModel).subscribe({
@@ -143,6 +147,7 @@ export class ProfileComponent implements OnInit {
             this.handlePasswordChange();
           },
           error: error => {
+            console.error('Update profile error:', error);
             this.toastr.error(error.error || 'Failed to update profile');
             this.loading = false;
           }
@@ -151,7 +156,23 @@ export class ProfileComponent implements OnInit {
         // If only changing password
         this.handlePasswordChange();
       }
+    } else {
+      // Mark form controls as touched to show validation errors
+      this.markFormGroupTouched(this.profileForm);
+      this.loading = false;
+      this.toastr.error('Please fix the validation errors');
     }
+  }
+
+  // Helper method to mark all controls as touched
+  markFormGroupTouched(formGroup: FormGroup) {
+    Object.values(formGroup.controls).forEach(control => {
+      control.markAsTouched();
+
+      if (control instanceof FormGroup) {
+        this.markFormGroupTouched(control);
+      }
+    });
   }
 
   handlePasswordChange() {
@@ -229,7 +250,7 @@ export class ProfileComponent implements OnInit {
           this.user = user;
           this.profileForm.patchValue({
             displayName: user.displayName,
-            email: user.username
+            email: user.email
           });
           this.loadUserStats();
         }

@@ -141,6 +141,7 @@ public class AuthService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
             RefreshToken = refreshToken.Token,
             PhotoUrl = user.Photo?.Url,
             EmailConfirmed = user.EmailConfirmed,
+            CreatedAt = user.CreatedAt
         };
     }
     public async Task<ActionResult<UserDTO>> GoogleAuth(GoogleDTO goolgeDTO)
@@ -197,6 +198,7 @@ public class AuthService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
             RefreshToken = refreshToken.Token,
             PhotoUrl = user.Photo?.Url,
             EmailConfirmed = user.EmailConfirmed,
+            CreatedAt = user.CreatedAt
         };
     }
     public async Task<ActionResult> ConfirmEmailAsync(EmailConfirmationDTO emailConfirmationDTO)

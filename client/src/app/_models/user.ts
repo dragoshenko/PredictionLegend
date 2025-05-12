@@ -6,4 +6,5 @@ export interface User {
   refreshToken: string;
   photoUrl: string;
   emailConfirmed: boolean;
+  createdAt: Date;
 }
