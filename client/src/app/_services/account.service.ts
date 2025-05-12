@@ -40,7 +40,6 @@ export class AccountService {
   verifyEmailCode(verificationData: EmailVerificationDTO) {
     return this.http.post(this.baseUrl + 'account/verify-email', verificationData).pipe(
       map(() => {
-        this.toastr.success('Email verified successfully');
         return true;
       }),
       catchError(error => {
@@ -84,7 +83,6 @@ export class AccountService {
         }
 
         if (response.requiresEmailConfirmation) {
-          this.toastr.info('Please check your email for verification code');
           console.log('Email confirmation required, userId:', response.userId);
         }
 

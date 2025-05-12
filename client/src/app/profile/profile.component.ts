@@ -162,6 +162,7 @@ export class ProfileComponent implements OnInit {
       this.loading = false;
       this.toastr.error('Please fix the validation errors');
     }
+
   }
 
   // Helper method to mark all controls as touched
@@ -247,13 +248,24 @@ export class ProfileComponent implements OnInit {
     this.accountService.refreshUserData().subscribe({
       next: user => {
         if (user) {
+          console.log('Refreshed user data:', user); // Add this log to verify data
           this.user = user;
           this.profileForm.patchValue({
             displayName: user.displayName,
+            username: user.username,
             email: user.email
           });
+
+          // Force nav component reload by updating the source
+          this.accountService.setCurrentUser(user, true);
+
           this.loadUserStats();
+          this.editMode = false;
         }
+      },
+      error: error => {
+        console.error('Failed to refresh user data:', error);
+        this.toastr.error('Could not refresh user data');
       }
     });
   }
