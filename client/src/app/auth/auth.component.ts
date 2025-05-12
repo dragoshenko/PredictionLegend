@@ -51,14 +51,29 @@ export class AuthComponent implements OnInit {
         Validators.minLength(8),
         Validators.maxLength(32),
         createPasswordStrengthValidator()
-      ]]
+      ]],
+      confirmPassword: ['', [Validators.required]]
+    }, {
+      validators: this.passwordMatchValidator
     });
+  }
+
+  passwordMatchValidator(g: FormGroup) {
+    const password = g.get('password')?.value;
+    const confirmPassword = g.get('confirmPassword')?.value;
+
+    if (password === confirmPassword) {
+      return null;
+    }
+
+    return { passwordMismatch: true };
   }
 
   toggleMode(): void {
     this.isLoginMode = !this.isLoginMode;
     this.validationErrors = undefined;
   }
+
   login() {
     if (this.loginForm.valid) {
       this.loading = true;

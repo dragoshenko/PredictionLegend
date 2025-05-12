@@ -1,39 +1,77 @@
-<!-- profile/profile.component.html -->
 <div class="container mt-5">
   <div class="row justify-content-center">
     <div class="col-md-8 col-lg-7">
       <div class="card border-primary shadow">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
           <h2 class="mb-0">My Profile</h2>
-          <button class="btn btn-light btn-sm" (click)="toggleEditMode()">
+          <button class="btn btn-light btn-sm" (click)="toggleEditMode()" *ngIf="!showPasswordVerification">
             {{ editMode ? 'Cancel' : 'Edit Profile' }}
           </button>
         </div>
         <div class="card-body">
-          @if (user) {
-            <div class="row">
-              <div class="col-md-4 text-center mb-4">
-                @if (user.photoUrl) {
-                  <img src="{{user.photoUrl}}" alt="Profile" class="img-fluid rounded-circle mb-3" style="max-width: 150px;">
-                } @else {
-                  <div class="bg-light d-flex align-items-center justify-content-center rounded-circle mx-auto mb-3" style="width: 150px; height: 150px;">
-                    <span class="display-4 text-secondary">{{ user.displayName ? user.displayName.charAt(0).toUpperCase() : '?' }}</span>
-                  </div>
-                }
-                <h4>{{ user.displayName }}</h4>
-                <p class="text-muted mb-0">{{ user.username }}</p>
+          <!-- Password Verification Modal -->
+          <div *ngIf="showPasswordVerification" class="bg-light p-4 rounded mb-4">
+            <h4 class="text-center mb-3">Verify Password Change</h4>
+            <p class="text-center mb-4">
+              We've sent a 6-digit code to your email address. Please enter it below to confirm your password change.
+            </p>
 
-                <div class="mt-3">
-                  <span class="badge bg-success me-2" *ngIf="user.isEmailVerified">Email Verified</span>
+            <form [formGroup]="passwordVerificationForm" (ngSubmit)="submitVerificationCode()">
+              <div class="form-group mb-3">
+                <input
+                  type="text"
+                  class="form-control form-control-lg text-center"
+                  formControlName="verificationCode"
+                  placeholder="000000"
+                  maxlength="6">
+
+                <div *ngIf="passwordVerificationForm.get('verificationCode')?.invalid &&
+                           passwordVerificationForm.get('verificationCode')?.touched"
+                     class="text-danger mt-1">
+                  Please enter a valid 6-digit code
                 </div>
               </div>
 
+              <div class="d-flex justify-content-center gap-2 mt-4">
+                <button type="button" class="btn btn-secondary"
+                        (click)="cancelVerification()" [disabled]="loading">
+                  Cancel
+                </button>
+                <button type="submit" class="btn btn-primary"
+                        [disabled]="!passwordVerificationForm.valid || loading">
+                  <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"></span>
+                  Verify & Change Password
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- User Profile Content -->
+          <div *ngIf="!showPasswordVerification">
+            <div *ngIf="user" class="row">
+              <div class="col-md-4 text-center mb-4">
+                <div *ngIf="user.photoUrl">
+                  <img [src]="user.photoUrl" alt="Profile" class="img-fluid rounded-circle mb-3" style="max-width: 150px;">
+                </div>
+                <div *ngIf="!user.photoUrl" class="bg-light d-flex align-items-center justify-content-center rounded-circle mx-auto mb-3" style="width: 150px; height: 150px;">
+                  <span class="display-4 text-secondary">{{ user.displayName.charAt(0).toUpperCase() }}</span>
+                </div>
+                <h4>{{ user.displayName }}</h4>
+                <p class="text-muted mb-0">{{ user.username }}</p>
+              </div>
+
               <div class="col-md-8">
-                @if (editMode) {
+                <!-- Edit Profile Form -->
+                <div *ngIf="editMode">
                   <form [formGroup]="profileForm" (ngSubmit)="saveChanges()">
                     <app-text-input
                       [formControl]="$any(profileForm.controls['displayName'])"
                       [label]="'Display Name'">
+                    </app-text-input>
+
+                    <app-text-input
+                      [formControl]="$any(profileForm.controls['username'])"
+                      [label]="'Username'">
                     </app-text-input>
 
                     <app-text-input
@@ -62,11 +100,24 @@
                       [type]="'password'">
                     </app-text-input>
 
+                    <div *ngIf="profileForm.hasError('passwordMismatch') &&
+                               profileForm.get('confirmPassword')?.touched"
+                         class="text-danger mb-3">
+                      Passwords do not match
+                    </div>
+
                     <div class="text-end mt-4">
-                      <button type="submit" class="btn btn-primary" [disabled]="!profileForm.valid">Save Changes</button>
+                      <button type="submit" class="btn btn-primary"
+                              [disabled]="!profileForm.valid || loading">
+                        <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"></span>
+                        Save Changes
+                      </button>
                     </div>
                   </form>
-                } @else {
+                </div>
+
+                <!-- Profile Info Display -->
+                <div *ngIf="!editMode">
                   <div class="mb-4">
                     <h5>Account Information</h5>
                     <ul class="list-group list-group-flush">
@@ -75,61 +126,61 @@
                         <span class="text-primary">{{ user.displayName }}</span>
                       </li>
                       <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span>Email</span>
+                        <span>Username</span>
                         <span class="text-primary">{{ user.username }}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>Email</span>
+                        <span class="text-primary">{{ user.email | censorEmail }}</span>
                       </li>
                       <li class="list-group-item d-flex justify-content-between align-items-center">
                         <span>Account Created</span>
                         <span class="text-primary">{{ '2025-05-01' | date:'mediumDate' }}</span>
                       </li>
-                      <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span>Email Verified</span>
-                        <span>
-                          <i class="fa" [ngClass]="user.isEmailVerified ? 'fa-check text-success' : 'fa-times text-danger'"></i>
-                        </span>
-                      </li>
                     </ul>
                   </div>
 
+                  <!-- User Stats -->
                   <div>
                     <h5>Activity Stats</h5>
                     <div class="row g-3 text-center">
                       <div class="col-sm-4">
                         <div class="card border-primary">
                           <div class="card-body">
-                            <h6 class="card-title text-primary">Predictions</h6>
-                            <p class="card-text display-6">0</p>
+                            <h6 class="card-title text-primary">Predictions Created</h6>
+                            <p class="card-text display-6">{{ userStats?.created || 0 }}</p>
                           </div>
                         </div>
                       </div>
                       <div class="col-sm-4">
                         <div class="card border-success">
                           <div class="card-body">
-                            <h6 class="card-title text-success">Right</h6>
-                            <p class="card-text display-6">0</p>
+                            <h6 class="card-title text-success">Predictions Completed</h6>
+                            <p class="card-text display-6">{{ userStats?.completed || 0 }}</p>
                           </div>
                         </div>
                       </div>
                       <div class="col-sm-4">
-                        <div class="card border-danger">
+                        <div class="card border-warning">
                           <div class="card-body">
-                            <h6 class="card-title text-danger">Wrong</h6>
-                            <p class="card-text display-6">0</p>
+                            <h6 class="card-title text-warning">Predictions Answered</h6>
+                            <p class="card-text display-6">{{ userStats?.answered || 0 }}</p>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                }
+                </div>
               </div>
             </div>
-          } @else {
-            <div class="text-center py-4">
+
+            <!-- Loading spinner when user data is not loaded -->
+            <div *ngIf="!user" class="text-center py-4">
               <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Loading...</span>
               </div>
             </div>
-          }
+          </div>
         </div>
       </div>
     </div>

@@ -64,6 +64,20 @@
                 [type]="'password'">
               </app-text-input>
 
+              <!-- Add this new confirm password input -->
+              <app-text-input
+                [formControl]="$any(registerForm.controls['confirmPassword'])"
+                [label]="'Confirm Password'"
+                [type]="'password'">
+              </app-text-input>
+
+              <!-- Add this error message for password mismatch -->
+              <div *ngIf="registerForm.hasError('passwordMismatch') &&
+                          registerForm.get('confirmPassword')?.touched"
+                   class="alert alert-danger">
+                Passwords do not match
+              </div>
+
               <div class="form-group text-center mt-4">
                 <button [disabled]="!registerForm.valid || loading" class="btn btn-primary w-100" type="submit">
                   <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"></span>

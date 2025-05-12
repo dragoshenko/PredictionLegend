@@ -80,6 +80,7 @@ public class TokenService(IUnitOfWork unitOfWork, IConfiguration config) : IToke
         return new UserDTO
         {
             Username = user.UserName!,
+            Email = user.Email!,
             DisplayName = user.DisplayName!,
             Token = token,
             RefreshToken = newRefreshToken.Token,

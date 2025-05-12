@@ -18,4 +18,6 @@ public class AppUser : IdentityUser<int>
     public List<Post> Posts { get; set; } = [];
     public List<Comment> Comments { get; set; } = [];
     public ICollection<AppUserRole> UserRoles { get; set; } = [];
+    public string? PasswordChangeCode { get; set; }
+    public DateTime? PasswordChangeCodeExpiry { get; set; }
 }

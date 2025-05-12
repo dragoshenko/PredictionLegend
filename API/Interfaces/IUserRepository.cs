@@ -30,5 +30,7 @@ public interface IUserRepository
     Task<string> GeneratePasswordResetCodeAsync(AppUser user);
     Task<bool> VerifyPasswordResetCodeAsync(AppUser user, string code);
     Task<IdentityResult> ResetPasswordAsync(AppUser user, string token, string newPassword);
+    Task<string> GeneratePasswordChangeCodeAsync(AppUser user);
+    Task<bool> VerifyPasswordChangeCodeAsync(AppUser user, string code);
     
 }

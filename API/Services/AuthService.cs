@@ -135,6 +135,7 @@ public class AuthService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
         return new UserDTO
         {
             Username = user.UserName!,
+            Email = user.Email!,
             DisplayName = user.DisplayName,
             Token = token,
             RefreshToken = refreshToken.Token,
@@ -190,6 +191,7 @@ public class AuthService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
         return new UserDTO
         {
             Username = user.UserName!,
+            Email = user.Email!,
             DisplayName = user.DisplayName,
             Token = token,
             RefreshToken = refreshToken.Token,
