@@ -24,6 +24,12 @@
               <div class="d-flex justify-content-end">
                 <a routerLink="/forgot-password" class="text-decoration-none text-info small">Forgot Password?</a>
               </div>
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" formControlName="rememberMe" id="rememberMe">
+                <label class="form-check-label" for="rememberMe">
+                  Remember me
+                </label>
+              </div>
 
               <div class="form-group text-center mt-4">
                 <button [disabled]="!loginForm.valid || loading" class="btn btn-primary w-100" type="submit">

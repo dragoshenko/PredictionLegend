@@ -36,8 +36,10 @@ export class AuthComponent implements OnInit {
     // Login form
     this.loginForm = this.fb.group({
       usernameOrEmail: ['', Validators.required],
-      password: ['', [Validators.required, Validators.minLength(8)]]
+      password: ['', [Validators.required, Validators.minLength(8)]],
+      rememberMe: [false]
     });
+
 
     // Register form
     this.registerForm = this.fb.group({
@@ -64,7 +66,8 @@ export class AuthComponent implements OnInit {
       // Store credentials for automatic login after verification
       const credentials = {
         usernameOrEmail: this.loginForm.value.usernameOrEmail,
-        password: this.loginForm.value.password
+        password: this.loginForm.value.password,
+        rememberMe: this.loginForm.value.rememberMe
       };
 
       this.accountService.login(credentials).subscribe({

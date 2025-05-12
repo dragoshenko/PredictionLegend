@@ -114,7 +114,7 @@ export class AccountService {
     return this.http.post<User>(this.baseUrl + 'account/login', model).pipe(
       map(user => {
         if (user) {
-          this.setCurrentUser(user);
+          this.setCurrentUser(user, model.rememberMe);
           this.toastr.success('Logged in successfully');
           return user;
         }
@@ -151,7 +151,7 @@ export class AccountService {
     return this.http.post<User>(this.baseUrl + 'account/google-auth', { idToken }).pipe(
       map(user => {
         if (user) {
-          this.setCurrentUser(user);
+          this.setCurrentUser(user, true);
           this.toastr.success('Logged in with Google successfully');
           return user;
         }
@@ -177,9 +177,11 @@ export class AccountService {
     );
   }
 
-  setCurrentUser(user: User) {
+  setCurrentUser(user: User, rememberMe: boolean = false) {
     if (user) {
-      this.cookieService.set('user', JSON.stringify(user), 7); // 7 days expiry
+      const expiryDays = rememberMe ? 30 : 1; // 30 days if remember me is checked, 1 day otherwise
+
+      this.cookieService.set('user', JSON.stringify(user), expiryDays);
       this.currentUserSource.next(user);
     }
   }
@@ -187,7 +189,7 @@ export class AccountService {
     return this.http.get<User>(this.baseUrl + 'user').pipe(
       map(user => {
         if (user) {
-          this.setCurrentUser(user);
+          this.setCurrentUser(user, true);
           return user;
         }
         return null;
