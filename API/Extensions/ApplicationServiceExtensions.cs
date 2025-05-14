@@ -30,8 +30,10 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IUserRepository, UserRespository>();
+        services.AddScoped<IPredictionRepository, PredictionRepository>();
         services.AddScoped<IMapper, Mapper>();
         services.AddScoped<IAuthService, AuthService>();
+        
         return services;
     }
 }

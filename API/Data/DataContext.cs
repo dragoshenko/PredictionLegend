@@ -9,6 +9,7 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
 {
    public DbSet<Post> Posts { get; set; }
    public DbSet<Comment> Comments { get; set; }
+   public DbSet<Prediction> Predictions { get; set; }
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -83,6 +84,12 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
          .WithOne(p => p.Comment)
          .HasForeignKey(p => p.CommentId)
          .OnDelete(DeleteBehavior.Cascade); //cascade delete photos when comment is deleted
+
+         builder.Entity<AppUser>()
+         .HasMany(p => p.Predictions)
+         .WithOne(u => u.AppUser)
+         .HasForeignKey(p => p.AppUserId)
+         .OnDelete(DeleteBehavior.SetNull); //set null when user is deleted
 
 
 
