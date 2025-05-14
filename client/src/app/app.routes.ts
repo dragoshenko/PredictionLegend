@@ -10,6 +10,8 @@ import { AuthGuard } from './_guards/auth.guard';
 import { VerificationComponent } from './verification/verification.component';
 import { ForgotPasswordComponent } from './forgot-password/forgot-password.component';
 import { ResetPasswordComponent } from './reset-password/reset-password.component';
+import { MyPredictionsComponent } from './my-predictions/my-predictions.component';
+import { PredictionDetailComponent } from './prediction-detail/prediction-detail.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -24,6 +26,8 @@ export const routes: Routes = [
     children: [
       { path: 'create-prediction', component: CustomPredictionComponent },
       { path: 'profile', component: ProfileComponent },
+      { path: 'my-predictions', component: MyPredictionsComponent },
+      { path: 'predictions/:id', component: PredictionDetailComponent },
     ]
   },
   { path: 'categories', component: CategoriesComponent },

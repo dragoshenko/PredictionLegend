@@ -2,6 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { PredictionService } from '../_services/prediction.service';
+import { ToastrService } from 'ngx-toastr';
+import { CreatePredictionRequest } from '../_models/prediction';
 
 @Component({
   selector: 'app-custom-prediction',
@@ -13,10 +16,13 @@ import { Router } from '@angular/router';
 export class CustomPredictionComponent implements OnInit {
   predictionForm!: FormGroup;
   selectedFile: File | null = null;
+  submitting = false;
 
   constructor(
     private fb: FormBuilder,
-    private router: Router
+    private router: Router,
+    private predictionService: PredictionService,
+    private toastr: ToastrService
   ) {}
 
   ngOnInit(): void {
@@ -70,27 +76,40 @@ export class CustomPredictionComponent implements OnInit {
 
   onSubmit(): void {
     if (this.predictionForm.valid) {
-      // Create form data for file upload
-      const formData = new FormData();
+      this.submitting = true;
 
-      // Add form values to formData
-      Object.keys(this.predictionForm.value).forEach(key => {
-        formData.append(key, this.predictionForm.get(key)?.value);
+      // Get form values
+      const predictionData: CreatePredictionRequest = {
+        title: this.predictionForm.get('title')?.value,
+        description: this.predictionForm.get('description')?.value,
+        predictionType: this.predictionForm.get('predictionType')?.value,
+        privacyType: this.predictionForm.get('privacyType')?.value,
+        rows: this.predictionForm.get('rows')?.value,
+        columns: this.predictionForm.get('columns')?.value
+      };
+
+      console.log('Submitting prediction:', predictionData);
+
+      // Call the API service to create the prediction
+      this.predictionService.createPrediction(predictionData).subscribe({
+        next: (response) => {
+          this.submitting = false;
+          this.toastr.success('Prediction created successfully!');
+
+          // Redirect to my predictions or prediction details
+          this.router.navigate(['/my-predictions']);
+        },
+        error: (error) => {
+          this.submitting = false;
+          console.error('Error creating prediction:', error);
+
+          if (error.error && typeof error.error === 'string') {
+            this.toastr.error(error.error);
+          } else {
+            this.toastr.error('Failed to create prediction. Please try again.');
+          }
+        }
       });
-
-      // Add file if selected
-      if (this.selectedFile) {
-        formData.append('coverPhoto', this.selectedFile);
-      }
-
-      console.log('Form submitted', this.predictionForm.value);
-      console.log('Selected file:', this.selectedFile);
-
-      // TODO: Add the API call to save the prediction
-      // this.predictionService.createPrediction(formData).subscribe(...)
-
-      // Redirect to a success page or the home page after submission
-      // this.router.navigate(['/']);
     } else {
       // Mark all fields as touched to trigger validation messages
       Object.keys(this.predictionForm.controls).forEach(key => {
