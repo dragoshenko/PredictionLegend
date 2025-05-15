@@ -33,13 +33,14 @@ export class MyPredictionsComponent implements OnInit {
 
     this.predictionService.getUserPredictions().subscribe({
       next: (predictions) => {
-        this.predictions = predictions;
+        this.predictions = predictions || []; // Ensure it's never null
         this.loading = false;
       },
       error: (error) => {
         console.error('Error loading predictions:', error);
         this.error = 'Failed to load predictions. Please try again later.';
         this.loading = false;
+        this.predictions = []; // Reset to empty array on error
       }
     });
   }

@@ -4,168 +4,190 @@
       <div class="card border-primary shadow">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
           <h2 class="mb-0">My Profile</h2>
-          <button class="btn btn-light btn-sm" (click)="toggleEditMode()" *ngIf="!showPasswordVerification">
+          <button class="btn btn-light btn-sm" (click)="toggleEditMode()" *ngIf="!passwordEditMode && !verificationMode">
             {{ editMode ? 'Cancel' : 'Edit Profile' }}
           </button>
         </div>
         <div class="card-body">
-          <!-- Password Verification Modal -->
-          <div *ngIf="showPasswordVerification" class="bg-light p-4 rounded mb-4">
-            <h4 class="text-center mb-3">Verify Password Change</h4>
-            <p class="text-center mb-4">
-              We've sent a 6-digit code to your email address. Please enter it below to confirm your password change.
-            </p>
-
-            <form [formGroup]="passwordVerificationForm" (ngSubmit)="submitVerificationCode()">
-              <div class="form-group mb-3">
-                <input
-                  type="text"
-                  class="form-control form-control-lg text-center"
-                  formControlName="verificationCode"
-                  placeholder="000000"
-                  maxlength="6">
-
-                <div *ngIf="passwordVerificationForm.get('verificationCode')?.invalid &&
-                           passwordVerificationForm.get('verificationCode')?.touched"
-                     class="text-danger mt-1">
-                  Please enter a valid 6-digit code
-                </div>
-              </div>
-
-              <div class="d-flex justify-content-center gap-2 mt-4">
-                <button type="button" class="btn btn-secondary"
-                        (click)="cancelVerification()" [disabled]="loading">
-                  Cancel
-                </button>
-                <button type="submit" class="btn btn-primary"
-                        [disabled]="!passwordVerificationForm.valid || loading">
-                  <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"></span>
-                  Verify & Change Password
-                </button>
-              </div>
-            </form>
-          </div>
-
           <!-- User Profile Content -->
-          <div *ngIf="!showPasswordVerification">
-            <div *ngIf="user" class="row">
-              <div class="col-md-4 text-center mb-4">
-                <div *ngIf="user.photoUrl">
-                  <img [src]="user.photoUrl" alt="Profile" class="img-fluid rounded-circle mb-3" style="max-width: 150px;">
-                </div>
-                <div *ngIf="!user.photoUrl" class="bg-light d-flex align-items-center justify-content-center rounded-circle mx-auto mb-3" style="width: 150px; height: 150px;">
-                  <span class="display-4 text-secondary">{{ user.displayName.charAt(0).toUpperCase() }}</span>
-                </div>
-                <h4>{{ user.displayName }}</h4>
-                <p class="text-muted mb-0">{{ user.username }}</p>
+          <div *ngIf="user" class="row">
+            <div class="col-md-4 text-center mb-4">
+              <div *ngIf="user.photoUrl">
+                <img [src]="user.photoUrl" alt="Profile" class="img-fluid rounded-circle mb-3" style="max-width: 150px;">
+              </div>
+              <div *ngIf="!user.photoUrl" class="bg-light d-flex align-items-center justify-content-center rounded-circle mx-auto mb-3" style="width: 150px; height: 150px;">
+                <span class="display-4 text-secondary">{{ user.displayName.charAt(0).toUpperCase() }}</span>
+              </div>
+              <h4>{{ user.displayName }}</h4>
+              <p class="text-muted mb-0">{{ user.username }}</p>
+            </div>
+
+            <div class="col-md-8">
+              <!-- Edit Profile Form -->
+              <div *ngIf="editMode && !passwordEditMode && !verificationMode">
+                <form [formGroup]="profileForm" (ngSubmit)="saveChanges()">
+                  <app-text-input
+                    [formControl]="$any(profileForm.controls['displayName'])"
+                    [label]="'Display Name'">
+                  </app-text-input>
+
+                  <app-text-input
+                    [formControl]="$any(profileForm.controls['username'])"
+                    [label]="'Username'">
+                  </app-text-input>
+
+                  <app-text-input
+                    [formControl]="$any(profileForm.controls['email'])"
+                    [label]="'Email'">
+                  </app-text-input>
+
+                  <div class="text-end mt-4">
+                    <button type="submit" class="btn btn-primary"
+                            [disabled]="!profileForm.valid || loading">
+                      <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"></span>
+                      Save Changes
+                    </button>
+                  </div>
+                </form>
               </div>
 
-              <div class="col-md-8">
-                <!-- Edit Profile Form -->
-                <div *ngIf="editMode">
-                  <form [formGroup]="profileForm" (ngSubmit)="saveChanges()">
-                    <app-text-input
-                      [formControl]="$any(profileForm.controls['displayName'])"
-                      [label]="'Display Name'">
-                    </app-text-input>
+              <!-- Password Change Form -->
+              <div *ngIf="passwordEditMode && !verificationMode">
+                <h5 class="mb-3">Change Password</h5>
+                <form [formGroup]="passwordForm" (ngSubmit)="savePassword()">
+                  <app-text-input
+                    [formControl]="$any(passwordForm.controls['currentPassword'])"
+                    [label]="'Current Password'"
+                    [type]="'password'">
+                  </app-text-input>
 
-                    <app-text-input
-                      [formControl]="$any(profileForm.controls['username'])"
-                      [label]="'Username'">
-                    </app-text-input>
+                  <app-text-input
+                    [formControl]="$any(passwordForm.controls['newPassword'])"
+                    [label]="'New Password'"
+                    [type]="'password'">
+                  </app-text-input>
 
-                    <app-text-input
-                      [formControl]="$any(profileForm.controls['email'])"
-                      [label]="'Email'">
-                    </app-text-input>
+                  <app-text-input
+                    [formControl]="$any(passwordForm.controls['confirmPassword'])"
+                    [label]="'Confirm Password'"
+                    [type]="'password'">
+                  </app-text-input>
 
-                    <hr class="my-4">
-                    <h5>Change Password</h5>
-
-                    <app-text-input
-                      [formControl]="$any(profileForm.controls['currentPassword'])"
-                      [label]="'Current Password'"
-                      [type]="'password'">
-                    </app-text-input>
-
-                    <app-text-input
-                      [formControl]="$any(profileForm.controls['newPassword'])"
-                      [label]="'New Password'"
-                      [type]="'password'">
-                    </app-text-input>
-
-                    <app-text-input
-                      [formControl]="$any(profileForm.controls['confirmPassword'])"
-                      [label]="'Confirm Password'"
-                      [type]="'password'">
-                    </app-text-input>
-
-                    <div *ngIf="profileForm.hasError('passwordMismatch') &&
-                               profileForm.get('confirmPassword')?.touched"
-                         class="text-danger mb-3">
-                      Passwords do not match
-                    </div>
-
-                    <div class="text-end mt-4">
-                      <button type="submit" class="btn btn-primary"
-                              [disabled]="!profileForm.valid || loading">
-                        <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"></span>
-                        Save Changes
-                      </button>
-                    </div>
-                  </form>
-                </div>
-
-                <!-- Profile Info Display -->
-                <div *ngIf="!editMode">
-                  <div class="mb-4">
-                    <h5>Account Information</h5>
-                    <ul class="list-group list-group-flush">
-                      <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span>Display Name</span>
-                        <span class="text-primary">{{ user.displayName }}</span>
-                      </li>
-                      <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span>Username</span>
-                        <span class="text-primary">{{ user.username }}</span>
-                      </li>
-                      <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span>Email</span>
-                        <span class="text-primary">{{ user.email | censorEmail }}</span>
-                      </li>
-                      <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span>Account Created</span>
-                        <span class="text-primary">{{ user.createdAt | date:'mediumDate' }}</span>
-                      </li>
-                    </ul>
+                  <div *ngIf="passwordForm.hasError('passwordMismatch') &&
+                             passwordForm.get('confirmPassword')?.touched"
+                       class="text-danger mb-3">
+                    Passwords do not match
                   </div>
 
-                  <!-- User Stats -->
-                  <div>
-                    <h5>Activity Stats</h5>
-                    <div class="row g-3 text-center">
-                      <div class="col-sm-4">
-                        <div class="card border-primary">
-                          <div class="card-body">
-                            <h6 class="card-title text-primary">Predictions Created</h6>
-                            <p class="card-text display-6">{{ userStats?.created || 0 }}</p>
-                          </div>
+                  <div class="d-flex justify-content-between mt-4">
+                    <button type="button" class="btn btn-outline-secondary"
+                            (click)="togglePasswordEditMode()">
+                      Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary"
+                            [disabled]="!passwordForm.valid || loading">
+                      <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"></span>
+                      Change Password
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- Verification Form -->
+              <div *ngIf="verificationMode">
+                <div class="mb-4">
+                  <div class="alert alert-info">
+                    <h5 class="alert-heading">Email Verification Required</h5>
+                    <p>For your security, we've sent a verification code to your email address:
+                      <strong>{{ user.email | censorEmail }}</strong>
+                    </p>
+                    <p class="mb-0">Please check your inbox and enter the code below to complete your password change.</p>
+                  </div>
+                </div>
+
+                <form [formGroup]="verificationForm" (ngSubmit)="verifyAndChangePassword()">
+                  <app-text-input
+                    [formControl]="$any(verificationForm.controls['verificationCode'])"
+                    [label]="'Verification Code'">
+                  </app-text-input>
+
+                  <div class="d-flex justify-content-between mt-4">
+                    <button type="button" class="btn btn-outline-secondary"
+                            (click)="cancelVerification()">
+                      Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary"
+                            [disabled]="!verificationForm.valid || loading">
+                      <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"></span>
+                      Verify & Complete
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- Profile Info Display -->
+              <div *ngIf="!editMode && !passwordEditMode && !verificationMode">
+                <div class="mb-4">
+                  <h5>Account Information</h5>
+                  <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span>Display Name</span>
+                      <span class="text-primary">{{ user.displayName }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span>Username</span>
+                      <span class="text-primary">{{ user.username }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span>Email</span>
+                      <span class="text-primary">{{ user.email | censorEmail }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span>Account Created</span>
+                      <span class="text-primary">{{ user.createdAt | date:'mediumDate' }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span>Email Verified</span>
+                      <span [ngClass]="user.emailConfirmed ? 'text-success' : 'text-danger'">
+                        <i [ngClass]="user.emailConfirmed ? 'bi bi-check-circle-fill' : 'bi bi-x-circle-fill'" class="me-1"></i>
+                        {{ user.emailConfirmed ? 'Yes' : 'No' }}
+                      </span>
+                    </li>
+                  </ul>
+                </div>
+
+                <!-- Password Change Button -->
+                <div class="mb-4 text-center">
+                  <button class="btn btn-outline-primary" (click)="togglePasswordEditMode()">
+                    Change Password
+                  </button>
+                </div>
+
+                <!-- User Stats -->
+                <div>
+                  <h5>Activity Stats</h5>
+                  <div class="row g-3 text-center">
+                    <div class="col-sm-4">
+                      <div class="card border-primary">
+                        <div class="card-body">
+                          <h6 class="card-title text-primary">Predictions Created</h6>
+                          <p class="card-text display-6">{{ userStats?.created || 0 }}</p>
                         </div>
                       </div>
-                      <div class="col-sm-4">
-                        <div class="card border-success">
-                          <div class="card-body">
-                            <h6 class="card-title text-success">Predictions Completed</h6>
-                            <p class="card-text display-6">{{ userStats?.completed || 0 }}</p>
-                          </div>
+                    </div>
+                    <div class="col-sm-4">
+                      <div class="card border-success">
+                        <div class="card-body">
+                          <h6 class="card-title text-success">Predictions Completed</h6>
+                          <p class="card-text display-6">{{ userStats?.completed || 0 }}</p>
                         </div>
                       </div>
-                      <div class="col-sm-4">
-                        <div class="card border-warning">
-                          <div class="card-body">
-                            <h6 class="card-title text-warning">Predictions Answered</h6>
-                            <p class="card-text display-6">{{ userStats?.answered || 0 }}</p>
-                          </div>
+                    </div>
+                    <div class="col-sm-4">
+                      <div class="card border-warning">
+                        <div class="card-body">
+                          <h6 class="card-title text-warning">Predictions Answered</h6>
+                          <p class="card-text display-6">{{ userStats?.answered || 0 }}</p>
                         </div>
                       </div>
                     </div>
@@ -173,12 +195,12 @@
                 </div>
               </div>
             </div>
+          </div>
 
-            <!-- Loading spinner when user data is not loaded -->
-            <div *ngIf="!user" class="text-center py-4">
-              <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </div>
+          <!-- Loading spinner when user data is not loaded -->
+          <div *ngIf="!user" class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
             </div>
           </div>
         </div>

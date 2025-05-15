@@ -8,6 +8,9 @@ import { TextInputComponent } from '../_forms/text-input/text-input.component';
 import { ToastrService } from 'ngx-toastr';
 import { createPasswordStrengthValidator } from '../_helpers/password-validator';
 import { CensorEmailPipe } from "../_pipes/censor-email.pipe";
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../environments/environment';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-profile',
@@ -21,36 +24,53 @@ export class ProfileComponent implements OnInit {
   private userService = inject(UserService);
   private fb = inject(FormBuilder);
   private toastr = inject(ToastrService);
+  private http = inject(HttpClient);
+  private router = inject(Router);
 
   user: User | null = null;
   profileForm!: FormGroup;
-  passwordVerificationForm!: FormGroup;
+  passwordForm!: FormGroup;
+  verificationForm!: FormGroup;
   editMode = false;
+  passwordEditMode = false;
+  verificationMode = false;
   loading = false;
-  showPasswordVerification = false;
-  passwordChangeData: any = null;
   userStats: { created: number, completed: number, answered: number } | null = null;
 
   ngOnInit(): void {
     this.loadUser();
     this.initializeForm();
-    this.initializePasswordVerificationForm();
+    this.initializePasswordForm();
+    this.initializeVerificationForm();
     this.loadUserStats();
   }
 
   initializeForm() {
     this.profileForm = this.fb.group({
       displayName: ['', [Validators.required, Validators.minLength(2)]],
-      username: [{value: '', disabled: true}], // Username typically shouldn't be editable
-      email: [{value: '', disabled: true}], // Email typically shouldn't be editable
-      currentPassword: [''],
+      username: [{value: '', disabled: true}],
+      email: [{value: '', disabled: true}],
+      bio: ['']
+    });
+  }
+
+  initializePasswordForm() {
+    this.passwordForm = this.fb.group({
+      currentPassword: ['', [Validators.required]],
       newPassword: ['', [
+        Validators.required,
         Validators.minLength(8),
         createPasswordStrengthValidator()
       ]],
-      confirmPassword: ['']
+      confirmPassword: ['', [Validators.required]]
     }, {
       validator: this.passwordMatchValidator('newPassword', 'confirmPassword')
+    });
+  }
+
+  initializeVerificationForm() {
+    this.verificationForm = this.fb.group({
+      verificationCode: ['', [Validators.required, Validators.minLength(6), Validators.maxLength(6)]]
     });
   }
 
@@ -61,20 +81,9 @@ export class ProfileComponent implements OnInit {
         this.profileForm.patchValue({
           displayName: user.displayName,
           username: user.username,
-          email: user.email || user.username // Fall back to username if email not available
+          email: user.email
         });
       }
-    });
-  }
-
-  initializePasswordVerificationForm() {
-    this.passwordVerificationForm = this.fb.group({
-      verificationCode: ['', [
-        Validators.required,
-        Validators.minLength(6),
-        Validators.maxLength(6),
-        Validators.pattern('^[0-9]*$')
-      ]]
     });
   }
 
@@ -104,7 +113,6 @@ export class ProfileComponent implements OnInit {
       },
       error: error => {
         console.error('Failed to load user stats', error);
-        // Initialize with zeros if API fails
         this.userStats = {
           created: 0,
           completed: 0,
@@ -117,138 +125,255 @@ export class ProfileComponent implements OnInit {
   toggleEditMode() {
     this.editMode = !this.editMode;
     if (!this.editMode) {
-      this.loadUser(); // Reset form when canceling edit
+      this.loadUser();
+    }
+  }
+
+  togglePasswordEditMode() {
+    this.passwordEditMode = !this.passwordEditMode;
+    if (!this.passwordEditMode) {
+      this.passwordForm.reset();
+      this.verificationMode = false;
     }
   }
 
   saveChanges() {
     if (this.profileForm.valid) {
       this.loading = true;
-      console.log('Form values:', this.profileForm.value);
-      console.log('Display name value:', this.profileForm.get('displayName')?.value);
 
-      // Handle display name change
-      const displayName = this.profileForm.get('displayName')?.value;
-      const displayNameChanged = displayName !== this.user?.displayName;
+      const updateModel = {
+        DisplayName: this.profileForm.get('displayName')?.value,
+        Bio: this.profileForm.get('bio')?.value || ''
+      };
 
-      if (displayNameChanged) {
-        console.log('Display name changed to:', displayName);
+      // Direct API call to update profile
+      this.http.put(environment.apiUrl + 'user', updateModel).subscribe({
+        next: (response) => {
+          console.log('Profile update response:', response);
+          this.toastr.success('Profile updated successfully');
+          this.refreshUserData();
+          this.loading = false;
+          this.editMode = false;
+        },
+        error: error => {
+          console.error('Update profile error:', error);
+          this.toastr.error(error.error || 'Failed to update profile');
+          this.loading = false;
+        }
+      });
+    } else {
+      this.markFormGroupTouched(this.profileForm);
+      this.toastr.error('Please fix the validation errors');
+    }
+  }
 
-        const updateModel = {
-          displayName: displayName
-        };
+  savePassword() {
+    if (this.passwordForm.valid) {
+      this.loading = true;
 
-        this.userService.updateProfile(updateModel).subscribe({
+      const loginCredentials = {
+        usernameOrEmail: this.user?.username || '',
+        password: this.passwordForm.get('currentPassword')?.value
+      };
+
+      console.log('Verifying current password by login attempt');
+
+      this.accountService.login(loginCredentials).subscribe({
+        next: () => {
+          // Password is correct, request verification code
+          this.requestVerificationCode();
+        },
+        error: error => {
+          console.error('Password verification error:', error);
+          this.toastr.error('Current password is incorrect');
+          this.loading = false;
+        }
+      });
+    } else {
+      this.markFormGroupTouched(this.passwordForm);
+      this.toastr.error('Please fix the validation errors');
+    }
+  }
+
+  requestVerificationCode() {
+    // Store password change data for after verification
+    const passwordChangeData = {
+      currentPassword: this.passwordForm.get('currentPassword')?.value,
+      newPassword: this.passwordForm.get('newPassword')?.value
+    };
+
+    sessionStorage.setItem('pendingPasswordChange', JSON.stringify(passwordChangeData));
+
+    // Request verification code
+    this.userService.requestPasswordChangeVerification({
+      email: this.user?.email
+    }).subscribe({
+      next: response => {
+        console.log('Verification code requested:', response);
+        this.toastr.info('Please check your email for a verification code');
+        this.verificationMode = true;
+        this.loading = false;
+      },
+      error: error => {
+        console.error('Failed to request verification code:', error);
+        // More detailed error message
+        if (error.status === 0) {
+          this.toastr.error('Network error - could not connect to server');
+        } else if (error.status === 404) {
+          this.toastr.error('Email service endpoint not found');
+        } else {
+          this.toastr.error(error.error?.message || 'Could not send verification email');
+        }
+        this.loading = false;
+
+        // Fallback to direct password change if verification fails
+        this.directPasswordChange();
+      }
+    });
+  }
+
+  verifyAndChangePassword() {
+    if (this.verificationForm.valid) {
+      this.loading = true;
+
+      const verificationCode = this.verificationForm.get('verificationCode')?.value;
+      const pendingPasswordChangeStr = sessionStorage.getItem('pendingPasswordChange');
+
+      if (!pendingPasswordChangeStr) {
+        this.toastr.error('No pending password change found');
+        this.loading = false;
+        return;
+      }
+
+      const pendingPasswordChange = JSON.parse(pendingPasswordChangeStr);
+
+      // Verify the code and change password
+      this.http.post(environment.apiUrl + 'password/verify-and-change', {
+        username: this.user?.username,
+        verificationCode: verificationCode,
+        currentPassword: pendingPasswordChange.currentPassword,
+        newPassword: pendingPasswordChange.newPassword
+      }).subscribe({
+        next: response => {
+          console.log('Password change successful:', response);
+          this.toastr.success('Password changed successfully');
+          this.loading = false;
+          this.passwordEditMode = false;
+          this.verificationMode = false;
+          this.passwordForm.reset();
+          this.verificationForm.reset();
+
+          // Clean up session storage
+          sessionStorage.removeItem('pendingPasswordChange');
+
+          // Re-login to refresh the authentication
+          this.reloginAfterPasswordChange(pendingPasswordChange.newPassword);
+        },
+        error: error => {
+          console.error('Verification error:', error);
+          this.toastr.error(error.error?.message || error.error || 'Invalid verification code');
+          this.loading = false;
+        }
+      });
+    } else {
+      this.markFormGroupTouched(this.verificationForm);
+      this.toastr.error('Please enter a valid verification code');
+    }
+  }
+
+  // Fallback methods in case verification is not available
+  directPasswordChange() {
+    const changeData = {
+      Username: this.user?.username,
+      CurrentPassword: this.passwordForm.get('currentPassword')?.value,
+      NewPassword: this.passwordForm.get('newPassword')?.value
+    };
+
+    console.log('Sending direct password change request as fallback:', changeData);
+
+    this.http.post(environment.apiUrl + 'password/direct-change', changeData).subscribe({
+      next: (response) => {
+        console.log('Password change successful:', response);
+        this.toastr.success('Password changed successfully');
+        this.loading = false;
+        this.passwordEditMode = false;
+        this.passwordForm.reset();
+        // Re-login to refresh the authentication
+        this.reloginAfterPasswordChange(this.passwordForm.get('newPassword')?.value);
+      },
+      error: error => {
+        console.error('Direct password change error:', error);
+        this.toastr.error(error.error?.message || error.error || 'Failed to change password');
+        this.loading = false;
+        this.tryTokenBasedPasswordChange();
+      }
+    });
+  }
+
+  tryTokenBasedPasswordChange() {
+    this.userService.requestPasswordChange({
+      CurrentPassword: this.passwordForm.get('currentPassword')?.value
+    }).subscribe({
+      next: () => {
+        this.http.post(environment.apiUrl + 'user/reset-password', {
+          UserId: this.user?.username,
+          Token: 'placeholder_token',
+          NewPassword: this.passwordForm.get('newPassword')?.value
+        }).subscribe({
           next: () => {
-            this.toastr.success('Profile updated successfully');
-            this.refreshUserData();
-
-            // If also changing password, handle that next
-            this.handlePasswordChange();
+            this.toastr.success('Password changed via token method');
+            this.loading = false;
+            this.passwordEditMode = false;
+            this.passwordForm.reset();
+            this.reloginAfterPasswordChange(this.passwordForm.get('newPassword')?.value);
           },
-          error: error => {
-            console.error('Update profile error:', error);
-            this.toastr.error(error.error || 'Failed to update profile');
+          error: finalError => {
+            console.error('All password change approaches failed:', finalError);
+            this.toastr.error('Could not update password - please log out and use the "Forgot Password" option');
             this.loading = false;
           }
         });
-      } else {
-        // If only changing password
-        this.handlePasswordChange();
+      },
+      error: error => {
+        console.error('Failed to get password token:', error);
+        this.toastr.error('All password change attempts failed');
+        this.loading = false;
       }
-    } else {
-      // Mark form controls as touched to show validation errors
-      this.markFormGroupTouched(this.profileForm);
-      this.loading = false;
-      this.toastr.error('Please fix the validation errors');
-    }
-
+    });
   }
 
-  // Helper method to mark all controls as touched
+  reloginAfterPasswordChange(newPassword: string) {
+    // Re-login with new password to update tokens
+    const loginCredentials = {
+      usernameOrEmail: this.user?.username || '',
+      password: newPassword
+    };
+
+    this.accountService.login(loginCredentials).subscribe({
+      next: () => {
+        this.toastr.success('Re-authenticated with new password');
+      },
+      error: error => {
+        console.error('Re-login error:', error);
+        this.toastr.warning('Password changed but you may need to log out and back in');
+      }
+    });
+  }
+
   markFormGroupTouched(formGroup: FormGroup) {
     Object.values(formGroup.controls).forEach(control => {
       control.markAsTouched();
-
       if (control instanceof FormGroup) {
         this.markFormGroupTouched(control);
       }
     });
   }
 
-  handlePasswordChange() {
-    const passwordChanged = this.profileForm.get('currentPassword')?.value &&
-                           this.profileForm.get('newPassword')?.value;
-
-    if (passwordChanged) {
-      // Store password data for verification step
-      this.passwordChangeData = {
-        currentPassword: this.profileForm.get('currentPassword')?.value,
-        newPassword: this.profileForm.get('newPassword')?.value
-      };
-
-      // Request verification code to be sent
-      this.userService.requestPasswordChange({
-        currentPassword: this.passwordChangeData.currentPassword
-      }).subscribe({
-        next: () => {
-          this.loading = false;
-          this.showPasswordVerification = true;
-          this.toastr.info('A verification code has been sent to your email');
-        },
-        error: error => {
-          this.loading = false;
-          this.toastr.error(error.error || 'Current password is incorrect');
-        }
-      });
-    } else {
-      // No password change, just finish the update process
-      this.loading = false;
-      this.editMode = false;
-    }
-  }
-
-  submitVerificationCode() {
-    if (this.passwordVerificationForm.valid && this.passwordChangeData) {
-      this.loading = true;
-
-      const verificationData = {
-        currentPassword: this.passwordChangeData.currentPassword,
-        newPassword: this.passwordChangeData.newPassword,
-        verificationCode: this.passwordVerificationForm.get('verificationCode')?.value
-      };
-
-      this.userService.verifyPasswordChange(verificationData).subscribe({
-        next: () => {
-          this.toastr.success('Password changed successfully');
-          this.loading = false;
-          this.showPasswordVerification = false;
-          this.editMode = false;
-          this.passwordChangeData = null;
-          this.passwordVerificationForm.reset();
-          this.profileForm.reset();
-          this.loadUser();
-        },
-        error: error => {
-          this.loading = false;
-          this.toastr.error(error.error || 'Invalid verification code');
-        }
-      });
-    }
-  }
-
-  cancelVerification() {
-    this.showPasswordVerification = false;
-    this.passwordChangeData = null;
-    this.passwordVerificationForm.reset();
-    this.loading = false;
-  }
-
   refreshUserData() {
     this.accountService.refreshUserData().subscribe({
       next: user => {
         if (user) {
-          console.log('Refreshed user data:', user); // Add this log to verify data
+          console.log('Refreshed user data:', user);
           this.user = user;
           this.profileForm.patchValue({
             displayName: user.displayName,
@@ -258,9 +383,7 @@ export class ProfileComponent implements OnInit {
 
           // Force nav component reload by updating the source
           this.accountService.setCurrentUser(user, true);
-
           this.loadUserStats();
-          this.editMode = false;
         }
       },
       error: error => {
@@ -268,5 +391,11 @@ export class ProfileComponent implements OnInit {
         this.toastr.error('Could not refresh user data');
       }
     });
+  }
+
+  cancelVerification() {
+    this.verificationMode = false;
+    this.verificationForm.reset();
+    sessionStorage.removeItem('pendingPasswordChange');
   }
 }

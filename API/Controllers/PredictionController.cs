@@ -76,6 +76,10 @@ public class PredictionController : BaseAPIController
         };
         
         var createdPrediction = await _unitOfWork.PredictionRepository.CreatePredictionAsync(prediction);
+        Console.WriteLine($"Created prediction with ID: {createdPrediction.Id}");
+        var result = await _unitOfWork.Complete(); // Check if this is being called
+        Console.WriteLine($"UnitOfWork.Complete() result: {result}");
+
         var predictionDto = _mapper.Map<PredictionDTO>(createdPrediction);
         
         return CreatedAtAction(nameof(GetPrediction), new { id = predictionDto.Id }, predictionDto);

@@ -7,4 +7,5 @@ export interface User {
   photoUrl: string;
   emailConfirmed: boolean;
   createdAt: Date;
+  id?: number;
 }

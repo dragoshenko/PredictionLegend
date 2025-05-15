@@ -17,14 +17,20 @@ export class UserService {
   }
 
   requestPasswordChange(model: any): Observable<any> {
+    console.log('Requesting password change:', model);
     return this.http.post(this.baseUrl + 'user/change-password-request', model);
   }
 
   verifyPasswordChange(model: any): Observable<any> {
+    console.log('Verifying password change:', model);
     return this.http.post(this.baseUrl + 'user/verify-password-change', model);
   }
 
   getUserStats(): Observable<any> {
     return this.http.get(this.baseUrl + 'user/stats');
+  }
+
+  requestPasswordChangeVerification(model: { userId?: number, email?: string }): Observable<any> {
+    return this.http.post(this.baseUrl + 'password/request-verification', model);
   }
 }
