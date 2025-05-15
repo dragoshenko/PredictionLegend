@@ -43,19 +43,28 @@
             </div>
 
             <!-- Title -->
-            <div class="mb-3 form-floating">
+            <div class="mb-3">
+              <label for="title" class="form-label">Prediction Title</label>
               <input type="text" class="form-control" id="title"
-                     formControlName="title" placeholder="Prediction Title">
-              <label for="title">Prediction Title</label>
+                    formControlName="title" placeholder="Enter prediction title (min 5 characters)">
               <div *ngIf="predictionForm.get('title')?.invalid &&
-                         (predictionForm.get('title')?.dirty ||
+                        (predictionForm.get('title')?.dirty ||
                           predictionForm.get('title')?.touched)"
-                   class="text-danger mt-1">
+                  class="text-danger mt-1">
                 Title is required (min 5 characters)
               </div>
             </div>
 
-            <!-- Description -->
+            <!-- Description (optional) -->
+            <div class="mb-3">
+              <label for="description" class="form-label">Custom Description (Optional)</label>
+              <textarea class="form-control" id="description"
+                        formControlName="description" style="height: 100px"
+                        placeholder="Add an optional description"></textarea>
+            </div>
+
+            <!-- Old Description -->
+             <!--
             <div class="mb-3 form-floating">
               <textarea class="form-control" id="description"
                         formControlName="description" style="height: 100px"
@@ -68,6 +77,7 @@
                 Description is required (min 10 characters)
               </div>
             </div>
+            -->
 
             <!-- Privacy Settings -->
             <div class="mb-3">

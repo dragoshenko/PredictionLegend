@@ -48,6 +48,7 @@ export class VerificationComponent implements OnInit {
       this.toastr.error('Verification session expired. Please try logging in again.');
       this.router.navigateByUrl('/auth');
     }
+
   }
 
   submitVerification(): void {

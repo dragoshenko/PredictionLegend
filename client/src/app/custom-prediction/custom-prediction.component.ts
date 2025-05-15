@@ -33,7 +33,7 @@ export class CustomPredictionComponent implements OnInit {
     this.predictionForm = this.fb.group({
       predictionType: ['', Validators.required],
       title: ['', [Validators.required, Validators.minLength(5)]],
-      description: ['', [Validators.required, Validators.minLength(10)]],
+      description: ['', []],
       privacyType: ['public', Validators.required],
       rows: [3, [Validators.required, Validators.min(2), Validators.max(100)]],
       columns: [1, [Validators.required, Validators.min(1), Validators.max(10)]]
