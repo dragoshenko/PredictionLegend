@@ -17,4 +17,5 @@ public interface IAuthService
     Task<ActionResult> ResendVerificationCodeAsync(ResendVerificationCodeDTO resendDTO);
     Task<ActionResult> ForgotPasswordAsync(ForgotPasswordDTO forgotPasswordDTO);
     Task<ActionResult> ResetPasswordAsync(ResetPasswordDTO resetPasswordDTO);
+    Task<ActionResult> WasWarnedAboutPasswordChange(int userId);
 }

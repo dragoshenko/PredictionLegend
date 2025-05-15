@@ -20,5 +20,7 @@ public class AppUser : IdentityUser<int>
     public ICollection<AppUserRole> UserRoles { get; set; } = [];
     public string? PasswordChangeCode { get; set; }
     public DateTime? PasswordChangeCodeExpiry { get; set; }
+    public bool HasChangedGenericPassword { get; set; } = true;
+    public bool WasWarnedAboutPasswordChange { get; set; } = true;
     public List<Prediction> Predictions { get; set; } = [];
 }

@@ -14,6 +14,4 @@ public class MemberDTO
     public PhotoDTO? Photo { get; set; }
     public int CommentsCount { get; set; }
     public int PostsCount { get; set; }
-    //Followers Count?
-
 }

@@ -6,6 +6,7 @@ import { BusyService } from './_services/busy.service';
 import { delay } from 'rxjs';
 import { GoogleApiService } from './_services/google-api.service';
 import { GlobalFooterComponent } from './global-footer/global-footer.component';
+import { CookieService } from 'ngx-cookie-service';
 
 @Component({
   selector: 'app-root',
@@ -17,22 +18,30 @@ import { GlobalFooterComponent } from './global-footer/global-footer.component';
 export class AppComponent implements OnInit {
   title = 'client';
   busy = inject(BusyService);
-  google = inject(GoogleApiService);
+  googleService = inject(GoogleApiService);
+  cookieService = inject(CookieService);
 
   ngOnInit(): void {
-
+    if(this.cookieService.check('id_token') === false) {
+      this.googleService.configure();
+      this.googleService.handleLoginRedirect();
+    }
+    else
+    {
+      this.googleService.idToken.set(this.cookieService.get('id_token'));
+    }
   }
 
   loginGoogle(): void {
-    this.google.configure();
+    this.googleService.configure();
   }
 
   logOutGoogle(): void {
-    this.google.logOut();
+    this.googleService.logOut();
   }
 
   loadSpinner() {
     this.busy.busy();
-    delay(1000);
+    delay(200);
   }
 }

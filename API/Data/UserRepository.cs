@@ -136,7 +136,13 @@ public class UserRespository(UserManager<AppUser> userManager, IMapper mapper) :
             var random = new Random();
             var code = random.Next(100000, 999999).ToString();
             
-            // Store the code in user properties
+            var codeExists = await userManager.Users.AnyAsync(x => x.EmailVerificationCode == code);
+            while (codeExists)
+            {
+                code = random.Next(100000, 999999).ToString();
+                codeExists = await userManager.Users.AnyAsync(x => x.EmailVerificationCode == code);
+            }
+            
             user.EmailVerificationCode = code;
             user.EmailVerificationCodeExpiry = DateTime.UtcNow.AddMinutes(15);
             
@@ -176,8 +182,13 @@ public class UserRespository(UserManager<AppUser> userManager, IMapper mapper) :
         // Generate a random 6-digit code
         var random = new Random();
         var code = random.Next(100000, 999999).ToString();
+        var codeExists = await userManager.Users.AnyAsync(x => x.PasswordResetCode == code);
+        while (codeExists)
+        {
+            code = random.Next(100000, 999999).ToString();
+            codeExists = await userManager.Users.AnyAsync(x => x.PasswordResetCode == code);
+        }
         
-        // Store the code in user properties (similar to email verification)
         user.PasswordResetCode = code;
         user.PasswordResetCodeExpiry = DateTime.UtcNow.AddMinutes(15);
         
@@ -210,7 +221,12 @@ public class UserRespository(UserManager<AppUser> userManager, IMapper mapper) :
         // Generate a random 6-digit code
         var random = new Random();
         var code = random.Next(100000, 999999).ToString();
-        
+        var codeExists = await userManager.Users.AnyAsync(x => x.PasswordChangeCode == code);
+        while (codeExists)
+        {
+            code = random.Next(100000, 999999).ToString();
+            codeExists = await userManager.Users.AnyAsync(x => x.PasswordChangeCode == code);
+        }
         // Store the code in user properties
         user.PasswordChangeCode = code;
         user.PasswordChangeCodeExpiry = DateTime.UtcNow.AddMinutes(15);

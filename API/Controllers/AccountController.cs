@@ -6,7 +6,9 @@ using API.Interfaces;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication;
+using API.Extensions;
 namespace API.Controllers;
+
 public class AccountController(IAuthService authenticationService) : BaseAPIController
 {
     [HttpPost("register")]
@@ -47,60 +49,13 @@ public class AccountController(IAuthService authenticationService) : BaseAPICont
         return loginResponse;
     }
 
-    [HttpGet("google-login")]
-    public IActionResult GoogleLogin()
+    [HttpPost("google-auth")]
+    public async Task<ActionResult<UserDTO>> GoogleAuth(GoogleDTO googleDTO)
     {
-        var redirectUri = Url.Action(
-            action: nameof(GoogleResponse),
-            controller: "account",
-            values: null,
-            protocol: Request.Scheme,
-            host: Request.Host.Value);
-
-        var props = new AuthenticationProperties
-        {
-            RedirectUri = redirectUri,
-            Items =
-        {
-            { ".xsrf", Guid.NewGuid().ToString() } // Explicit state
-        }
-        };
-
-        Console.WriteLine($"[GoogleLogin] Generated State: {props.Items[".xsrf"]}");
-        return Challenge(props, GoogleDefaults.AuthenticationScheme);
+        var googleResponse = await authenticationService.GoogleAuth(googleDTO);
+        return googleResponse;
     }
-    [HttpGet("google-response")]
-    public async Task<IActionResult> GoogleResponse()
-    {
-        var result = await HttpContext.AuthenticateAsync(GoogleDefaults.AuthenticationScheme);
-        if (!result.Succeeded)
-        {
-            Console.WriteLine($"[GoogleResponse] Authentication failed: {result.Failure?.Message}");
-            return BadRequest("Google authentication failed");
-        }
 
-        var state = result.Properties.Items[".xsrf"];
-        Console.WriteLine($"[GoogleResponse] Received State: {state}");
-        if (string.IsNullOrEmpty(state))
-        {
-            Console.WriteLine("[GoogleResponse] State is missing");
-            return BadRequest("OAuth state is missing or invalid");
-        }
-
-        var idToken = result.Properties.GetTokenValue("id_token");
-        if (string.IsNullOrEmpty(idToken))
-        {
-            Console.WriteLine("[GoogleResponse] No ID token");
-            return BadRequest("No ID token");
-        }
-
-        var googleDTO = new GoogleDTO { IdToken = idToken };
-        var actionResult = await authenticationService.GoogleAuth(googleDTO);
-
-        await HttpContext.SignOutAsync(GoogleDefaults.AuthenticationScheme);
-
-        return actionResult.Result!;
-    }
     [HttpPost("forgot-password")]
     public async Task<ActionResult> ForgotPassword(ForgotPasswordDTO forgotPasswordDTO)
     {
@@ -111,5 +66,12 @@ public class AccountController(IAuthService authenticationService) : BaseAPICont
     public async Task<ActionResult> ResetPassword(ResetPasswordDTO resetPasswordDTO)
     {
         return await authenticationService.ResetPasswordAsync(resetPasswordDTO);
+    }
+
+    [HttpPut("was-warned-about-password-change")]
+    public async Task<ActionResult> WasWarnedAboutPasswordChange()
+    {
+        var result = await authenticationService.WasWarnedAboutPasswordChange(User.GetUserId());
+        return result;
     }
 }

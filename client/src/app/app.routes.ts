@@ -12,6 +12,8 @@ import { ForgotPasswordComponent } from './forgot-password/forgot-password.compo
 import { ResetPasswordComponent } from './reset-password/reset-password.component';
 import { MyPredictionsComponent } from './my-predictions/my-predictions.component';
 import { PredictionDetailComponent } from './prediction-detail/prediction-detail.component';
+import { PasswordChangeWarningComponent } from './password-change-warning/password-change-warning.component';
+import { GoogleGuard } from './_guards/google.guard';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -28,6 +30,7 @@ export const routes: Routes = [
       { path: 'profile', component: ProfileComponent },
       { path: 'my-predictions', component: MyPredictionsComponent },
       { path: 'predictions/:id', component: PredictionDetailComponent },
+      { path: 'password-change-warning', component: PasswordChangeWarningComponent },
     ]
   },
   { path: 'categories', component: CategoriesComponent },

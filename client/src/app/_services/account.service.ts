@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { effect, inject, Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { BehaviorSubject, map, Observable, of, catchError, throwError, tap } from 'rxjs';
 import { User } from '../_models/user';
@@ -8,6 +8,7 @@ import { Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import { EmailVerificationDTO, ResendVerificationCodeDTO } from '../_models/emailVerification';
 import { ResetPasswordRequest } from '../_models/password-reset';
+import { GoogleApiService } from './google-api.service';
 
 @Injectable({
   providedIn: 'root'
@@ -20,11 +21,34 @@ export class AccountService {
   private cookieService = inject(CookieService);
   private router = inject(Router);
   private toastr = inject(ToastrService);
+  private googleService = inject(GoogleApiService);
 
   baseUrl = environment.apiUrl;
 
   constructor() {
     this.loadCurrentUser();
+    effect(() => {
+      const idToken = this.googleService.idToken();
+      if (idToken) {
+          this.cookieService.set('id_token', idToken);
+          this.googleAuth(idToken).subscribe({
+            next: (user) => {
+              if (user) {
+                this.setCurrentUser(user, true);
+                console.log('User loaded from Google ID token:', user);
+                if(user.wasWarnedAboutPasswordChange === false)
+                {
+                  console.log('User was warned about password change');
+                  this.router.navigate(['/password-change-warning']);
+                }
+              }
+            }
+          });
+      } else {
+          console.log('No Google ID token found');
+          this.cookieService.delete('id_token');
+        }
+    })
   }
 
   loadCurrentUser() {
@@ -35,6 +59,23 @@ export class AccountService {
       return of(user);
     }
     return of(null);
+  }
+
+  googleAuth(idToken: string) {
+    return this.http.post<User>(this.baseUrl + 'account/google-auth', { idToken }).pipe(
+      map(user => {
+        if (user) {
+          this.setCurrentUser(user, true);
+          this.toastr.success('Logged in with Google successfully');
+          return user;
+        }
+        return null;
+      }),
+      catchError(error => {
+        this.toastr.error('Google login failed');
+        return throwError(() => 'Google login failed. Please try again.');
+      })
+    );
   }
 
   verifyEmailCode(verificationData: EmailVerificationDTO) {
@@ -177,7 +218,7 @@ export class AccountService {
 
   setCurrentUser(user: User, rememberMe: boolean = false) {
     if (user) {
-      const expiryDays = rememberMe ? 30 : 1; // 30 days if remember me is checked, 1 day otherwise
+      const expiryDays = rememberMe ? 7 : 1; // 30 days if remember me is checked, 1 day otherwise
 
       this.cookieService.set('user', JSON.stringify(user), expiryDays);
       this.currentUserSource.next(user);
@@ -228,7 +269,9 @@ export class AccountService {
   }
 
   logout() {
+    this.googleService.logOut();
     this.cookieService.delete('user');
+    this.cookieService.delete('id_token');
     this.currentUserSource.next(null);
     this.router.navigateByUrl('/');
     this.toastr.success('Logged out successfully');

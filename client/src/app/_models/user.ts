@@ -6,6 +6,8 @@ export interface User {
   refreshToken: string;
   photoUrl: string;
   emailConfirmed: boolean;
+  wasWarnedAboutPasswordChange: boolean;
+  hasChangedGenericPassword: boolean;
   createdAt: Date;
   id?: number;
 }

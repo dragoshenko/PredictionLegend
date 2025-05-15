@@ -7,6 +7,7 @@ using API.Interfaces;
 using AutoMapper;
 using Google.Apis.Auth;
 using Microsoft.AspNetCore.Mvc;
+using PasswordGenerator;
 
 namespace API.Services;
 
@@ -20,19 +21,20 @@ public class AuthService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
     {
         var existingUser = await GetUserByUsernameOrEmailAsync(registerDTO.Username!, registerDTO.Email!);
 
-        if(existingUser != null)
+        if (existingUser != null)
         {
-            if(existingUser.UserName == registerDTO.Username && existingUser.Email != registerDTO.Email)
+            if (existingUser.UserName == registerDTO.Username && existingUser.Email != registerDTO.Email)
             {
                 return new BadRequestObjectResult("Username is already taken");
             }
-            if(existingUser.UserName != registerDTO.Username && existingUser.Email == registerDTO.Email)
+            if (existingUser.UserName != registerDTO.Username && existingUser.Email == registerDTO.Email)
             {
                 return new BadRequestObjectResult("Email is already taken");
             }
-            if(existingUser.UserName == registerDTO.Username && existingUser.Email == registerDTO.Email)
+            if (existingUser.UserName == registerDTO.Username && existingUser.Email == registerDTO.Email)
             {
-                return new RegisterResponseDTO {
+                return new RegisterResponseDTO
+                {
                     IsRegistered = true,
                     RequiresEmailConfirmation = existingUser.EmailConfirmed == false,
                     UserId = existingUser.Id
@@ -43,24 +45,24 @@ public class AuthService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
 
         var user = mapper.Map<AppUser>(registerDTO);
         var createResult = await unitOfWork.UserRepository.CreateAsync(user, registerDTO.Password!);
-    if(createResult.Succeeded == false)
-    {
-        return new BadRequestObjectResult("Problem creating user account");
-    }
+        if (createResult.Succeeded == false)
+        {
+            return new BadRequestObjectResult("Problem creating user account");
+        }
 
-    // Generate a 6-digit verification code instead of a token
-    var verificationCode = await unitOfWork.UserRepository.GenerateEmailVerificationCodeAsync(user);
-    
-    // Send email with verification code
-    SendEmailRequest sendEmailRequest = new SendEmailRequest(
-        user.Email!, 
-        "Verify Your Email", 
-        $"<h1>Verify Your Email</h1><p>Your verification code is: <strong>{verificationCode}</strong></p><p>This code will expire in 15 minutes.</p>"
-    );
-    
-    var emailResult = await emailService.SendEmailAsync(sendEmailRequest);
+        // Generate a 6-digit verification code instead of a token
+        var verificationCode = await unitOfWork.UserRepository.GenerateEmailVerificationCodeAsync(user);
 
-        if(emailResult is BadRequestObjectResult badRequestResult)
+        // Send email with verification code
+        SendEmailRequest sendEmailRequest = new SendEmailRequest(
+            user.Email!,
+            "Verify Your Email",
+            $"<h1>Verify Your Email</h1><p>Your verification code is: <strong>{verificationCode}</strong></p><p>This code will expire in 15 minutes.</p>"
+        );
+
+        var emailResult = await emailService.SendEmailAsync(sendEmailRequest);
+
+        if (emailResult is BadRequestObjectResult badRequestResult)
         {
             return new BadRequestObjectResult("Problem sending email confirmation link: " + badRequestResult.Value);
         }
@@ -69,13 +71,13 @@ public class AuthService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
         {
             IsRegistered = false,
             RequiresEmailConfirmation = true,
-            UserId = user.Id 
+            UserId = user.Id
         };
     }
     public async Task<ActionResult<UserDTO>> LoginUser(LoginDTO loginDTO)
     {
 
-        if(string.IsNullOrEmpty(loginDTO.UsernameOrEmail) || string.IsNullOrEmpty(loginDTO.Password))
+        if (string.IsNullOrEmpty(loginDTO.UsernameOrEmail) || string.IsNullOrEmpty(loginDTO.Password))
         {
             return new BadRequestObjectResult("Invalid credentials");
         }
@@ -83,44 +85,45 @@ public class AuthService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
         var userByUsername = await unitOfWork.UserRepository.GetUserByUsernameAsync(loginDTO.UsernameOrEmail!);
         var userByEmail = await unitOfWork.UserRepository.GetUserByEmailAsync(loginDTO.UsernameOrEmail!);
 
-        if(userByUsername != null && userByEmail != null)
+        if (userByUsername != null && userByEmail != null)
         {
             return new BadRequestObjectResult("Invalid credentials");
         }
 
         var user = userByUsername ?? userByEmail;
-        if(user == null)
+        if (user == null)
         {
             return new BadRequestObjectResult("Invalid credentials");
         }
 
         var result = await unitOfWork.UserRepository.CheckPasswordAsync(user, loginDTO.Password);
-        if(result == false)
+        if (result == false)
         {
             return new UnauthorizedObjectResult("Invalid credentials");
         }
 
         var emailConfirmed = await unitOfWork.UserRepository.IsEmailConfirmedAsync(user);
-        if(emailConfirmed == false)
+        if (emailConfirmed == false)
         {
             // Use the 6-digit code method instead of token
             var verificationCode = await unitOfWork.UserRepository.GenerateEmailVerificationCodeAsync(user);
-            
-            SendEmailRequest sendEmailRequest = new SendEmailRequest(user.Email!, 
-                "Email Verification Code", 
+
+            SendEmailRequest sendEmailRequest = new SendEmailRequest(user.Email!,
+                "Email Verification Code",
                 $"<h1>Verify Your Email</h1><p>Your verification code is: <strong>{verificationCode}</strong></p><p>This code will expire in 15 minutes.</p>"
             );
-            
+
             var emailServiceResult = await emailService.SendEmailAsync(sendEmailRequest);
             if (emailServiceResult is BadRequestObjectResult)
             {
                 return new BadRequestObjectResult("Problem sending verification code");
             }
-            
+
             // Return unauthorized with user ID for verification
-            return new UnauthorizedObjectResult(new { 
-                message = "Email not confirmed. Check your email for verification code.", 
-                userId = user.Id 
+            return new UnauthorizedObjectResult(new
+            {
+                message = "Email not confirmed. Check your email for verification code.",
+                userId = user.Id
             });
         }
 
@@ -159,27 +162,31 @@ public class AuthService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
         {
             return new UnauthorizedObjectResult("Invalid credentials");
         }
-        if(payload == null)
+        if (payload == null)
         {
             return new UnauthorizedObjectResult("Invalid credentials");
         }
         var user = await GetUserByUsernameOrEmailAsync(null!, payload.Email!);
-        if(user == null)
+        if (user == null)
         {
             user = new AppUser
             {
-                UserName = payload.Name,
-                DisplayName = payload.Name,
+                UserName = payload.Name?.Replace(" ", ""),
+                DisplayName = payload.FamilyName?.Replace(" ", "")!,
                 Email = payload.Email,
                 EmailConfirmed = true,
+                HasChangedGenericPassword = false,
+                WasWarnedAboutPasswordChange = false
             };
-            var result = await unitOfWork.UserRepository.CreateAsync(user, null!);
-            if(result.Succeeded == false) 
+            var passwordGenerator = new Password(includeLowercase: true, includeUppercase: true, includeNumeric: true, includeSpecial: true, passwordLength: 16);
+            var password = passwordGenerator.Next();
+            var result = await unitOfWork.UserRepository.CreateAsync(user, password);
+            if (result.Succeeded == false)
             {
                 return new BadRequestObjectResult("Problem creating user account " + result.Errors.Select(x => x.Description).ToList());
             }
         }
-        if(user.RefreshTokens == null)
+        if (user.RefreshTokens == null)
         {
             user.RefreshTokens = new List<RefreshToken>();
         }
@@ -198,37 +205,39 @@ public class AuthService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
             RefreshToken = refreshToken.Token,
             PhotoUrl = user.Photo?.Url,
             EmailConfirmed = user.EmailConfirmed,
+            WasWarnedAboutPasswordChange = user.WasWarnedAboutPasswordChange,
+            HasChangedGenericPassword = user.HasChangedGenericPassword,
             CreatedAt = user.CreatedAt
         };
     }
     public async Task<ActionResult> ConfirmEmailAsync(EmailConfirmationDTO emailConfirmationDTO)
     {
         var user = await unitOfWork.UserRepository.GetUserByIdAsync(emailConfirmationDTO.Id, false, false, false);
-        if(user == null)
+        if (user == null)
         {
             return new BadRequestObjectResult("Invalid credentials");
         }
         var result = await unitOfWork.UserRepository.ConfirmEmailAsync(user, emailConfirmationDTO.Token);
-        if(result.Succeeded == false)
+        if (result.Succeeded == false)
         {
             return new BadRequestObjectResult("Problem confirming email");
         }
         return new OkObjectResult("Email confirmed successfully");
     }
-        public async Task<ActionResult<bool>> VerifyEmailAsync(EmailVerificationDTO verificationDTO)
+    public async Task<ActionResult<bool>> VerifyEmailAsync(EmailVerificationDTO verificationDTO)
     {
         var user = await unitOfWork.UserRepository.GetUserByIdAsync(verificationDTO.Id, false, false, false);
-        if(user == null)
+        if (user == null)
         {
             return new BadRequestObjectResult("Invalid user ID");
         }
-        
+
         var result = await unitOfWork.UserRepository.VerifyEmailVerificationCodeAsync(user, verificationDTO.Code);
-        if(!result)
+        if (!result)
         {
             return new BadRequestObjectResult("Invalid or expired verification code");
         }
-        
+
         return new OkObjectResult(true);
     }
 
@@ -242,35 +251,35 @@ public class AuthService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
 
         // Generate a new verification code
         var verificationCode = await unitOfWork.UserRepository.GenerateEmailVerificationCodeAsync(user);
-        
+
         // Send a new email
         SendEmailRequest sendEmailRequest = new SendEmailRequest(
-            user.Email!, 
-            "Verify Your Email", 
+            user.Email!,
+            "Verify Your Email",
             $"<h1>Verify Your Email</h1><p>Your new verification code is: <strong>{verificationCode}</strong></p><p>This code will expire in 15 minutes.</p>"
         );
-        
+
         var emailResult = await emailService.SendEmailAsync(sendEmailRequest);
-        if(emailResult is BadRequestObjectResult badRequestResult)
+        if (emailResult is BadRequestObjectResult badRequestResult)
         {
             return new BadRequestObjectResult("Problem sending verification code: " + badRequestResult.Value);
         }
-        
+
         return new OkResult();
     }
 
     private async Task<AppUser?> GetUserByUsernameOrEmailAsync(string? username, string? email)
     {
         AppUser? user;
-        if(!string.IsNullOrEmpty(username))
+        if (!string.IsNullOrEmpty(username))
         {
             user = await unitOfWork.UserRepository.GetUserByUsernameAsync(username);
-            if(user != null)
+            if (user != null)
             {
                 return user;
             }
         }
-        if(!string.IsNullOrEmpty(email))
+        if (!string.IsNullOrEmpty(email))
         {
             user = await unitOfWork.UserRepository.GetUserByEmailAsync(email);
             return user;
@@ -278,61 +287,74 @@ public class AuthService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
         return null;
     }
     public async Task<ActionResult> ForgotPasswordAsync(ForgotPasswordDTO forgotPasswordDTO)
-{
-    // Find user by email
-    var user = await unitOfWork.UserRepository.GetUserByEmailAsync(forgotPasswordDTO.Email);
-    if (user == null)
     {
-        // Return success even if user not found for security reasons
+        // Find user by email
+        var user = await unitOfWork.UserRepository.GetUserByEmailAsync(forgotPasswordDTO.Email);
+        if (user == null)
+        {
+            // Return success even if user not found for security reasons
+            return new OkObjectResult(new { message = "If your email is registered, you will receive a password reset code" });
+        }
+
+        // Generate a 6-digit verification code
+        var resetCode = await unitOfWork.UserRepository.GeneratePasswordResetCodeAsync(user);
+
+        // Send the code via email
+        SendEmailRequest sendEmailRequest = new SendEmailRequest(
+            user.Email!,
+            "Reset Your Password",
+            $"<h1>Reset Your Password</h1><p>Your password reset code is: <strong>{resetCode}</strong></p><p>This code will expire in 15 minutes.</p>"
+        );
+
+        var emailResult = await emailService.SendEmailAsync(sendEmailRequest);
+        if (emailResult is BadRequestObjectResult badRequestResult)
+        {
+            Console.WriteLine($"Error sending password reset email: {badRequestResult.Value}");
+        }
+
         return new OkObjectResult(new { message = "If your email is registered, you will receive a password reset code" });
     }
 
-    // Generate a 6-digit verification code
-    var resetCode = await unitOfWork.UserRepository.GeneratePasswordResetCodeAsync(user);
-    
-    // Send the code via email
-    SendEmailRequest sendEmailRequest = new SendEmailRequest(
-        user.Email!, 
-        "Reset Your Password", 
-        $"<h1>Reset Your Password</h1><p>Your password reset code is: <strong>{resetCode}</strong></p><p>This code will expire in 15 minutes.</p>"
-    );
-    
-    var emailResult = await emailService.SendEmailAsync(sendEmailRequest);
-    if(emailResult is BadRequestObjectResult badRequestResult)
+    public async Task<ActionResult> ResetPasswordAsync(ResetPasswordDTO resetPasswordDTO)
     {
-        // Log the error but don't expose it to user
-        Console.WriteLine($"Error sending password reset email: {badRequestResult.Value}");
-    }
-    
-    // Always return success for security
-    return new OkObjectResult(new { message = "If your email is registered, you will receive a password reset code" });
-}
+        // Find user by email
+        var user = await unitOfWork.UserRepository.GetUserByEmailAsync(resetPasswordDTO.Email);
+        if (user == null)
+        {
+            return new BadRequestObjectResult("Invalid reset request");
+        }
 
-public async Task<ActionResult> ResetPasswordAsync(ResetPasswordDTO resetPasswordDTO)
-{
-    // Find user by email
-    var user = await unitOfWork.UserRepository.GetUserByEmailAsync(resetPasswordDTO.Email);
-    if (user == null)
-    {
-        return new BadRequestObjectResult("Invalid reset request");
+        // Verify the reset code
+        var isCodeValid = await unitOfWork.UserRepository.VerifyPasswordResetCodeAsync(user, resetPasswordDTO.Code);
+        if (!isCodeValid)
+        {
+            return new BadRequestObjectResult("Invalid or expired reset code");
+        }
+
+        // Reset the password
+        var token = await unitOfWork.UserRepository.GeneratePasswordResetTokenAsync(user);
+        var result = await unitOfWork.UserRepository.ResetPasswordAsync(user, token, resetPasswordDTO.NewPassword);
+
+        if (!result.Succeeded)
+        {
+            return new BadRequestObjectResult("Failed to reset password: " + string.Join(", ", result.Errors.Select(e => e.Description)));
+        }
+
+        return new OkObjectResult(new { message = "Password has been reset successfully" });
     }
-    
-    // Verify the reset code
-    var isCodeValid = await unitOfWork.UserRepository.VerifyPasswordResetCodeAsync(user, resetPasswordDTO.Code);
-    if (!isCodeValid)
+
+    public async Task<ActionResult> WasWarnedAboutPasswordChange(int userId)
     {
-        return new BadRequestObjectResult("Invalid or expired reset code");
+        var user = await unitOfWork.UserRepository.GetUserByIdAsync(userId, false, false, false);
+        if (user == null)
+        {
+            return new BadRequestObjectResult("Invalid user ID");
+        }
+
+        user.WasWarnedAboutPasswordChange = true;
+        await unitOfWork.UserRepository.UpdateAsync(user);
+        await unitOfWork.Complete();
+
+        return new OkObjectResult("User was warned about password change");
     }
-    
-    // Reset the password
-    var token = await unitOfWork.UserRepository.GeneratePasswordResetTokenAsync(user);
-    var result = await unitOfWork.UserRepository.ResetPasswordAsync(user, token, resetPasswordDTO.NewPassword);
-    
-    if (!result.Succeeded)
-    {
-        return new BadRequestObjectResult("Failed to reset password: " + string.Join(", ", result.Errors.Select(e => e.Description)));
-    }
-    
-    return new OkObjectResult(new { message = "Password has been reset successfully" });
-}
 }

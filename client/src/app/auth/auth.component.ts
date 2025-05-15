@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -27,6 +27,10 @@ export class AuthComponent implements OnInit {
   registerForm!: FormGroup;
   validationErrors: string[] | undefined;
   loading = false;
+
+  constructor() {
+
+  }
 
   ngOnInit(): void {
     this.initializeForms();
@@ -77,8 +81,6 @@ export class AuthComponent implements OnInit {
   login() {
     if (this.loginForm.valid) {
       this.loading = true;
-
-      // Store credentials for automatic login after verification
       const credentials = {
         usernameOrEmail: this.loginForm.value.usernameOrEmail,
         password: this.loginForm.value.password,
@@ -92,9 +94,7 @@ export class AuthComponent implements OnInit {
         },
         error: error => {
           if (error && error.requiresVerification) {
-            // Store credentials for after verification
             sessionStorage.setItem('pendingLoginCredentials', JSON.stringify(credentials));
-            // Redirect to verification page
             this.router.navigateByUrl('/verify-email');
           } else {
             this.validationErrors = typeof error === 'string' ? [error] : ['Login failed'];
@@ -119,12 +119,10 @@ export class AuthComponent implements OnInit {
           if (response.requiresEmailConfirmation) {
             console.log('Email confirmation required, userId:', response.userId);
 
-            // Store user ID for verification
             if (response.userId) {
               sessionStorage.setItem('verificationUserId', response.userId.toString());
               this.toastr.info('Please verify your email. Check your inbox for a verification code.');
 
-              // Force navigation to verification page
               setTimeout(() => {
                 this.router.navigateByUrl('/verify-email');
               }, 500);
@@ -141,7 +139,6 @@ export class AuthComponent implements OnInit {
         error: error => {
           console.error('Registration error:', error);
 
-          // Handle different types of errors
           if (typeof error === 'string') {
             this.validationErrors = [error];
           } else if (Array.isArray(error)) {
@@ -156,18 +153,7 @@ export class AuthComponent implements OnInit {
   }
 
   loginWithGoogle() {
-    this.googleService.configure().subscribe(idToken => {
-      if (idToken) {
-        this.accountService.googleLogin(idToken).subscribe({
-          next: () => {
-            this.router.navigateByUrl('/');
-          },
-          error: error => {
-            this.validationErrors = error.error ? [error.error] : ['Google login failed'];
-          }
-        });
-      }
-    });
+    this.googleService.oAuthDiscovery();
   }
 
   submitForm() {
