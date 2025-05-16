@@ -30,17 +30,20 @@ export class ProfileComponent implements OnInit {
   user: User | null = null;
   profileForm!: FormGroup;
   passwordForm!: FormGroup;
+  addPasswordForm!: FormGroup; // New form for Google-authenticated users
   verificationForm!: FormGroup;
   editMode = false;
   passwordEditMode = false;
   verificationMode = false;
   loading = false;
   userStats: { created: number, completed: number, answered: number } | null = null;
+  isGoogleAuthenticatedWithoutPassword = false; // New flag
 
   ngOnInit(): void {
     this.loadUser();
     this.initializeForm();
     this.initializePasswordForm();
+    this.initializeAddPasswordForm(); // Initialize new form
     this.initializeVerificationForm();
     this.loadUserStats();
   }
@@ -83,6 +86,11 @@ export class ProfileComponent implements OnInit {
           username: user.username,
           email: user.email
         });
+
+        // Check if user is Google-authenticated without a password
+        this.isGoogleAuthenticatedWithoutPassword = !user.hasChangedGenericPassword;
+        console.log('User has changed generic password:', user.hasChangedGenericPassword);
+        console.log('Is Google authenticated without password:', this.isGoogleAuthenticatedWithoutPassword);
       }
     });
   }
@@ -133,6 +141,7 @@ export class ProfileComponent implements OnInit {
     this.passwordEditMode = !this.passwordEditMode;
     if (!this.passwordEditMode) {
       this.passwordForm.reset();
+      this.addPasswordForm.reset();
       this.verificationMode = false;
     }
   }
@@ -168,8 +177,13 @@ export class ProfileComponent implements OnInit {
   }
 
   savePassword() {
-    if (this.passwordForm.valid) {
-      this.loading = true;
+    if (this.isGoogleAuthenticatedWithoutPassword) {
+      // Google user adding a password
+      this.addPassword();
+    } else {
+      // Regular user changing password
+      if (this.passwordForm.valid) {
+        this.loading = true;
 
       const loginCredentials = {
         usernameOrEmail: this.user?.username || '',
@@ -193,6 +207,7 @@ export class ProfileComponent implements OnInit {
       this.markFormGroupTouched(this.passwordForm);
       this.toastr.error('Please fix the validation errors');
     }
+  }
   }
 
   requestVerificationCode() {
@@ -398,4 +413,50 @@ export class ProfileComponent implements OnInit {
     this.verificationForm.reset();
     sessionStorage.removeItem('pendingPasswordChange');
   }
+
+  initializeAddPasswordForm() {
+    this.addPasswordForm = this.fb.group({
+      newPassword: ['', [
+        Validators.required,
+        Validators.minLength(8),
+        createPasswordStrengthValidator()
+      ]],
+      confirmPassword: ['', [Validators.required]]
+    }, {
+      validator: this.passwordMatchValidator('newPassword', 'confirmPassword')
+    });
+  }
+  addPassword() {
+    if (this.addPasswordForm.valid) {
+      this.loading = true;
+
+      const passwordData = {
+        newPassword: this.addPasswordForm.get('newPassword')?.value
+      };
+
+      this.http.post(environment.apiUrl + 'user/add-password', passwordData).subscribe({
+        next: () => {
+          this.loading = false;
+          this.toastr.success('Password added successfully');
+          this.passwordEditMode = false;
+
+          // Update user info
+          if (this.user) {
+            this.user.hasChangedGenericPassword = true;
+            this.accountService.setCurrentUser(this.user, true);
+          }
+
+          this.refreshUserData();
+        },
+        error: error => {
+          this.loading = false;
+          console.error('Error adding password:', error);
+          this.toastr.error(error.error || 'Failed to add password');
+        }
+      });
+    } else {
+      this.markFormGroupTouched(this.addPasswordForm);
+    }
+  }
+
 }

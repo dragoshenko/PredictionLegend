@@ -51,8 +51,46 @@
                 </form>
               </div>
 
-              <!-- Password Change Form -->
-              <div *ngIf="passwordEditMode && !verificationMode">
+              <!-- Password Forms Section -->
+
+              <!-- Add Password Form (for Google users who haven't set a password) -->
+              <div *ngIf="passwordEditMode && !verificationMode && isGoogleAuthenticatedWithoutPassword">
+                <h5 class="mb-3">Add Password</h5>
+                <form [formGroup]="addPasswordForm" (ngSubmit)="savePassword()">
+                  <app-text-input
+                    [formControl]="$any(addPasswordForm.controls['newPassword'])"
+                    [label]="'New Password'"
+                    [type]="'password'">
+                  </app-text-input>
+
+                  <app-text-input
+                    [formControl]="$any(addPasswordForm.controls['confirmPassword'])"
+                    [label]="'Confirm Password'"
+                    [type]="'password'">
+                  </app-text-input>
+
+                  <div *ngIf="addPasswordForm.hasError('passwordMismatch') &&
+                              addPasswordForm.get('confirmPassword')?.touched"
+                      class="text-danger mb-3">
+                    Passwords do not match
+                  </div>
+
+                  <div class="d-flex justify-content-between mt-4">
+                    <button type="button" class="btn btn-outline-secondary"
+                            (click)="togglePasswordEditMode()">
+                      Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary"
+                            [disabled]="!addPasswordForm.valid || loading">
+                      <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"></span>
+                      Add Password
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- Change Password Form (for users with existing passwords) -->
+              <div *ngIf="passwordEditMode && !verificationMode && !isGoogleAuthenticatedWithoutPassword">
                 <h5 class="mb-3">Change Password</h5>
                 <form [formGroup]="passwordForm" (ngSubmit)="savePassword()">
                   <app-text-input
@@ -93,7 +131,7 @@
                 </form>
               </div>
 
-              <!-- Verification Form -->
+              <!-- Verification Form (used for both add/change password when email verification is required) -->
               <div *ngIf="verificationMode">
                 <div class="mb-4">
                   <div class="alert alert-info">
@@ -149,17 +187,25 @@
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                       <span>Email Verified</span>
                       <span [ngClass]="user.emailConfirmed ? 'text-success' : 'text-danger'">
-                        <i [ngClass]="user.emailConfirmed ? 'bi bi-check-circle-fill' : 'bi bi-x-circle-fill'" class="me-1"></i>
+                        <i class="fa" [ngClass]="user.emailConfirmed ? 'fa-check-circle' : 'fa-times-circle'" aria-hidden="true"></i>
                         {{ user.emailConfirmed ? 'Yes' : 'No' }}
+                      </span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span>Password Set</span>
+                      <span [ngClass]="user.hasChangedGenericPassword ? 'text-success' : 'text-warning'">
+                        <i class="fa" [ngClass]="user.hasChangedGenericPassword ? 'fa-check-circle' : 'fa-exclamation-circle'" aria-hidden="true"></i>
+                        {{ user.hasChangedGenericPassword ? 'Yes' : 'No' }}
                       </span>
                     </li>
                   </ul>
                 </div>
 
-                <!-- Password Change Button -->
+                <!-- Password Change/Add Button -->
                 <div class="mb-4 text-center">
                   <button class="btn btn-outline-primary" (click)="togglePasswordEditMode()">
-                    Change Password
+                    <i class="fa fa-lock me-2"></i>
+                    {{ isGoogleAuthenticatedWithoutPassword ? 'Add Password' : 'Change Password' }}
                   </button>
                 </div>
 
