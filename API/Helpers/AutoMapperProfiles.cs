@@ -14,7 +14,7 @@ public class AutoMapperProfiles: Profile
         CreateMap<RegisterDTO, AppUser>();
 
         CreateMap<Prediction, PredictionDTO>()
-            .ForMember(dest => dest.Author, opt => opt.MapFrom(src => src.AppUser));
+            .ForMember(dest => dest.Author, opt => opt.MapFrom(src => src.User));
         CreateMap<AppUser, MemberDTO>()
             .ForMember(dest => dest.PhotoUrl, opt => opt.MapFrom(src => 
                 src.Photo != null ? src.Photo.Url : null));

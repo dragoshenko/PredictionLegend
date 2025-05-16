@@ -7,19 +7,16 @@ public class Prediction
     public int Id { get; set; }
     public required string Title { get; set; }
     public string? Description { get; set; }
-    public string PredictionType { get; set; } = "ranking"; // Default to ranking
-    public string PrivacyType { get; set; } = "public"; // Default to public
-    public int Rows { get; set; } = 3; // Default values
-    public int Columns { get; set; } = 1; // Default values
+    public PredictionType Type { get; set; } = PredictionType.Ranking; // Default to Ranking
+    public PrivacyType PrivacyType { get; set; } = PrivacyType.Public; // Default to Public
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime? LastModified { get; set; }
-    public bool IsPublished { get; set; } = false;
+    public DateTime LastModified { get; set; } = DateTime.UtcNow;
+    public bool IsDraft { get; set; } = true;
+    public string? AccessCode { get; set; }
+    public ICollection<string> Tags { get; set; } = new List<string>();
+    public ICollection<PostBracket> PostBrackets { get; set; } = [];
+    public ICollection<PostRank> PostRankings { get; set; } = [];
     
-    // Navigation properties
-    public int? AppUserId { get; set; }
-    public AppUser? AppUser { get; set; }
-    
-    // Future enhancement: Add collection for prediction items and user entries
-    // public ICollection<PredictionItem> Items { get; set; } = new List<PredictionItem>();
-    // public ICollection<UserEntry> Entries { get; set; } = new List<UserEntry>();
+    public int? UserId { get; set; }
+    public AppUser? User { get; set; }
 }

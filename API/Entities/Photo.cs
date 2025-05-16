@@ -14,13 +14,5 @@ public class Photo
     public AppUser? AppUser { get; set; } = null!;
     public int? AppUserId { get; set; }
 
-    // Post
-    public Post? Post { get; set; } = null!;
-    public int? PostId { get; set; }
-
-    // Comment
-    public Comment? Comment { get; set; } = null!;
-    public int? CommentId { get; set; }
-
     // ----------------------------------------------------------------
 }

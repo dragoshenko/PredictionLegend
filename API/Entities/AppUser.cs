@@ -13,9 +13,7 @@ public class AppUser : IdentityUser<int>
     public DateTime? EmailVerificationCodeExpiry { get; set; }
     public string? PasswordResetCode { get; set; }
     public DateTime? PasswordResetCodeExpiry { get; set; }
-    // Refresh token
     public List<RefreshToken> RefreshTokens { get; set; } = [];
-    public List<Post> Posts { get; set; } = [];
     public List<Comment> Comments { get; set; } = [];
     public ICollection<AppUserRole> UserRoles { get; set; } = [];
     public string? PasswordChangeCode { get; set; }
@@ -23,4 +21,7 @@ public class AppUser : IdentityUser<int>
     public bool HasChangedGenericPassword { get; set; } = true;
     public bool WasWarnedAboutPasswordChange { get; set; } = true;
     public List<Prediction> Predictions { get; set; } = [];
+    public List<PostBracket> PostBrackets { get; set; } = [];
+    public List<PostRank> PostRanks { get; set; } = [];
+    public List<DiscussionPost> DiscussionPosts { get; set; } = [];
 }

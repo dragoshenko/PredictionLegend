@@ -72,7 +72,8 @@ public class UserRespository(UserManager<AppUser> userManager, IMapper mapper) :
 
         if (includePostsAndComments)
         {
-            query = query.Include(u => u.Posts).ThenInclude(p => p.Comments);
+            query = query.Include(u => u.PostRanks).Include(u => u.PostBrackets)
+                .Include(u => u.DiscussionPosts).ThenInclude(p => p.Comments);
         }
 
         if (includePhoto)
@@ -89,7 +90,8 @@ public class UserRespository(UserManager<AppUser> userManager, IMapper mapper) :
 
         if (includePostsAndComments)
         {
-            query = query.Include(u => u.Posts).ThenInclude(p => p.Comments);
+            query = query.Include(u => u.PostRanks).Include(u => u.PostBrackets)
+                .Include(u => u.DiscussionPosts).ThenInclude(p => p.Comments);
         }
 
         if (includePhoto)

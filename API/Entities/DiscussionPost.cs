@@ -2,18 +2,18 @@ namespace API.Entities;
 
 public class DiscussionPost
 {
-    public int Id { get; set; }
-    public string Title { get; set; }
-    public string Content { get; set; }
-    public bool IsPublic { get; set; } = false;
-    public bool IsPublished { get; set; } = false;
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
-    public List<Photo> Photos { get; set; } = new List<Photo>();
-    public List<Comment> Comments { get; set; } = new List<Comment>();
-    public string PrivateKey { get; set; } = Guid.NewGuid().ToString();
-    public string Slug { get; set; }
-    // Nav properties -------------------------------------------------
-    public int AppUserId { get; set; }
-    public AppUser AppUser { get; set; } = null!;
-    // ----------------------------------------------------------------
+   public int Id { get; set; }
+    public required string Title { get; set; }
+    public string? Description { get; set; }
+    public PrivacyType PrivacyType { get; set; } = PrivacyType.Public; 
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime LastModified { get; set; } = DateTime.UtcNow;
+    public bool IsDraft { get; set; } = true;
+    public string? AccessCode { get; set; }
+    public ICollection<string> Tags { get; set; } = new List<string>();
+    public ICollection<Comment> Comments { get; set; } = new List<Comment>();
+    
+    public int? UserId { get; set; }
+    public AppUser? User { get; set; }
+
 }
