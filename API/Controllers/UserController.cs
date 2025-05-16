@@ -5,6 +5,7 @@ using API.Extensions;
 using API.Helpers;
 using API.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 
@@ -17,17 +18,20 @@ public class UserController : BaseAPIController
     private readonly ITokenService _tokenService;
     private readonly IPhotoService _photoService;
     private readonly IEmailService _emailService;
+    private readonly UserManager<AppUser> _userManager;
 
     public UserController(
         IUnitOfWork unitOfWork,
         ITokenService tokenService,
         IPhotoService photoService,
-        IEmailService emailService)
+        IEmailService emailService, UserManager<AppUser> userManager)
     {
         _unitOfWork = unitOfWork;
         _tokenService = tokenService;
         _photoService = photoService;
         _emailService = emailService;
+        _userManager = userManager;
+
     }
 
     // Get current user data
@@ -89,9 +93,11 @@ public class UserController : BaseAPIController
         // Update other user properties
         if (!string.IsNullOrEmpty(memberUpdateDTO.Bio))
             user.Bio = memberUpdateDTO.Bio;
+        else
+            user.Bio = string.Empty;
 
         // Save changes
-        var result = await _unitOfWork.UserRepository.UpdateAsync(user);
+            var result = await _userManager.UpdateAsync(user);
 
         if (!result.Succeeded) return BadRequest("Failed to update user profile");
 

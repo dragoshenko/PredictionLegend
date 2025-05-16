@@ -4,14 +4,14 @@ namespace API.Entities;
 
 public class AppUser : IdentityUser<int>
 {
-    public required string DisplayName { get; set; }
-    public string? Bio { get; set; }
+    public required string DisplayName { get; set; } = string.Empty;
+    public string? Bio { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public DateTime LastActive { get; set; } = DateTime.Now;
     public Photo? Photo { get; set; }
-    public string? EmailVerificationCode { get; set; }
+    public string? EmailVerificationCode { get; set; } = string.Empty;
     public DateTime? EmailVerificationCodeExpiry { get; set; }
-    public string? PasswordResetCode { get; set; }
+    public string? PasswordResetCode { get; set; } = string.Empty;
     public DateTime? PasswordResetCodeExpiry { get; set; }
     public List<RefreshToken> RefreshTokens { get; set; } = [];
     public List<Comment> Comments { get; set; } = [];

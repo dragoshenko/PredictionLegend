@@ -33,6 +33,7 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IPredictionRepository, PredictionRepository>();
         services.AddScoped<IMapper, Mapper>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IPhotoService, PhotoService>();
         
         return services;
     }
