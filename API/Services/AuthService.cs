@@ -147,68 +147,146 @@ public class AuthService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
             CreatedAt = user.CreatedAt
         };
     }
-    public async Task<ActionResult<UserDTO>> GoogleAuth(GoogleDTO goolgeDTO)
+    public async Task<ActionResult<UserDTO>> GoogleAuth(GoogleDTO googleDTO)
     {
-        var validationSettings = new GoogleJsonWebSignature.ValidationSettings()
-        {
-            Audience = [config["Authentication:Google:ClientId"]]
-        };
-        GoogleJsonWebSignature.Payload payload;
         try
         {
-            payload = await GoogleJsonWebSignature.ValidateAsync(goolgeDTO.IdToken, validationSettings);
-        }
-        catch (Exception)
-        {
-            return new UnauthorizedObjectResult("Invalid credentials");
-        }
-        if (payload == null)
-        {
-            return new UnauthorizedObjectResult("Invalid credentials");
-        }
-        var user = await GetUserByUsernameOrEmailAsync(null!, payload.Email!);
-        if (user == null)
-        {
-            user = new AppUser
+            var clientId = config["Authentication:Google:ClientId"];
+            if (string.IsNullOrEmpty(clientId))
             {
-                UserName = payload.Name?.Replace(" ", ""),
-                DisplayName = payload.FamilyName?.Replace(" ", "")!,
-                Email = payload.Email,
-                EmailConfirmed = true,
-                HasChangedGenericPassword = false,
-                WasWarnedAboutPasswordChange = false
-            };
-            var passwordGenerator = new Password(includeLowercase: true, includeUppercase: true, includeNumeric: true, includeSpecial: true, passwordLength: 16);
-            var password = passwordGenerator.Next();
-            var result = await unitOfWork.UserRepository.CreateAsync(user, password);
-            if (result.Succeeded == false)
-            {
-                return new BadRequestObjectResult("Problem creating user account " + result.Errors.Select(x => x.Description).ToList());
+                Console.WriteLine("Google Client ID is missing in configuration");
+                return new StatusCodeResult(500);
             }
-        }
-        if (user.RefreshTokens == null)
-        {
-            user.RefreshTokens = new List<RefreshToken>();
-        }
-        var refreshToken = tokenService.CreateRefreshToken();
-        user.RefreshTokens.Add(refreshToken);
-        tokenService.ManageUserRefreshToken(user, config);
-        await unitOfWork.UserRepository.UpdateAsync(user);
-        var token = await tokenService.CreateToken(user);
 
-        return new UserDTO
+            var validationSettings = new GoogleJsonWebSignature.ValidationSettings()
+            {
+                Audience = new List<string> { clientId }
+            };
+            
+            GoogleJsonWebSignature.Payload payload;
+            try
+            {
+                payload = await GoogleJsonWebSignature.ValidateAsync(googleDTO.IdToken, validationSettings);
+                Console.WriteLine($"Successfully validated Google token for: {payload.Email}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Google token validation error: {ex.Message}");
+                return new UnauthorizedObjectResult("Invalid Google credentials");
+            }
+            
+            if (payload == null)
+            {
+                Console.WriteLine("Google payload is null after validation");
+                return new UnauthorizedObjectResult("Invalid Google credentials");
+            }
+            
+            if (string.IsNullOrEmpty(payload.Email))
+            {
+                Console.WriteLine("Google payload does not contain email");
+                return new UnauthorizedObjectResult("Email is required for Google authentication");
+            }
+            
+            // Try to find user by email
+            var user = await unitOfWork.UserRepository.GetUserByEmailAsync(payload.Email);
+            
+            // Create new user if not found
+            if (user == null)
+            {
+                Console.WriteLine($"Creating new user for Google login with email: {payload.Email}");
+                
+                // Create a username from email if name is not available
+                string username = payload.Name;
+                if (string.IsNullOrEmpty(username))
+                {
+                    username = payload.Email.Split('@')[0];
+                }
+                
+                // Remove spaces from username
+                username = username.Replace(" ", "");
+                
+                // Handle display name - use given name + family name, or just email prefix if not available
+                string displayName = payload.Name;
+                if (string.IsNullOrEmpty(displayName))
+                {
+                    displayName = payload.Email.Split('@')[0];
+                }
+                
+                user = new AppUser
+                {
+                    UserName = username,
+                    DisplayName = displayName,
+                    Email = payload.Email,
+                    EmailConfirmed = true,
+                    HasChangedGenericPassword = false,
+                    WasWarnedAboutPasswordChange = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+                
+                // Generate a random password
+                var passwordGenerator = new Password(includeLowercase: true, includeUppercase: true, includeNumeric: true, includeSpecial: true, passwordLength: 16);
+                var password = passwordGenerator.Next();
+                
+                // Create the user
+                var result = await unitOfWork.UserRepository.CreateAsync(user, password);
+                
+                if (!result.Succeeded)
+                {
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    Console.WriteLine($"Failed to create user account: {errors}");
+                    return new BadRequestObjectResult($"Problem creating user account: {errors}");
+                }
+            }
+            
+            // Initialize refresh tokens list if null
+            if (user.RefreshTokens == null)
+            {
+                user.RefreshTokens = new List<RefreshToken>();
+            }
+            
+            // Create and add refresh token
+            var refreshToken = tokenService.CreateRefreshToken();
+            user.RefreshTokens.Add(refreshToken);
+            
+            // Manage refresh tokens
+            tokenService.ManageUserRefreshToken(user, config);
+            
+            // Update user
+            var updateResult = await unitOfWork.UserRepository.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+            {
+                Console.WriteLine($"Failed to update user with refresh token: {string.Join(", ", updateResult.Errors.Select(e => e.Description))}");
+            }
+            
+            // Generate JWT token
+            var token = await tokenService.CreateToken(user);
+            
+            Console.WriteLine($"Google authentication successful for user: {user.UserName}");
+            
+            // Return user DTO
+            return new UserDTO
+            {
+                Username = user.UserName!,
+                Email = user.Email!,
+                DisplayName = user.DisplayName,
+                Token = token,
+                RefreshToken = refreshToken.Token,
+                PhotoUrl = user.Photo?.Url,
+                EmailConfirmed = user.EmailConfirmed,
+                WasWarnedAboutPasswordChange = user.WasWarnedAboutPasswordChange,
+                HasChangedGenericPassword = user.HasChangedGenericPassword,
+                CreatedAt = user.CreatedAt
+            };
+        }
+        catch (Exception ex)
         {
-            Username = user.UserName!,
-            Email = user.Email!,
-            DisplayName = user.DisplayName,
-            Token = token,
-            RefreshToken = refreshToken.Token,
-            PhotoUrl = user.Photo?.Url,
-            EmailConfirmed = user.EmailConfirmed,
-            WasWarnedAboutPasswordChange = user.WasWarnedAboutPasswordChange,
-            HasChangedGenericPassword = user.HasChangedGenericPassword,
-            CreatedAt = user.CreatedAt
-        };
+            // Log the full exception details
+            Console.WriteLine($"Unexpected error in GoogleAuth: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            
+            // Return a 500 error with minimal information
+            return new StatusCodeResult(500);
+        }
     }
     public async Task<ActionResult> ConfirmEmailAsync(EmailConfirmationDTO emailConfirmationDTO)
     {

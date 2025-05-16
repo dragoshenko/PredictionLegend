@@ -52,8 +52,17 @@ public class AccountController(IAuthService authenticationService) : BaseAPICont
     [HttpPost("google-auth")]
     public async Task<ActionResult<UserDTO>> GoogleAuth(GoogleDTO googleDTO)
     {
-        var googleResponse = await authenticationService.GoogleAuth(googleDTO);
-        return googleResponse;
+        try
+        {
+            var googleResponse = await authenticationService.GoogleAuth(googleDTO);
+            return googleResponse;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in GoogleAuth controller: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return StatusCode(500, "An error occurred during Google authentication");
+        }
     }
 
     [HttpPost("forgot-password")]

@@ -220,7 +220,7 @@ export class ProfileComponent implements OnInit {
         if (error.status === 0) {
           this.toastr.error('Network error - could not connect to server');
         } else if (error.status === 404) {
-          this.toastr.error('Email service endpoint not found');
+
         } else {
           this.toastr.error(error.error?.message || 'Could not send verification email');
         }

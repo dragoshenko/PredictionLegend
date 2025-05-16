@@ -3,13 +3,14 @@ import { Component, inject, OnInit } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { AccountService } from '../_services/account.service';
 import { take } from 'rxjs';
-import { RouterModule } from '@angular/router'; // ✅ FIXED
+import { RouterModule } from '@angular/router';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-password-change-warning',
   templateUrl: './password-change-warning.component.html',
   styleUrls: ['./password-change-warning.component.css'],
-  imports: [RouterModule],
+  imports: [RouterModule, CommonModule],
   standalone: true
 })
 export class PasswordChangeWarningComponent implements OnInit {
