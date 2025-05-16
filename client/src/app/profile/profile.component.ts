@@ -40,11 +40,14 @@ export class ProfileComponent implements OnInit {
   isGoogleAuthenticatedWithoutPassword = false; // New flag
 
   ngOnInit(): void {
-    this.loadUser();
+    // Initialize the form first
     this.initializeForm();
     this.initializePasswordForm();
-    this.initializeAddPasswordForm(); // Initialize new form
+    this.initializeAddPasswordForm();
     this.initializeVerificationForm();
+
+    // Then load user data
+    this.loadUser();
     this.loadUserStats();
   }
 
@@ -246,7 +249,7 @@ export class ProfileComponent implements OnInit {
       }
     });
   }
-
+/*
   verifyAndChangePassword() {
     if (this.verificationForm.valid) {
       this.loading = true;
@@ -295,7 +298,7 @@ export class ProfileComponent implements OnInit {
       this.toastr.error('Please enter a valid verification code');
     }
   }
-
+*/
   // Fallback methods in case verification is not available
   directPasswordChange() {
     const changeData = {
@@ -390,6 +393,10 @@ export class ProfileComponent implements OnInit {
         if (user) {
           console.log('Refreshed user data:', user);
           this.user = user;
+
+          // Update the flag based on fresh data
+          this.isGoogleAuthenticatedWithoutPassword = !user.hasChangedGenericPassword;
+
           this.profileForm.patchValue({
             displayName: user.displayName,
             username: user.username,
@@ -426,37 +433,45 @@ export class ProfileComponent implements OnInit {
       validator: this.passwordMatchValidator('newPassword', 'confirmPassword')
     });
   }
+
   addPassword() {
     if (this.addPasswordForm.valid) {
       this.loading = true;
-
-      const passwordData = {
-        newPassword: this.addPasswordForm.get('newPassword')?.value
-      };
-
-      this.http.post(environment.apiUrl + 'user/add-password', passwordData).subscribe({
-        next: () => {
-          this.loading = false;
-          this.toastr.success('Password added successfully');
-          this.passwordEditMode = false;
-
-          // Update user info
-          if (this.user) {
-            this.user.hasChangedGenericPassword = true;
-            this.accountService.setCurrentUser(this.user, true);
-          }
-
-          this.refreshUserData();
-        },
-        error: error => {
-          this.loading = false;
-          console.error('Error adding password:', error);
-          this.toastr.error(error.error || 'Failed to add password');
-        }
-      });
+      this.directAddPassword();
     } else {
       this.markFormGroupTouched(this.addPasswordForm);
     }
+  }
+
+  directAddPassword() {
+    const addData = {
+      Username: this.user?.username,
+      NewPassword: this.addPasswordForm.get('newPassword')?.value
+    };
+
+    console.log('Sending direct password add request:', addData);
+
+    this.http.post(environment.apiUrl + 'password/direct-add', addData).subscribe({
+      next: (response) => {
+        console.log('Password add successful:', response);
+        this.toastr.success('Password added successfully');
+        this.loading = false;
+        this.passwordEditMode = false;
+        this.addPasswordForm.reset();
+
+        if (this.user) {
+          this.user.hasChangedGenericPassword = true;
+          this.accountService.setCurrentUser(this.user, true);
+        }
+
+        this.refreshUserData();
+      },
+      error: error => {
+        console.error('Direct password add error:', error);
+        this.toastr.error(error.error?.message || error.error || 'Failed to add password');
+        this.loading = false;
+      }
+    });
   }
 
 }

@@ -250,27 +250,5 @@ public class UserController : BaseAPIController
 
         return BadRequest("Failed to delete photo");
     }
-    [HttpPost("add-password")]
-    public async Task<ActionResult> AddPassword([FromBody] AddPasswordDTO addPasswordDTO)
-    {
-        var user = await _unitOfWork.UserRepository.GetUserByUsernameAsync(User.GetUsername());
-        
-        if (user == null) return NotFound();
-        
-        // Generate a reset token
-        var token = await _unitOfWork.UserRepository.GeneratePasswordResetTokenAsync(user);
-        
-        // Set the new password
-        var result = await _unitOfWork.UserRepository.ResetPasswordAsync(user, token, addPasswordDTO.NewPassword);
-        
-        if (!result.Succeeded)
-            return BadRequest("Failed to add password: " + string.Join(", ", result.Errors.Select(e => e.Description)));
-        
-        // Update user properties
-        user.HasChangedGenericPassword = true;
-        await _unitOfWork.UserRepository.UpdateAsync(user);
-        await _unitOfWork.Complete();
-        
-        return Ok(new { message = "Password added successfully" });
-    }
+
 }
