@@ -11,6 +11,8 @@ import { CensorEmailPipe } from "../_pipes/censor-email.pipe";
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { Router } from '@angular/router';
+import { take } from 'rxjs/operators';
+import { HttpHeaders } from '@angular/common/http';
 
 @Component({
   selector: 'app-profile',
@@ -249,7 +251,7 @@ export class ProfileComponent implements OnInit {
       }
     });
   }
-/*
+
   verifyAndChangePassword() {
     if (this.verificationForm.valid) {
       this.loading = true;
@@ -298,8 +300,8 @@ export class ProfileComponent implements OnInit {
       this.toastr.error('Please enter a valid verification code');
     }
   }
-*/
-  // Fallback methods in case verification is not available
+
+  // method in case verification is not available
   directPasswordChange() {
     const changeData = {
       Username: this.user?.username,
