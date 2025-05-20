@@ -1,15 +1,16 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { PredictionService } from '../_services/prediction.service';
 import { ToastrService } from 'ngx-toastr';
 import { CreatePredictionRequest } from '../_models/prediction';
+import { SimpleBracketCreatorComponent } from '../simple-bracket-creator/simple-bracket-creator.component';
 
 @Component({
   selector: 'app-custom-prediction',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, SimpleBracketCreatorComponent],
   templateUrl: './custom-prediction.component.html',
   styleUrls: ['./custom-prediction.component.css']
 })
@@ -17,6 +18,10 @@ export class CustomPredictionComponent implements OnInit {
   predictionForm!: FormGroup;
   selectedFile: File | null = null;
   submitting = false;
+
+  // State tracking
+  isPredictionCreated = false;
+  createdPredictionData: any = null;
 
   constructor(
     private fb: FormBuilder,
@@ -90,26 +95,32 @@ export class CustomPredictionComponent implements OnInit {
 
       console.log('Submitting prediction:', predictionData);
 
-      // Call the API service to create the prediction
-      this.predictionService.createPrediction(predictionData).subscribe({
-        next: (response) => {
-          this.submitting = false;
-          this.toastr.success('Prediction created successfully!');
+      // For bracket type, move to bracket configuration
+      if (predictionData.predictionType === 'bracket') {
+        this.isPredictionCreated = true;
+        this.createdPredictionData = predictionData;
+        this.toastr.success('Prediction created! Now configure your bracket.');
+        this.submitting = false;
+      } else {
+        // For other prediction types, call the API service
+        this.predictionService.createPrediction(predictionData).subscribe({
+          next: (response) => {
+            this.submitting = false;
+            this.toastr.success('Prediction created successfully!');
+            this.router.navigate(['/my-predictions']);
+          },
+          error: (error) => {
+            this.submitting = false;
+            console.error('Error creating prediction:', error);
 
-          // Redirect to my predictions or prediction details
-          this.router.navigate(['/my-predictions']);
-        },
-        error: (error) => {
-          this.submitting = false;
-          console.error('Error creating prediction:', error);
-
-          if (error.error && typeof error.error === 'string') {
-            this.toastr.error(error.error);
-          } else {
-            this.toastr.error('Failed to create prediction. Please try again.');
+            if (error.error && typeof error.error === 'string') {
+              this.toastr.error(error.error);
+            } else {
+              this.toastr.error('Failed to create prediction. Please try again.');
+            }
           }
-        }
-      });
+        });
+      }
     } else {
       // Mark all fields as touched to trigger validation messages
       Object.keys(this.predictionForm.controls).forEach(key => {
@@ -117,5 +128,19 @@ export class CustomPredictionComponent implements OnInit {
         control?.markAsTouched();
       });
     }
+  }
+
+  // Go back to the form
+  backToForm(): void {
+    this.isPredictionCreated = false;
+    this.createdPredictionData = null;
+  }
+
+  // Save the bracket and complete the process
+  saveBracket(): void {
+    // In a real app, you would save the bracket data to your backend here
+    // For this frontend-only version, we just simulate success
+    this.toastr.success('Bracket saved successfully!');
+    this.router.navigate(['/my-predictions']);
   }
 }

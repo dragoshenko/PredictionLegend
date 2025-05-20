@@ -1,4 +1,5 @@
-<div class="container mt-5">
+<!-- Form View -->
+<div class="container mt-5" *ngIf="!isPredictionCreated">
   <div class="row justify-content-center">
     <div class="col-md-8">
       <div class="card border-primary shadow">
@@ -62,22 +63,6 @@
                         formControlName="description" style="height: 100px"
                         placeholder="Add an optional description"></textarea>
             </div>
-
-            <!-- Old Description -->
-             <!--
-            <div class="mb-3 form-floating">
-              <textarea class="form-control" id="description"
-                        formControlName="description" style="height: 100px"
-                        placeholder="Description"></textarea>
-              <label for="description">Custom Description</label>
-              <div *ngIf="predictionForm.get('description')?.invalid &&
-                         (predictionForm.get('description')?.dirty ||
-                          predictionForm.get('description')?.touched)"
-                   class="text-danger mt-1">
-                Description is required (min 10 characters)
-              </div>
-            </div>
-            -->
 
             <!-- Privacy Settings -->
             <div class="mb-3">
@@ -168,11 +153,47 @@
             <!-- Submit Button -->
             <div class="d-grid mt-4">
               <button type="submit" class="btn btn-primary"
-                      [disabled]="predictionForm.invalid">
+                      [disabled]="predictionForm.invalid || submitting">
+                <span *ngIf="submitting" class="spinner-border spinner-border-sm me-2"></span>
                 Create Prediction
               </button>
             </div>
           </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bracket Configuration View -->
+<div class="container-fluid mt-5" *ngIf="isPredictionCreated">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <button class="btn btn-outline-secondary" (click)="backToForm()">
+          <i class="fa fa-arrow-left me-2"></i> Back to Form
+        </button>
+        <h2>{{ createdPredictionData?.title }}</h2>
+        <div></div>
+      </div>
+
+      <div *ngIf="createdPredictionData?.description" class="alert alert-info mb-4">
+        <p class="mb-0">{{ createdPredictionData?.description }}</p>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Configure Your Bracket</h5>
+          <span class="badge bg-primary">{{ createdPredictionData?.rows }} Rounds</span>
+        </div>
+        <div class="card-body">
+          <app-simple-bracket-creator [rounds]="createdPredictionData?.rows"></app-simple-bracket-creator>
+
+          <div class="d-grid mt-4">
+            <button type="button" class="btn btn-success btn-lg" (click)="saveBracket()">
+              Save Bracket
+            </button>
+          </div>
         </div>
       </div>
     </div>

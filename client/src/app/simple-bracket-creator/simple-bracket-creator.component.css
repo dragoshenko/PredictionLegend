@@ -1,0 +1,283 @@
+:root {
+  --dark-bg: #1a1135;
+  --light-bg: #0af2f2;
+  --accent-color: #ffc300;
+  --text-color: white;
+  --input-bg: white;
+  --input-text: #333;
+  --border-color: rgba(255, 255, 255, 0.1);
+}
+
+.bracket-container {
+  width: 100%;
+  background-color: var(--dark-bg);
+  color: var(--text-color);
+  border-radius: 8px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.bracket-header {
+  background-color: var(--light-bg);
+  padding: 10px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bracket-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--dark-bg);
+}
+
+.rounds-indicator {
+  background-color: #8351ff;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.bracket-content {
+  padding: 30px;
+  overflow-x: auto;
+}
+
+.round-titles {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 0 50px;
+}
+
+.round-title {
+  font-weight: bold;
+  font-size: 16px;
+  text-align: center;
+  flex: 1;
+}
+
+.bracket {
+  display: flex;
+  margin-bottom: 30px;
+  position: relative;
+}
+
+.round {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.round-1 .match-wrapper {
+  margin-bottom: 20px;
+}
+
+.round-2 .match-wrapper {
+  margin-top: 50px;
+  margin-bottom: 120px;
+}
+
+.round-3 .match-wrapper {
+  margin-top: 140px;
+  margin-bottom: 300px;
+}
+
+.round-4 .match-wrapper {
+  margin-top: 320px;
+  margin-bottom: 650px;
+}
+
+.match-wrapper {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 20px;
+  width: 240px;
+}
+
+.team-container {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.seed {
+  background-color: #e91e63;
+  color: white;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-weight: bold;
+  margin-right: 8px;
+  font-size: 12px;
+}
+
+.team-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  font-size: 14px;
+}
+
+.team-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-color);
+}
+
+.team-display {
+  padding: 8px 12px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.team-display.winner {
+  background-color: rgba(255, 195, 0, 0.2);
+  color: var(--accent-color);
+  font-weight: bold;
+}
+
+.winner-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+}
+
+.winner-button {
+  flex: 1;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 4px;
+  padding: 5px 0;
+  margin: 0 2px;
+  color: var(--text-color);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.winner-button:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.winner-button.active {
+  background-color: var(--accent-color);
+  color: var(--dark-bg);
+  font-weight: bold;
+}
+
+.winner-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.connector-column {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 30px;
+  position: relative;
+}
+
+.connector {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.connector-horizontal {
+  height: 2px;
+  width: 100%;
+  background-color: var(--border-color);
+}
+
+.final-connector {
+  width: 30px;
+}
+
+.champion-column {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 20px;
+}
+
+.champion {
+  background-color: var(--accent-color);
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  color: var(--dark-bg);
+  font-weight: bold;
+  box-shadow: 0 0 20px rgba(255, 195, 0, 0.5);
+}
+
+.trophy-icon {
+  font-size: 32px;
+  margin-bottom: 5px;
+}
+
+.champion-text {
+  font-size: 14px;
+  line-height: 1.3;
+  padding: 0 10px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+  .match-wrapper {
+    width: 200px;
+  }
+
+  .bracket-content {
+    padding: 20px 10px;
+  }
+}
+
+/* Specific round spacings based on bracket size */
+/* For 2 rounds (4 teams) */
+.bracket.rounds-2 .round-2 .match-wrapper {
+  margin-top: 30px;
+}
+
+/* For 3 rounds (8 teams) */
+.bracket.rounds-3 .round-2 .match-wrapper {
+  margin-top: 50px;
+  margin-bottom: 120px;
+}
+
+.bracket.rounds-3 .round-3 .match-wrapper {
+  margin-top: 140px;
+}
+
+/* For 4 rounds (16 teams) */
+.bracket.rounds-4 .round-2 .match-wrapper {
+  margin-top: 30px;
+  margin-bottom: 60px;
+}
+
+.bracket.rounds-4 .round-3 .match-wrapper {
+  margin-top: 80px;
+  margin-bottom: 190px;
+}
+
+.bracket.rounds-4 .round-4 .match-wrapper {
+  margin-top: 240px;
+}
