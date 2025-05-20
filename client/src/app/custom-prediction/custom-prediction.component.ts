@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -6,11 +6,18 @@ import { PredictionService } from '../_services/prediction.service';
 import { ToastrService } from 'ngx-toastr';
 import { CreatePredictionRequest } from '../_models/prediction';
 import { SimpleBracketCreatorComponent } from '../simple-bracket-creator/simple-bracket-creator.component';
+import { SimpleRankingCreatorComponent } from '../simple-ranking-creator/simple-ranking-creator.component';
 
 @Component({
   selector: 'app-custom-prediction',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, SimpleBracketCreatorComponent],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    RouterModule,
+    SimpleBracketCreatorComponent,
+    SimpleRankingCreatorComponent
+  ],
   templateUrl: './custom-prediction.component.html',
   styleUrls: ['./custom-prediction.component.css']
 })
@@ -22,6 +29,10 @@ export class CustomPredictionComponent implements OnInit {
   // State tracking
   isPredictionCreated = false;
   createdPredictionData: any = null;
+
+  // ViewChild references to access the creator components
+  @ViewChild(SimpleBracketCreatorComponent) bracketCreator!: SimpleBracketCreatorComponent;
+  @ViewChild(SimpleRankingCreatorComponent) rankingCreator!: SimpleRankingCreatorComponent;
 
   constructor(
     private fb: FormBuilder,
@@ -95,11 +106,11 @@ export class CustomPredictionComponent implements OnInit {
 
       console.log('Submitting prediction:', predictionData);
 
-      // For bracket type, move to bracket configuration
-      if (predictionData.predictionType === 'bracket') {
+      // For bracket or ranking type, move to configuration
+      if (predictionData.predictionType === 'bracket' || predictionData.predictionType === 'ranking') {
         this.isPredictionCreated = true;
         this.createdPredictionData = predictionData;
-        this.toastr.success('Prediction created! Now configure your bracket.');
+        this.toastr.success('Prediction created! Now configure your ' + predictionData.predictionType);
         this.submitting = false;
       } else {
         // For other prediction types, call the API service
@@ -138,9 +149,61 @@ export class CustomPredictionComponent implements OnInit {
 
   // Save the bracket and complete the process
   saveBracket(): void {
+    if (!this.bracketCreator) {
+      this.toastr.error('Bracket creator component not available');
+      return;
+    }
+
+    // Get the bracket data from the bracket creator component
+    const bracketData = this.bracketCreator.getFinalChampion();
+
+    // Check if we have a valid champion selected
+    if (!bracketData) {
+      this.toastr.warning('Please complete the bracket by selecting a final champion');
+      return;
+    }
+
     // In a real app, you would save the bracket data to your backend here
-    // For this frontend-only version, we just simulate success
+    console.log('Saving bracket with champion:', bracketData);
+
+    // Simulate successful save
     this.toastr.success('Bracket saved successfully!');
+    this.router.navigate(['/my-predictions']);
+  }
+
+  // Save the ranking and complete the process
+  saveRanking(): void {
+    if (!this.rankingCreator) {
+      this.toastr.error('Ranking creator component not available');
+      return;
+    }
+
+    // Get the formatted ranking data from the ranking creator component
+    const rankingData = this.rankingCreator.getFormattedData();
+
+    // Validate the data (e.g., check if all items have names)
+    let isValid = true;
+    let emptyItemsCount = 0;
+
+    rankingData.rows.forEach((row: any) => {
+      row.items.forEach((item: any) => {
+        if (!item.name || item.name.trim() === '') {
+          isValid = false;
+          emptyItemsCount++;
+        }
+      });
+    });
+
+    if (!isValid) {
+      this.toastr.warning(`Please fill in all ${emptyItemsCount} empty item names`);
+      return;
+    }
+
+    // In a real app, you would save the ranking data to your backend here
+    console.log('Saving ranking data:', rankingData);
+
+    // Simulate successful save
+    this.toastr.success('Ranking saved successfully!');
     this.router.navigate(['/my-predictions']);
   }
 }

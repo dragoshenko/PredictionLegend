@@ -1,0 +1,81 @@
+<div class="ranking-container">
+  <div class="ranking-header">
+    <h2>Ranking Creator</h2>
+    <div class="ranking-controls">
+      <div class="grid-details">
+        <span class="badge rounded-pill bg-primary">{{ rows }} rows × {{ columns }} columns</span>
+      </div>
+      <div class="control-buttons" *ngIf="editable">
+        <button class="btn btn-sm btn-outline-light me-2" (click)="addRow()">
+          <i class="fa fa-plus"></i> Add Row
+        </button>
+        <button class="btn btn-sm btn-outline-danger" (click)="removeRow()" [disabled]="rankingRows.length <= 1">
+          <i class="fa fa-minus"></i> Remove Row
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ranking-content">
+    <!-- Drag and drop container for rows -->
+    <div cdkDropList class="row-container" (cdkDropListDropped)="onRowDrop($event)" [cdkDropListDisabled]="!editable">
+      <!-- Individual ranking rows -->
+      <div *ngFor="let row of rankingRows" class="ranking-row" cdkDrag [cdkDragDisabled]="!editable">
+        <!-- Row header with handle -->
+        <div class="row-header">
+          <div class="row-handle" cdkDragHandle *ngIf="editable">
+            <i class="fa fa-grip-lines"></i>
+          </div>
+          <div class="row-title" *ngIf="!editable">{{ row.title }}</div>
+          <input *ngIf="editable" type="text" class="form-control form-control-sm row-title-input"
+                [(ngModel)]="row.title" placeholder="Row Title">
+          <div class="row-actions" *ngIf="editable">
+            <button class="btn btn-sm btn-outline-light" (click)="addItemToRow(row.id)">
+              <i class="fa fa-plus"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Items container -->
+        <div cdkDropList class="items-container" [cdkDropListData]="row.items"
+            (cdkDropListDropped)="onItemDrop($event, row.id)" [cdkDropListDisabled]="!editable">
+          <!-- Individual items -->
+          <div *ngFor="let item of row.items" class="ranking-item" cdkDrag [cdkDragDisabled]="!editable">
+            <div class="item-handle" cdkDragHandle *ngIf="editable">
+              <i class="fa fa-grip-vertical"></i>
+            </div>
+            <div class="item-content">
+              <input type="text" class="form-control" [readonly]="!editable"
+                    [(ngModel)]="item.name" placeholder="Enter item name"
+                    (change)="onItemNameChange(row.id, item.id, item.name)">
+              <div class="item-rank">Rank: {{ row.id }}</div>
+            </div>
+            <div class="item-actions" *ngIf="editable">
+              <button class="btn btn-sm btn-outline-danger"
+                     (click)="removeItemFromRow(row.id, item.id)"
+                     [disabled]="row.items.length <= 1">
+                <i class="fa fa-times"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Empty state message -->
+          <div *ngIf="row.items.length === 0" class="empty-row-message">
+            <p>Add items to this row</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- View/Edit mode toggle -->
+  <div class="ranking-footer">
+    <button class="btn btn-outline-light" (click)="toggleEditMode()">
+      <i [class]="editable ? 'fa fa-eye' : 'fa fa-edit'"></i>
+      {{ editable ? 'View Mode' : 'Edit Mode' }}
+    </button>
+    <button class="btn btn-danger ms-2" (click)="resetGrid()" *ngIf="editable">
+      <i class="fa fa-refresh"></i> Reset
+    </button>
+  </div>
+</div>
