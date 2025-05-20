@@ -36,6 +36,11 @@
             {{(accountService.currentUser$ | async)?.displayName}}
           </a>
           <ul class="dropdown-menu dropdown-menu-end">
+            <li *ngIf="(accountService.currentUser$ | async)?.roles?.includes('Admin')">
+              <a class="dropdown-item" routerLink="/admin">
+                <i class="fa fa-shield me-2"></i> Admin Dashboard
+              </a>
+            </li>
             <li><a class="dropdown-item" routerLink="/profile">My Profile</a></li>
             <li><a class="dropdown-item" routerLink="/my-predictions">My Predictions</a></li>
             <li><hr class="dropdown-divider"></li>

@@ -14,9 +14,8 @@ namespace API.Services;
 
 public class TokenService(IUnitOfWork unitOfWork, IConfiguration config) : ITokenService
 {
-    public async Task<string> CreateToken(AppUser user)
+        public async Task<string> CreateToken(AppUser user)
     {
-
         if(user == null) throw new ArgumentException("User is null");
 
         var claims = new List<Claim>
@@ -27,6 +26,7 @@ public class TokenService(IUnitOfWork unitOfWork, IConfiguration config) : IToke
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["TokenKey"] ?? throw new Exception("Token key is missing")));
 
+        // Get user roles and add them as claims
         var roles = await unitOfWork.UserRepository.GetUserRolesAsync(user);
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 

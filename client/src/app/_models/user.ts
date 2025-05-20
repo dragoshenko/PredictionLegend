@@ -10,4 +10,5 @@ export interface User {
   hasChangedGenericPassword: boolean;
   createdAt: Date;
   id?: number;
+  roles?: string[];
 }
