@@ -34,6 +34,17 @@
                     <small class="text-muted d-block">Tournament-style elimination</small>
                   </label>
                 </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" formControlName="predictionType"
+                         id="bingoType" value="bingo">
+                  <label class="form-check-label" for="bingoType">
+                    <div class="d-flex align-items-center">
+                      <i class="fa fa-th me-2"></i>
+                      <span>Bingo</span>
+                    </div>
+                    <small class="text-muted d-block">Create a customizable bingo card</small>
+                  </label>
+                </div>
               </div>
               <div *ngIf="predictionForm.get('predictionType')?.invalid &&
                          (predictionForm.get('predictionType')?.dirty ||
@@ -115,8 +126,9 @@
               </div>
             </div>
 
-            <!-- Grid Size (for bracket or ranking) -->
+            <!-- Grid Size (for bracket, ranking, or bingo) -->
             <div class="mb-3 row" *ngIf="predictionForm.get('predictionType')?.value">
+              <!-- For Bracket -->
               <div class="col-md-6" *ngIf="predictionForm.get('predictionType')?.value === 'bracket'">
                 <label for="rows" class="form-label">Number of Rounds</label>
                 <select class="form-select" id="rows" formControlName="rows">
@@ -127,6 +139,8 @@
                   <option value="6">6 rounds (64 participants)</option>
                 </select>
               </div>
+
+              <!-- For Ranking -->
               <div class="col-md-6" *ngIf="predictionForm.get('predictionType')?.value === 'ranking'">
                 <label for="rows" class="form-label">Number of Rows</label>
                 <input type="number" class="form-control" id="rows"
@@ -147,6 +161,17 @@
                      class="text-danger mt-1">
                   Please enter a number between 1 and 10
                 </div>
+              </div>
+
+              <!-- For Bingo -->
+              <div class="col-md-6" *ngIf="predictionForm.get('predictionType')?.value === 'bingo'">
+                <label for="rows" class="form-label">Bingo Grid Size</label>
+                <select class="form-select" id="rows" formControlName="rows">
+                  <option value="3">3×3 (Small)</option>
+                  <option value="4">4×4 (Medium)</option>
+                  <option value="5">5×5 (Standard)</option>
+                  <option value="6">6×6 (Large)</option>
+                </select>
               </div>
             </div>
 
@@ -230,6 +255,44 @@
           <div class="d-grid mt-4">
             <button type="button" class="btn btn-success btn-lg" (click)="saveRanking()">
               Save Ranking
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bingo Configuration View -->
+<div class="container-fluid mt-5" *ngIf="isPredictionCreated && createdPredictionData?.predictionType === 'bingo'">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <button class="btn btn-outline-secondary" (click)="backToForm()">
+          <i class="fa fa-arrow-left me-2"></i> Back to Form
+        </button>
+        <h2>{{ createdPredictionData?.title }}</h2>
+        <div></div>
+      </div>
+
+      <div *ngIf="createdPredictionData?.description" class="alert alert-info mb-4">
+        <p class="mb-0">{{ createdPredictionData?.description }}</p>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-header bg-purple d-flex justify-content-between align-items-center">
+          <h5 class="mb-0 text-white">Configure Your Bingo Card</h5>
+          <span class="badge bg-light text-dark">{{ createdPredictionData?.rows }}×{{ createdPredictionData?.rows }} Grid</span>
+        </div>
+        <div class="card-body">
+          <app-simple-bingo-creator
+            [size]="createdPredictionData?.rows"
+            [title]="'BINGO'">
+          </app-simple-bingo-creator>
+
+          <div class="d-grid mt-4">
+            <button type="button" class="btn btn-success btn-lg" (click)="saveBingo()">
+              Save Bingo Card
             </button>
           </div>
         </div>

@@ -7,6 +7,7 @@ import { ToastrService } from 'ngx-toastr';
 import { CreatePredictionRequest } from '../_models/prediction';
 import { SimpleBracketCreatorComponent } from '../simple-bracket-creator/simple-bracket-creator.component';
 import { SimpleRankingCreatorComponent } from '../simple-ranking-creator/simple-ranking-creator.component';
+import { SimpleBingoCreatorComponent } from '../simple-bingo-creator/simple-bingo-creator.component';
 
 @Component({
   selector: 'app-custom-prediction',
@@ -16,7 +17,8 @@ import { SimpleRankingCreatorComponent } from '../simple-ranking-creator/simple-
     ReactiveFormsModule,
     RouterModule,
     SimpleBracketCreatorComponent,
-    SimpleRankingCreatorComponent
+    SimpleRankingCreatorComponent,
+    SimpleBingoCreatorComponent
   ],
   templateUrl: './custom-prediction.component.html',
   styleUrls: ['./custom-prediction.component.css']
@@ -33,6 +35,7 @@ export class CustomPredictionComponent implements OnInit {
   // ViewChild references to access the creator components
   @ViewChild(SimpleBracketCreatorComponent) bracketCreator!: SimpleBracketCreatorComponent;
   @ViewChild(SimpleRankingCreatorComponent) rankingCreator!: SimpleRankingCreatorComponent;
+  @ViewChild(SimpleBingoCreatorComponent) bingoCreator!: SimpleBingoCreatorComponent;
 
   constructor(
     private fb: FormBuilder,
@@ -62,6 +65,10 @@ export class CustomPredictionComponent implements OnInit {
         this.predictionForm.get('columns')?.disable();
       } else if (value === 'ranking') {
         this.predictionForm.get('columns')?.enable();
+      } else if (value === 'bingo') {
+        this.predictionForm.get('rows')?.setValue(5); // Default to 5x5 bingo grid
+        this.predictionForm.get('columns')?.setValue(5);
+        this.predictionForm.get('columns')?.disable();
       }
     });
   }
@@ -106,8 +113,8 @@ export class CustomPredictionComponent implements OnInit {
 
       console.log('Submitting prediction:', predictionData);
 
-      // For bracket or ranking type, move to configuration
-      if (predictionData.predictionType === 'bracket' || predictionData.predictionType === 'ranking') {
+      // For bracket, ranking, or bingo type, move to configuration
+      if (['bracket', 'ranking', 'bingo'].includes(predictionData.predictionType)) {
         this.isPredictionCreated = true;
         this.createdPredictionData = predictionData;
         this.toastr.success('Prediction created! Now configure your ' + predictionData.predictionType);
@@ -204,6 +211,37 @@ export class CustomPredictionComponent implements OnInit {
 
     // Simulate successful save
     this.toastr.success('Ranking saved successfully!');
+    this.router.navigate(['/my-predictions']);
+  }
+
+  // Save the bingo board and complete the process
+  saveBingo(): void {
+    if (!this.bingoCreator) {
+      this.toastr.error('Bingo creator component not available');
+      return;
+    }
+
+    // Get the formatted bingo data from the bingo creator component
+    const bingoData = this.bingoCreator.getFormattedData();
+
+    // Validate the bingo board (e.g., ensure enough cells have content)
+    const nonEmptyCells = bingoData.cells.filter((cell: any) =>
+      cell.content && cell.content.trim() !== '' && !cell.isCenter
+    ).length;
+
+    const totalNonCenterCells = bingoData.cells.filter((cell: any) => !cell.isCenter).length;
+    const minRequiredCells = Math.floor(totalNonCenterCells * 0.6); // At least 60% of cells should have content
+
+    if (nonEmptyCells < minRequiredCells) {
+      this.toastr.warning(`Please fill in more cells. At least ${minRequiredCells} cells should have content.`);
+      return;
+    }
+
+    // In a real app, you would save the bingo data to your backend here
+    console.log('Saving bingo data:', bingoData);
+
+    // Simulate successful save
+    this.toastr.success('Bingo board saved successfully!');
     this.router.navigate(['/my-predictions']);
   }
 }

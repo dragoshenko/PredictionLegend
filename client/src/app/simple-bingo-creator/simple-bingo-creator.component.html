@@ -1,0 +1,52 @@
+<div class="bingo-container">
+  <div class="bingo-header bg-purple">
+    <h2>Configure Your Bingo Card</h2>
+    <div class="bingo-actions">
+      <button class="btn btn-light btn-sm me-2" (click)="randomizeBoardContent()" [disabled]="randomizing">
+        <i class="fa fa-random me-1"></i> Randomize
+      </button>
+      <button class="btn btn-light btn-sm me-2" (click)="clearBoard()">
+        <i class="fa fa-trash me-1"></i> Clear
+      </button>
+      <button class="btn btn-light btn-sm" (click)="toggleEditMode()">
+        <i class="fa" [ngClass]="editable ? 'fa-eye' : 'fa-edit'"></i>
+        {{ editable ? 'Preview' : 'Edit' }}
+      </button>
+    </div>
+  </div>
+
+  <div class="bingo-content py-4" [class.preview-mode]="!editable">
+    <!-- Bingo Board -->
+    <div class="bingo-board mx-auto">
+      <!-- Title Header -->
+      <div class="bingo-header-row">
+        <div *ngFor="let letter of title.split('')" class="bingo-header-cell">
+          {{ letter }}
+        </div>
+      </div>
+
+      <!-- Bingo Grid -->
+      <div class="bingo-grid">
+        <ng-container *ngFor="let rowIndex of getRows()">
+          <div *ngFor="let cell of getRow(rowIndex)"
+              class="bingo-cell"
+              [class.is-selected]="cell.selected"
+              (click)="toggleCell(cell)">
+
+            <!-- Editable Input Mode -->
+            <textarea *ngIf="editable"
+                  [(ngModel)]="cell.content"
+                  placeholder="Enter text here"
+                  class="cell-input"
+                  rows="3"></textarea>
+
+            <!-- Display Mode -->
+            <div *ngIf="!editable" class="cell-content" [class.marked]="cell.selected">
+              {{ cell.content }}
+            </div>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+  </div>
+</div>
