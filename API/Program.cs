@@ -2,6 +2,7 @@ using API.Data;
 using API.Entities;
 using API.Extensions;
 using API.Middleware;
+using API.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,9 @@ builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddIdentityServices(builder.Configuration);
+
+// Add background service for cleanup
+builder.Services.AddHostedService<BackgroundCleanupService>();
 
 var app = builder.Build();
 

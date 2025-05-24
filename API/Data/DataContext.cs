@@ -12,6 +12,7 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
     public DbSet<DiscussionPost> DiscussionPosts { get; set; } = null!;
     public DbSet<Photo> Photos { get; set; } = null!;
     public DbSet<Team> Teams { get; set; } = null!;
+    public DbSet<CreationFlow> CreationFlows { get; set; } = null!; // Added
 
     #region PredictionDbConfig
     public DbSet<Prediction> Predictions { get; set; } = null!;
@@ -71,6 +72,24 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
            .WithOne(u => u.User)
            .HasForeignKey(p => p.UserId)
            .OnDelete(DeleteBehavior.NoAction);
+        #endregion
+
+        #region CreationFlowDbConfig
+        builder.Entity<CreationFlow>()
+            .HasOne(cf => cf.User)
+            .WithMany()
+            .HasForeignKey(cf => cf.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<CreationFlow>()
+            .HasOne(cf => cf.Prediction)
+            .WithMany()
+            .HasForeignKey(cf => cf.PredictionId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<CreationFlow>()
+            .HasIndex(cf => cf.FlowToken)
+            .IsUnique();
         #endregion
 
         #region CategoryDbConfig

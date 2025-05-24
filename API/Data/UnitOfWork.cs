@@ -13,6 +13,7 @@ public class UnitOfWork : IUnitOfWork
     private readonly ITemplateRepository _templateRepository;
     private readonly IPostRepository _postRepository;
     private readonly ITeamRepository _teamRepository;
+    private readonly ICreationFlowRepository _creationFlowRepository;
 
     public UnitOfWork(
         DataContext context,
@@ -21,7 +22,8 @@ public class UnitOfWork : IUnitOfWork
         ICategoryRepository categoryRepository,
         ITemplateRepository templateRepository,
         IPostRepository postRepository,
-        ITeamRepository teamRepository)
+        ITeamRepository teamRepository,
+        ICreationFlowRepository creationFlowRepository)
     {
         _context = context;
         _userRepository = userRepository;
@@ -30,6 +32,7 @@ public class UnitOfWork : IUnitOfWork
         _templateRepository = templateRepository;
         _postRepository = postRepository;
         _teamRepository = teamRepository;
+        _creationFlowRepository = creationFlowRepository;
     }
 
     public IUserRepository UserRepository => _userRepository;
@@ -38,6 +41,7 @@ public class UnitOfWork : IUnitOfWork
     public ITemplateRepository TemplateRepository => _templateRepository;
     public IPostRepository PostRepository => _postRepository;
     public ITeamRepository TeamRepository => _teamRepository;
+    public ICreationFlowRepository CreationFlowRepository => _creationFlowRepository;
     
     public async Task<bool> Complete()
     {

@@ -43,7 +43,10 @@ public class AutoMapperProfiles: Profile
         CreateMap<PostBingo, PostBingoDTO>();
         CreateMap<PostBingoDTO, PostBingo>();
 
-        CreateMap<Comment, CommentDTO>();
+        CreateMap<Comment, CommentDTO>()
+            .ForMember(dest => dest.Author, opt => opt.MapFrom(src => src.User))
+            .ForMember(dest => dest.ChildComments, opt => opt.MapFrom(src => src.Replies))
+            .ForMember(dest => dest.CommentsCount, opt => opt.MapFrom(src => src.Replies.Count));
         CreateMap<CommentDTO, Comment>();
 
         CreateMap<PostRank, PostRankDTO>();
@@ -80,5 +83,25 @@ public class AutoMapperProfiles: Profile
 
         CreateMap<BingoCell, BingoCellDTO>();
         CreateMap<BingoCellDTO, BingoCell>();
+
+        // Discussion Post mappings
+        CreateMap<DiscussionPost, DiscussionPostDTO>()
+            .ForMember(dest => dest.Author, opt => opt.MapFrom(src => src.User))
+            .ForMember(dest => dest.CommentsCount, opt => opt.MapFrom(src => src.Comments.Count))
+            .ForMember(dest => dest.UpVotes, opt => opt.MapFrom(src => 0)) // You can implement voting later
+            .ForMember(dest => dest.DownVotes, opt => opt.MapFrom(src => 0));
+        CreateMap<DiscussionPostDTO, DiscussionPost>();
+        CreateMap<CreateDiscussionPostDTO, DiscussionPost>();
+        CreateMap<UpdateDiscussionPostDTO, DiscussionPost>();
+
+        // Creation Flow mappings
+        CreateMap<CreatePredictionFlowDTO, CreationFlow>()
+        .ForMember(dest => dest.SelectedTeamIds,
+                opt => opt.MapFrom<SelectedTeamIdsToJsonResolver>());
+
+        CreateMap<CreationFlow, CreatePredictionFlowDTO>()
+            .ForMember(dest => dest.SelectedTeamIds,
+                    opt => opt.MapFrom<SelectedTeamIdsFromJsonResolver>());
+
     }
 }
