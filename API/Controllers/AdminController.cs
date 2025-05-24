@@ -33,13 +33,13 @@ public class AdminController : BaseAPIController
             .Select(u => new AdminUserDTO
             {
                 Id = u.Id,
-                Username = u.UserName,
+                Username = u.UserName!,
                 DisplayName = u.DisplayName,
-                Email = u.Email,
+                Email = u.Email!,
                 EmailConfirmed = u.EmailConfirmed,
                 CreatedAt = u.CreatedAt,
                 LastActive = u.LastActive,
-                Roles = u.UserRoles.Select(r => r.Role.Name).ToList(),
+                Roles = u.UserRoles.Select(r => r.Role.Name!).ToList(),
                 HasPhoto = u.Photo != null
             })
             .ToListAsync();
@@ -79,19 +79,19 @@ public class AdminController : BaseAPIController
             .FirstOrDefaultAsync(u => u.Id == id);
 
         if (user == null) return NotFound("User not found");
-
+    
         return new AdminUserDetailDTO
         {
             Id = user.Id,
-            Username = user.UserName,
+            Username = user.UserName!,
             DisplayName = user.DisplayName,
-            Email = user.Email,
+            Email = user.Email!,
             EmailConfirmed = user.EmailConfirmed,
             CreatedAt = user.CreatedAt,
             LastActive = user.LastActive,
-            Roles = user.UserRoles.Select(r => r.Role.Name).ToList(),
-            PhotoUrl = user.Photo?.Url,
-            Bio = user.Bio,
+            Roles = user.UserRoles.Select(r => r.Role.Name!).ToList(),
+            PhotoUrl = user.Photo?.Url!,
+            Bio = user.Bio!,
             HasChangedGenericPassword = user.HasChangedGenericPassword,
             WasWarnedAboutPasswordChange = user.WasWarnedAboutPasswordChange
         };

@@ -13,7 +13,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API.Services;
 
-public class UserService(IUnitOfWork unitOfWork, ITokenService tokenService, IMapper mapper) : IUserService
+public class UserService() : IUserService
 {
     
 }

@@ -1,14 +1,7 @@
 import { Component, Input, OnInit, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-
-interface BracketMatch {
-  id: number;
-  round: number;
-  team1: string;
-  team2: string;
-  winner: string | null;
-}
+import { BracketMatch } from '../_models/prediction';
 
 @Component({
   selector: 'app-simple-bracket-creator',
@@ -55,7 +48,7 @@ export class SimpleBracketCreatorComponent implements OnInit, OnChanges {
           round: round,
           team1: '',
           team2: '',
-          winner: null
+          winner: ''
         });
       }
     }
@@ -129,7 +122,7 @@ export class SimpleBracketCreatorComponent implements OnInit, OnChanges {
   }
 
   // Get final champion
-  getFinalMatch() {
+  getFinalMatch(): BracketMatch | undefined {
     return this.matches.find(m => m.round === this.rounds);
   }
 
@@ -145,6 +138,7 @@ export class SimpleBracketCreatorComponent implements OnInit, OnChanges {
     if (round == this.rounds - 2) return 'Quarterfinals';
     return `Round ${round}`;
   }
+
   ngAfterViewInit() {
     // Add a class to the bracket based on number of rounds
     const bracketEl = document.querySelector('.bracket');
@@ -153,4 +147,18 @@ export class SimpleBracketCreatorComponent implements OnInit, OnChanges {
     }
   }
 
+  // New method to get bracket data formatted for API
+  getBracketData(): any {
+    // Map the matches to the format expected by the API
+    return {
+      matches: this.matches.map(match => ({
+        id: match.id,
+        round: match.round,
+        team1: match.team1,
+        team2: match.team2,
+        winner: match.winner,
+        content: match.winner || '' // Content field used for the champion
+      }))
+    };
+  }
 }

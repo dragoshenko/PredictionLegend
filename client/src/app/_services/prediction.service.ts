@@ -1,47 +1,35 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, OnInit, signal } from '@angular/core';
 import { environment } from '../../environments/environment';
-import { Observable } from 'rxjs';
+import { Prediction } from '../_models/prediction';
+import { ToastrService } from 'ngx-toastr';
 
 @Injectable({
   providedIn: 'root'
 })
-export class PredictionService {
+export class PredictionService implements OnInit {
+  private baseUrl = environment.apiUrl;
   private http = inject(HttpClient);
-  private baseUrl = environment.apiUrl + 'prediction';
+  private toastr = inject(ToastrService);
+  createdPredictionData = signal<Prediction | null>(null);
 
-  // Get user's predictions
-  getUserPredictions(): Observable<any[]> {
-    return this.http.get<any[]>(this.baseUrl);
+  ngOnInit(): void {
+
   }
 
-  // Get public predictions
-  getPublicPredictions(): Observable<any[]> {
-    return this.http.get<any[]>(this.baseUrl + '/public');
+  getPredictions() {
   }
 
-  // Get a prediction by ID
-  getPredictionById(id: number): Observable<any> {
-    return this.http.get<any>(`${this.baseUrl}/${id}`);
+  createPrediction(prediction: Prediction)
+  {
+    return this.http.post<Prediction>(this.baseUrl + 'prediction/create', prediction);
   }
 
-  // Create a new prediction
-  createPrediction(predictionData: any): Observable<any> {
-    return this.http.post<any>(this.baseUrl, predictionData);
+  getPrediction(id: number) {
+    return this.http.get<Prediction>(this.baseUrl + 'prediction/' + id);
   }
 
-  // Update an existing prediction
-  updatePrediction(id: number, predictionData: any): Observable<any> {
-    return this.http.put<any>(`${this.baseUrl}/${id}`, predictionData);
-  }
-
-  // Delete a prediction
-  deletePrediction(id: number): Observable<any> {
-    return this.http.delete<any>(`${this.baseUrl}/${id}`);
-  }
-
-  // Publish a prediction
-  publishPrediction(id: number): Observable<any> {
-    return this.http.put<any>(`${this.baseUrl}/${id}/publish`, {});
+  updatePrediction(prediction: Prediction) {
+    return this.http.put<Prediction>(this.baseUrl + 'prediction/update', prediction);
   }
 }

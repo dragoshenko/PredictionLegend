@@ -9,6 +9,6 @@ export interface User {
   wasWarnedAboutPasswordChange: boolean;
   hasChangedGenericPassword: boolean;
   createdAt: Date;
-  id?: number;
+  id: number;
   roles?: string[];
 }

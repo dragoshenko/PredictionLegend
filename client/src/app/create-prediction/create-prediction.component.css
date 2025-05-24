@@ -1,0 +1,118 @@
+    .card {
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-header {
+      background: linear-gradient(90deg, #007bff, #0056b3);
+      border-radius: 10px 10px 0 0;
+    }
+
+    .form-check-input:checked {
+      background-color: #007bff;
+      border-color: #007bff;
+    }
+
+    .form-check-label {
+      cursor: pointer;
+    }
+
+    .category-indent {
+      margin-left: 1.5rem;
+    }
+
+    .file-upload-container {
+      position: relative;
+      padding: 10px;
+      border: 1px dashed #ccc;
+      border-radius: 5px;
+    }
+
+    .file-upload-container:hover {
+      background-color: #f8f9fa;
+    }
+
+    .btn-primary {
+      transition: background-color 0.3s;
+    }
+
+    .btn-primary:hover {
+      background-color: #0056b3;
+    }
+
+    .text-danger {
+      font-size: 0.875rem;
+    }
+/* Dynamic category grid layout */
+.categories-dynamic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+/* Individual category item */
+.category-item {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e9ecef;
+  transition: all 0.2s ease;
+}
+
+.category-item:hover {
+  border-color: #0d6efd;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Categories with children get more space */
+.category-item.has-children {
+  grid-row-end: span 2;
+  min-height: fit-content;
+}
+
+/* Subcategories container */
+.subcategories-container {
+  margin-top: 0.5rem;
+  padding-left: 1rem;
+  border-left: 2px solid;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* Individual subcategory styling */
+.subcategory-item {
+  margin-bottom: 0.25rem !important;
+}
+
+.subcategory-item .form-check-input {
+  transform: scale(0.9);
+}
+
+.subcategory-item .form-check-label {
+  padding-left: 0.25rem;
+  font-size: 0.875rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .categories-dynamic-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .category-item.has-children {
+    grid-row-end: auto;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1200px) {
+  .categories-dynamic-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+}
+
+@media (min-width: 1200px) {
+  .categories-dynamic-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+}

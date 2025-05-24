@@ -32,7 +32,7 @@ export class ProfileComponent implements OnInit {
   user: User | null = null;
   profileForm!: FormGroup;
   passwordForm!: FormGroup;
-  addPasswordForm!: FormGroup; // New form for Google-authenticated users
+  addPasswordForm!: FormGroup;
   verificationForm!: FormGroup;
   editMode = false;
   passwordEditMode = false;
@@ -56,8 +56,8 @@ export class ProfileComponent implements OnInit {
   initializeForm() {
     this.profileForm = this.fb.group({
       displayName: ['', [Validators.required, Validators.minLength(2)]],
-      username: [{value: '', disabled: true}],
-      email: [{value: '', disabled: true}],
+      username: [{ value: '', disabled: true }],
+      email: [{ value: '', disabled: true }],
       bio: ['']
     });
   }
@@ -83,21 +83,20 @@ export class ProfileComponent implements OnInit {
   }
 
   loadUser() {
-    this.accountService.currentUser$.subscribe(user => {
-      this.user = user;
-      if (user) {
-        this.profileForm.patchValue({
-          displayName: user.displayName,
-          username: user.username,
-          email: user.email
-        });
+    const user = this.accountService.currentUser();
+    this.user = user;
+    if (user) {
+      this.profileForm.patchValue({
+        displayName: user.displayName,
+        username: user.username,
+        email: user.email
+      });
 
-        // Check if user is Google-authenticated without a password
-        this.isGoogleAuthenticatedWithoutPassword = !user.hasChangedGenericPassword;
-        console.log('User has changed generic password:', user.hasChangedGenericPassword);
-        console.log('Is Google authenticated without password:', this.isGoogleAuthenticatedWithoutPassword);
-      }
-    });
+      // Check if user is Google-authenticated without a password
+      this.isGoogleAuthenticatedWithoutPassword = !user.hasChangedGenericPassword;
+      console.log('User has changed generic password:', user.hasChangedGenericPassword);
+      console.log('Is Google authenticated without password:', this.isGoogleAuthenticatedWithoutPassword);
+    }
   }
 
   passwordMatchValidator(password: string, confirmPassword: string) {
@@ -190,29 +189,29 @@ export class ProfileComponent implements OnInit {
       if (this.passwordForm.valid) {
         this.loading = true;
 
-      const loginCredentials = {
-        usernameOrEmail: this.user?.username || '',
-        password: this.passwordForm.get('currentPassword')?.value
-      };
+        const loginCredentials = {
+          usernameOrEmail: this.user?.username || '',
+          password: this.passwordForm.get('currentPassword')?.value
+        };
 
-      console.log('Verifying current password by login attempt');
+        console.log('Verifying current password by login attempt');
 
-      this.accountService.login(loginCredentials).subscribe({
-        next: () => {
-          // Password is correct, request verification code
-          this.requestVerificationCode();
-        },
-        error: error => {
-          console.error('Password verification error:', error);
-          this.toastr.error('Current password is incorrect');
-          this.loading = false;
-        }
-      });
-    } else {
-      this.markFormGroupTouched(this.passwordForm);
-      this.toastr.error('Please fix the validation errors');
+        this.accountService.login(loginCredentials).subscribe({
+          next: () => {
+            // Password is correct, request verification code
+            this.requestVerificationCode();
+          },
+          error: error => {
+            console.error('Password verification error:', error);
+            this.toastr.error('Current password is incorrect');
+            this.loading = false;
+          }
+        });
+      } else {
+        this.markFormGroupTouched(this.passwordForm);
+        this.toastr.error('Please fix the validation errors');
+      }
     }
-  }
   }
 
   requestVerificationCode() {

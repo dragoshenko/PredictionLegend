@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { effect, inject, Injectable } from '@angular/core';
+import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { BehaviorSubject, map, Observable, of, catchError, throwError, tap } from 'rxjs';
 import { User } from '../_models/user';
@@ -14,8 +14,7 @@ import { GoogleApiService } from './google-api.service';
   providedIn: 'root'
 })
 export class AccountService {
-  private currentUserSource = new BehaviorSubject<User | null>(null);
-  currentUser$ = this.currentUserSource.asObservable();
+  currentUser = signal<User | null>(null);
 
   private http = inject(HttpClient);
   private cookieService = inject(CookieService);
@@ -25,17 +24,26 @@ export class AccountService {
 
   baseUrl = environment.apiUrl;
 
+  roles = computed(() => {
+    const user = this.currentUser();
+    if(user && user.token)
+    {
+      const role =  JSON.parse(atob(user.token.split('.')[1])).role;
+      return Array.isArray(role) ? role : [role];
+    }
+    return [null];
+  });
+
   constructor() {
     this.loadCurrentUser();
     effect(() => {
       const idToken = this.googleService.idToken();
-      if (idToken) {
+      if (idToken && this.currentUser() === null) {
           this.cookieService.set('id_token', idToken);
           this.googleAuth(idToken).subscribe({
             next: (user) => {
               if (user) {
                 this.setCurrentUser(user, true);
-                console.log('User loaded from Google ID token:', user);
                 if(user.wasWarnedAboutPasswordChange === false)
                 {
                   console.log('User was warned about password change');
@@ -55,7 +63,7 @@ export class AccountService {
     const userJson = this.cookieService.get('user');
     if (userJson) {
       const user: User = JSON.parse(userJson);
-      this.currentUserSource.next(user);
+      this.currentUser.set(user);
       return of(user);
     }
     return of(null);
@@ -221,7 +229,7 @@ export class AccountService {
       const expiryDays = rememberMe ? 7 : 1; // 30 days if remember me is checked, 1 day otherwise
 
       this.cookieService.set('user', JSON.stringify(user), expiryDays);
-      this.currentUserSource.next(user);
+      this.currentUser.set(user);
     }
   }
   refreshUserData() {
@@ -272,7 +280,7 @@ export class AccountService {
     this.googleService.logOut();
     this.cookieService.delete('user');
     this.cookieService.delete('id_token');
-    this.currentUserSource.next(null);
+    this.currentUser.set(null);
     this.router.navigateByUrl('/');
     this.toastr.success('Logged out successfully');
   }

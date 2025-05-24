@@ -172,7 +172,7 @@ public class UserController : BaseAPIController
 
     // Get user statistics
     [HttpGet("stats")]
-    public async Task<ActionResult<UserStatsDTO>> GetUserStats()
+    public ActionResult<UserStatsDTO> GetUserStats()
     {
         var username = User.GetUsername();
 

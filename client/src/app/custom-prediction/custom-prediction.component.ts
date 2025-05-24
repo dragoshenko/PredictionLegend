@@ -3,8 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { PredictionService } from '../_services/prediction.service';
+import { CategoryService } from '../_services/category.service';
 import { ToastrService } from 'ngx-toastr';
-import { CreatePredictionRequest } from '../_models/prediction';
+import { Category, CreateBracketRequest, CreatePredictionRequest } from '../_models/prediction';
 import { SimpleBracketCreatorComponent } from '../simple-bracket-creator/simple-bracket-creator.component';
 import { SimpleRankingCreatorComponent } from '../simple-ranking-creator/simple-ranking-creator.component';
 import { SimpleBingoCreatorComponent } from '../simple-bingo-creator/simple-bingo-creator.component';
@@ -32,6 +33,10 @@ export class CustomPredictionComponent implements OnInit {
   isPredictionCreated = false;
   createdPredictionData: any = null;
 
+  // Categories
+  rootCategories: Category[] = [];
+  selectedCategoryIds: number[] = [];
+
   // ViewChild references to access the creator components
   @ViewChild(SimpleBracketCreatorComponent) bracketCreator!: SimpleBracketCreatorComponent;
   @ViewChild(SimpleRankingCreatorComponent) rankingCreator!: SimpleRankingCreatorComponent;
@@ -41,11 +46,13 @@ export class CustomPredictionComponent implements OnInit {
     private fb: FormBuilder,
     private router: Router,
     private predictionService: PredictionService,
+    private categoryService: CategoryService,
     private toastr: ToastrService
   ) {}
 
   ngOnInit(): void {
     this.initializeForm();
+    this.loadCategories();
   }
 
   initializeForm(): void {
@@ -55,7 +62,8 @@ export class CustomPredictionComponent implements OnInit {
       description: ['', []],
       privacyType: ['public', Validators.required],
       rows: [3, [Validators.required, Validators.min(2), Validators.max(100)]],
-      columns: [1, [Validators.required, Validators.min(1), Validators.max(10)]]
+      columns: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
+      isPublished: [true] // default to publish immediately
     });
 
     // Subscribe to prediction type changes to update form validation
@@ -71,6 +79,30 @@ export class CustomPredictionComponent implements OnInit {
         this.predictionForm.get('columns')?.disable();
       }
     });
+  }
+
+  loadCategories(): void {
+    this.categoryService.getCategoryTree().subscribe({
+      next: (categories) => {
+        this.rootCategories = categories;
+      },
+      error: (error) => {
+        console.error('Error loading categories:', error);
+        this.toastr.error('Failed to load categories');
+      }
+    });
+  }
+
+  toggleCategory(categoryId: number, event: any): void {
+    const isChecked = event.target.checked;
+
+    if (isChecked) {
+      if (!this.selectedCategoryIds.includes(categoryId)) {
+        this.selectedCategoryIds.push(categoryId);
+      }
+    } else {
+      this.selectedCategoryIds = this.selectedCategoryIds.filter(id => id !== categoryId);
+    }
   }
 
   onFileSelected(event: Event): void {
@@ -102,43 +134,27 @@ export class CustomPredictionComponent implements OnInit {
       this.submitting = true;
 
       // Get form values
-      const predictionData: CreatePredictionRequest = {
+      const predictionType = this.predictionForm.get('predictionType')?.value;
+
+      // Common data for all prediction types
+      const commonData = {
         title: this.predictionForm.get('title')?.value,
         description: this.predictionForm.get('description')?.value,
-        predictionType: this.predictionForm.get('predictionType')?.value,
         privacyType: this.predictionForm.get('privacyType')?.value,
         rows: this.predictionForm.get('rows')?.value,
-        columns: this.predictionForm.get('columns')?.value
+        columns: this.predictionForm.get('columns')?.value,
+        isPublished: this.predictionForm.get('isPublished')?.value,
+        categoryIds: this.selectedCategoryIds,
       };
 
-      console.log('Submitting prediction:', predictionData);
-
       // For bracket, ranking, or bingo type, move to configuration
-      if (['bracket', 'ranking', 'bingo'].includes(predictionData.predictionType)) {
-        this.isPredictionCreated = true;
-        this.createdPredictionData = predictionData;
-        this.toastr.success('Prediction created! Now configure your ' + predictionData.predictionType);
-        this.submitting = false;
-      } else {
-        // For other prediction types, call the API service
-        this.predictionService.createPrediction(predictionData).subscribe({
-          next: (response) => {
-            this.submitting = false;
-            this.toastr.success('Prediction created successfully!');
-            this.router.navigate(['/my-predictions']);
-          },
-          error: (error) => {
-            this.submitting = false;
-            console.error('Error creating prediction:', error);
-
-            if (error.error && typeof error.error === 'string') {
-              this.toastr.error(error.error);
-            } else {
-              this.toastr.error('Failed to create prediction. Please try again.');
-            }
-          }
-        });
-      }
+      this.isPredictionCreated = true;
+      this.createdPredictionData = {
+        ...commonData,
+        predictionType
+      };
+      this.submitting = false;
+      this.toastr.success(`${predictionType.charAt(0).toUpperCase() + predictionType.slice(1)} prediction created! Now configure your ${predictionType}`);
     } else {
       // Mark all fields as touched to trigger validation messages
       Object.keys(this.predictionForm.controls).forEach(key => {
@@ -162,20 +178,37 @@ export class CustomPredictionComponent implements OnInit {
     }
 
     // Get the bracket data from the bracket creator component
-    const bracketData = this.bracketCreator.getFinalChampion();
+    const bracketData = this.bracketCreator.getBracketData();
+    const finalChampion = this.bracketCreator.getFinalChampion();
 
     // Check if we have a valid champion selected
-    if (!bracketData) {
+    if (!finalChampion) {
       this.toastr.warning('Please complete the bracket by selecting a final champion');
       return;
     }
 
-    // In a real app, you would save the bracket data to your backend here
-    console.log('Saving bracket with champion:', bracketData);
+    // Prepare the DTO for creating a bracket prediction
+    const createBracketDto: CreateBracketRequest = {
+      title: this.createdPredictionData.title,
+      description: this.createdPredictionData.description,
+      privacyType: this.createdPredictionData.privacyType,
+      rounds: this.createdPredictionData.rows,
+      isPublished: this.createdPredictionData.isPublished,
+      categoryIds: this.selectedCategoryIds,
+      matches: bracketData.matches
+    };
 
-    // Simulate successful save
-    this.toastr.success('Bracket saved successfully!');
-    this.router.navigate(['/my-predictions']);
+    // Send to API
+    this.predictionService.createBracketPrediction(createBracketDto).subscribe({
+      next: (response) => {
+        this.toastr.success('Bracket prediction saved successfully!');
+        this.router.navigate(['/my-predictions']);
+      },
+      error: (error) => {
+        console.error('Error saving bracket prediction:', error);
+        this.toastr.error('Failed to save bracket prediction');
+      }
+    });
   }
 
   // Save the ranking and complete the process
@@ -192,8 +225,8 @@ export class CustomPredictionComponent implements OnInit {
     let isValid = true;
     let emptyItemsCount = 0;
 
-    rankingData.rows.forEach((row: any) => {
-      row.items.forEach((item: any) => {
+    rankingData.ranks.forEach((rank: any) => {
+      rank.items.forEach((item: any) => {
         if (!item.name || item.name.trim() === '') {
           isValid = false;
           emptyItemsCount++;
@@ -206,12 +239,36 @@ export class CustomPredictionComponent implements OnInit {
       return;
     }
 
-    // In a real app, you would save the ranking data to your backend here
-    console.log('Saving ranking data:', rankingData);
+    // Prepare the DTO for creating a ranking prediction
+    const createRankingDto: CreatePredictionRequest = {
+      title: this.createdPredictionData.title,
+      description: this.createdPredictionData.description,
+      predictionType: 'ranking',
+      privacyType: this.createdPredictionData.privacyType,
+      rows: this.createdPredictionData.rows,
+      columns: this.createdPredictionData.columns,
+      isPublished: this.createdPredictionData.isPublished,
+      categoryIds: this.selectedCategoryIds
+    };
 
-    // Simulate successful save
-    this.toastr.success('Ranking saved successfully!');
-    this.router.navigate(['/my-predictions']);
+    // In a real app, you would include ranking data in your DTO
+    // This depends on your backend API design
+    const rankingDataWithMeta = {
+      ...createRankingDto,
+      rankingData: rankingData
+    };
+
+    // Send to API
+    this.predictionService.createPrediction(createRankingDto).subscribe({
+      next: (response) => {
+        this.toastr.success('Ranking prediction saved successfully!');
+        this.router.navigate(['/my-predictions']);
+      },
+      error: (error) => {
+        console.error('Error saving ranking prediction:', error);
+        this.toastr.error('Failed to save ranking prediction');
+      }
+    });
   }
 
   // Save the bingo board and complete the process
@@ -237,11 +294,35 @@ export class CustomPredictionComponent implements OnInit {
       return;
     }
 
-    // In a real app, you would save the bingo data to your backend here
-    console.log('Saving bingo data:', bingoData);
+    // Prepare the DTO for creating a bingo prediction
+    const createBingoDto: CreatePredictionRequest = {
+      title: this.createdPredictionData.title,
+      description: this.createdPredictionData.description,
+      predictionType: 'bingo',
+      privacyType: this.createdPredictionData.privacyType,
+      rows: this.createdPredictionData.rows,
+      columns: this.createdPredictionData.rows, // Same as rows for bingo
+      isPublished: this.createdPredictionData.isPublished,
+      categoryIds: this.selectedCategoryIds
+    };
 
-    // Simulate successful save
-    this.toastr.success('Bingo board saved successfully!');
-    this.router.navigate(['/my-predictions']);
+    // In a real app, you would include bingo data in your DTO
+    // This depends on your backend API design
+    const bingoDataWithMeta = {
+      ...createBingoDto,
+      bingoData: bingoData
+    };
+
+    // Send to API
+    this.predictionService.createPrediction(createBingoDto).subscribe({
+      next: (response) => {
+        this.toastr.success('Bingo board saved successfully!');
+        this.router.navigate(['/my-predictions']);
+      },
+      error: (error) => {
+        console.error('Error saving bingo board:', error);
+        this.toastr.error('Failed to save bingo board');
+      }
+    });
   }
 }

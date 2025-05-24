@@ -1,5 +1,5 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { AccountService } from '../_services/account.service';
 import { take } from 'rxjs';
@@ -18,8 +18,9 @@ export class PasswordChangeWarningComponent implements OnInit {
   private baseUrl = environment.apiUrl;
   private accountService = inject(AccountService);
 
-  ngOnInit(): void {
-    this.accountService.currentUser$.pipe(take(1)).subscribe(user => {
+  constructor() {
+    effect(() => {
+      const user = this.accountService.currentUser();
       if (user && user.wasWarnedAboutPasswordChange === false) {
         console.log('User was warned about password change');
 
@@ -40,5 +41,9 @@ export class PasswordChangeWarningComponent implements OnInit {
         this.accountService.setCurrentUser(user, true);
       }
     });
+  }
+
+  ngOnInit(): void {
+
   }
 }

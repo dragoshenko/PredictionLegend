@@ -1,5 +1,5 @@
 <div class="bracket-container">
-  <div class="bracket-header">
+  <div class="bracket-header bg-purple">
     <h2>Configure Your Bracket</h2>
     <div class="rounds-indicator">{{ rounds }} Rounds</div>
   </div>
@@ -41,12 +41,12 @@
             <button
               [class.active]="match.winner === match.team1"
               [disabled]="!match.team1"
-              (click)="selectWinner(match.id, match.team1)"
+              (click)="match.team1 && selectWinner(match.id, match.team1)"
               class="winner-button">Winner</button>
             <button
               [class.active]="match.winner === match.team2"
               [disabled]="!match.team2"
-              (click)="selectWinner(match.id, match.team2)"
+              (click)="match.team2 && selectWinner(match.id, match.team2)"
               class="winner-button">Winner</button>
           </div>
         </div>
@@ -75,24 +75,24 @@
                 <button
                   [class.active]="match.winner === match.team1"
                   [disabled]="!match.team1"
-                  (click)="selectWinner(match.id, match.team1)"
+                  (click)="match.team1 && selectWinner(match.id, match.team1)"
                   class="winner-button">Winner</button>
                 <button
                   [class.active]="match.winner === match.team2"
                   [disabled]="!match.team2"
-                  (click)="selectWinner(match.id, match.team2)"
+                  (click)="match.team2 && selectWinner(match.id, match.team2)"
                   class="winner-button">Winner</button>
               </div>
               <div class="winner-buttons final-winner" *ngIf="r+2 === rounds">
                 <button
                   [class.active]="match.winner === match.team1"
                   [disabled]="!match.team1"
-                  (click)="selectWinner(match.id, match.team1)"
+                  (click)="match.team1 && selectWinner(match.id, match.team1)"
                   class="winner-button">Winner</button>
                 <button
                   [class.active]="match.winner === match.team2"
                   [disabled]="!match.team2"
-                  (click)="selectWinner(match.id, match.team2)"
+                  (click)="match.team2 && selectWinner(match.id, match.team2)"
                   class="winner-button">Winner</button>
               </div>
             </div>

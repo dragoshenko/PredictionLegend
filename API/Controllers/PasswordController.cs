@@ -18,15 +18,15 @@ public class PasswordController : BaseAPIController
 
     public class DirectPasswordChangeRequest
     {
-        public string Username { get; set; }
-        public string CurrentPassword { get; set; }
-        public string NewPassword { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string CurrentPassword { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
     }
 
     public class DirectAddPasswordRequest
     {
-        public string Username { get; set; }
-        public string NewPassword { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
     }
 
     [HttpPost("direct-change")]

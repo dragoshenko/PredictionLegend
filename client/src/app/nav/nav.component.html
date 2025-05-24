@@ -25,18 +25,18 @@
       </form>
       <ul class="navbar-nav">
         <li class="nav-item me-2">
-          <a [routerLink]="['/create-prediction']" class="nav-link btn btn-primary text-white px-3">Create Custom Prediction</a>
+          <a [routerLink]="['/create-prediction']" class="nav-link btn btn-primary text-white px-3">Create Prediction</a>
         </li>
         <!-- Authentication Menu -->
-        <li class="nav-item dropdown" *ngIf="(accountService.currentUser$ | async)">
+        <li class="nav-item dropdown" *ngIf="(accountService.currentUser())">
           <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <span *ngIf="(accountService.currentUser$ | async)?.photoUrl">
-              <img src="{{(accountService.currentUser$ | async)?.photoUrl}}" alt="user" class="rounded-circle me-1" style="height: 30px; width: 30px; object-fit: cover;">
+            <span *ngIf="(accountService.currentUser())?.photoUrl">
+              <img src="{{(accountService.currentUser())?.photoUrl}}" alt="user" class="rounded-circle me-1" style="height: 30px; width: 30px; object-fit: cover;">
             </span>
-            {{(accountService.currentUser$ | async)?.displayName}}
+            {{(accountService.currentUser())?.displayName}}
           </a>
           <ul class="dropdown-menu dropdown-menu-end">
-            <li *ngIf="(accountService.currentUser$ | async)?.roles?.includes('Admin')">
+            <li *ngIf="(accountService.currentUser())?.roles?.includes('Admin')">
               <a class="dropdown-item" routerLink="/admin">
                 <i class="fa fa-shield me-2"></i> Admin Dashboard
               </a>
@@ -50,11 +50,11 @@
       </ul>
       <!-- Login button in its own div for better mobile centering -->
       <div class="d-lg-none w-100 text-center mt-3">
-        <a *ngIf="!(accountService.currentUser$ | async)" class="btn btn-outline-light" routerLink="/auth">Login</a>
+        <a *ngIf="!(accountService.currentUser())" class="btn btn-outline-light" routerLink="/auth">Login</a>
       </div>
       <!-- Desktop-only login button -->
       <div class="d-none d-lg-block">
-        <a *ngIf="!(accountService.currentUser$ | async)" class="btn btn-outline-light" routerLink="/auth">Login</a>
+        <a *ngIf="!(accountService.currentUser())" class="btn btn-outline-light" routerLink="/auth">Login</a>
       </div>
     </div>
   </div>
