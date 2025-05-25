@@ -1,3 +1,4 @@
+// API/Services/TeamService.cs
 using System;
 using API.DTO;
 using API.Entities;
@@ -18,16 +19,50 @@ public class TeamService : ITeamService
         _unitOfWork = unitOfWork;
         _mapper = mapper;
     }
-    public async Task<ActionResult<TeamDTO>> CreateTeamAsync(TeamDTO team, int userId)
+    
+    public async Task<ActionResult<TeamDTO>> CreateTeamAsync(TeamDTO teamDTO, int userId)
     {
         var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId);
         if (user == null) return new NotFoundResult();
-        var teamEntity = _mapper.Map<Team>(team);
-        await _unitOfWork.TeamRepository.CreateTeamAsync(teamEntity);
-        user.Teams.Add(teamEntity);
-        await _unitOfWork.Complete();
-        var teamDTO = _mapper.Map<TeamDTO>(teamEntity);
-        return teamDTO;
+        
+        // Map the DTO to entity and ensure all required fields are set
+        var teamEntity = new Team
+        {
+            Name = teamDTO.Name?.Trim() ?? throw new ArgumentException("Team name is required"),
+            Description = string.IsNullOrWhiteSpace(teamDTO.Description) ? null : teamDTO.Description.Trim(),
+            PhotoUrl = string.IsNullOrWhiteSpace(teamDTO.PhotoUrl) ? null : teamDTO.PhotoUrl.Trim(),
+            Score = teamDTO.Score ?? 0,
+            CreatedByUserId = userId,
+            CreatedByUser = user,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        // Validate team name length
+        if (teamEntity.Name.Length < 2 || teamEntity.Name.Length > 100)
+        {
+            return new BadRequestObjectResult("Team name must be between 2 and 100 characters");
+        }
+
+        // Create the team
+        var createdTeam = await _unitOfWork.TeamRepository.CreateTeamAsync(teamEntity);
+        if (createdTeam == null)
+        {
+            return new BadRequestObjectResult("Failed to create team");
+        }
+
+        // Add team to user's teams collection
+        user.Teams.Add(createdTeam);
+        
+        // Save changes
+        var saveResult = await _unitOfWork.Complete();
+        if (!saveResult)
+        {
+            return new BadRequestObjectResult("Failed to save team");
+        }
+
+        // Map back to DTO for response
+        var teamDTOResult = _mapper.Map<TeamDTO>(createdTeam);
+        return teamDTOResult;
     }
 
     public async Task<ActionResult<List<TeamDTO>>> GetAllTeamsAsync()
@@ -69,21 +104,49 @@ public class TeamService : ITeamService
         return teamDTOs;
     }
 
-    public async Task<ActionResult> UpdateTeamAsync(TeamDTO team)
+    public async Task<ActionResult> UpdateTeamAsync(TeamDTO teamDTO)
     {
-        var teamEntity = await _unitOfWork.TeamRepository.GetTeamAsync(team.Id);
+        var teamEntity = await _unitOfWork.TeamRepository.GetTeamAsync(teamDTO.Id);
         if (teamEntity == null) return new NotFoundResult();
-        _mapper.Map(team, teamEntity);
+        
+        // Update only the fields that can be changed
+        teamEntity.Name = teamDTO.Name?.Trim() ?? teamEntity.Name;
+        teamEntity.Description = string.IsNullOrWhiteSpace(teamDTO.Description) ? null : teamDTO.Description.Trim();
+        teamEntity.PhotoUrl = string.IsNullOrWhiteSpace(teamDTO.PhotoUrl) ? null : teamDTO.PhotoUrl.Trim();
+        teamEntity.Score = teamDTO.Score ?? teamEntity.Score;
+        
+        // Validate team name length
+        if (teamEntity.Name.Length < 2 || teamEntity.Name.Length > 100)
+        {
+            return new BadRequestObjectResult("Team name must be between 2 and 100 characters");
+        }
+
         await _unitOfWork.TeamRepository.UpdateTeamAsync(teamEntity);
-        await _unitOfWork.Complete();
-        var teamDTO = _mapper.Map<TeamDTO>(teamEntity);
-        return new OkObjectResult(teamDTO);
+        var saveResult = await _unitOfWork.Complete();
+        
+        if (!saveResult)
+        {
+            return new BadRequestObjectResult("Failed to update team");
+        }
+        
+        var teamDTOResult = _mapper.Map<TeamDTO>(teamEntity);
+        return new OkObjectResult(teamDTOResult);
     }
 
     public async Task<ActionResult> DeleteTeamAsync(int id)
     {
-        await _unitOfWork.TeamRepository.DeleteTeamAsync(id);
-        await _unitOfWork.Complete();
+        var result = await _unitOfWork.TeamRepository.DeleteTeamAsync(id);
+        if (!result)
+        {
+            return new NotFoundResult();
+        }
+        
+        var saveResult = await _unitOfWork.Complete();
+        if (!saveResult)
+        {
+            return new BadRequestObjectResult("Failed to delete team");
+        }
+        
         return new NoContentResult();
     }
 }

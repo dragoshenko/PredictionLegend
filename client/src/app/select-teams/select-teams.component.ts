@@ -61,8 +61,56 @@ export class SelectTeamsComponent implements OnInit {
       this.predictionId = +params['predictionId'];
       this.templateId = +params['templateId'];
       this.predictionType = params['type'] as PredictionType;
-      this.calculateTeamRequirements();
+
+      // Try to get template from navigation state first
+      const navigation = this.router.getCurrentNavigation();
+      if (navigation?.extras.state?.['template']) {
+        this.template = navigation.extras.state['template'];
+        console.log('Template loaded from navigation state:', this.template);
+        this.calculateTeamRequirements();
+      }
     });
+  }
+
+  async loadTemplate(): Promise<void> {
+    // If template is already loaded from navigation state, skip this
+    if (this.template) {
+      console.log('Template already loaded:', this.template);
+      return;
+    }
+
+    // Fallback: Load template from service if not passed via navigation
+    console.log('Loading template from service as fallback...');
+
+    // Load template based on type
+    switch (this.predictionType) {
+      case PredictionType.Ranking:
+        // Ensure templates are loaded first
+        await this.templateService.getOfficialAndUserRankingTemplates();
+        this.template = this.templateService.userRankingTemplates().find(t => t.id === this.templateId) ||
+                      this.templateService.officialRankingTemplates().find(t => t.id === this.templateId);
+        break;
+      case PredictionType.Bracket:
+        await this.templateService.getOfficialAndUserBracketTemplates();
+        this.template = this.templateService.userBracketTemplates().find(t => t.id === this.templateId) ||
+                      this.templateService.officialBracketTemplates().find(t => t.id === this.templateId);
+        break;
+      case PredictionType.Bingo:
+        await this.templateService.getOfficialAndUserBingoTemplates();
+        this.template = this.templateService.userBingoTemplates().find(t => t.id === this.templateId) ||
+                      this.templateService.officialBingoTemplates().find(t => t.id === this.templateId);
+        break;
+    }
+
+    if (this.template) {
+      console.log('Template loaded from service:', this.template);
+    } else {
+      console.error('Template not found with ID:', this.templateId);
+      this.toastr.error('Template not found');
+      this.goBack();
+    }
+
+    this.calculateTeamRequirements();
   }
 
   calculateTeamRequirements(): void {
@@ -88,8 +136,17 @@ export class SelectTeamsComponent implements OnInit {
   async loadTeams(): Promise<void> {
     this.isLoading = true;
     try {
-      // Load template details
-      await this.loadTemplate();
+      // Ensure template is loaded first
+      if (!this.template) {
+        await this.loadTemplate();
+      }
+
+      // If still no template, show error and return
+      if (!this.template) {
+        this.toastr.error('Could not load template information');
+        this.isLoading = false;
+        return;
+      }
 
       // Load user's teams
       await this.teamService.loadUserTeams();
@@ -101,6 +158,13 @@ export class SelectTeamsComponent implements OnInit {
       // Pre-select existing teams if any
       this.selectedTeams = [...this.existingTeams];
 
+      console.log('Teams loaded successfully:', {
+        template: this.template,
+        existingTeams: this.existingTeams.length,
+        userTeams: this.userTeams.length,
+        selectedTeams: this.selectedTeams.length
+      });
+
     } catch (error) {
       console.error('Error loading teams:', error);
       this.toastr.error('Failed to load teams');
@@ -109,24 +173,7 @@ export class SelectTeamsComponent implements OnInit {
     }
   }
 
-  async loadTemplate(): Promise<void> {
-    // Load template based on type
-    switch (this.predictionType) {
-      case PredictionType.Ranking:
-        this.template = this.templateService.userRankingTemplates().find(t => t.id === this.templateId) ||
-                      this.templateService.officialRankingTemplates().find(t => t.id === this.templateId);
-        break;
-      case PredictionType.Bracket:
-        this.template = this.templateService.userBracketTemplates().find(t => t.id === this.templateId) ||
-                      this.templateService.officialBracketTemplates().find(t => t.id === this.templateId);
-        break;
-      case PredictionType.Bingo:
-        this.template = this.templateService.userBingoTemplates().find(t => t.id === this.templateId) ||
-                      this.templateService.officialBingoTemplates().find(t => t.id === this.templateId);
-        break;
-    }
-    this.calculateTeamRequirements();
-  }
+
 
   toggleTeamSelection(team: Team): void {
     const index = this.selectedTeams.findIndex(t => t.id === team.id);

@@ -57,12 +57,12 @@ export class EditTemplateComponent implements OnInit {
       console.log('User bracket templates updated:', this.userBracketTemplates());
       console.log('Official bingo templates updated:', this.officialBingoTemplates());
       console.log('User bingo templates updated:', this.userBingoTemplates());
-    });  
+    });
   }
 
   async ngOnInit(): Promise<void> {
     this.initializeForms();
-    
+
     this.route.params.subscribe(params => {
       this.predictionId = +params['id'];
       this.predictionType = params['type'] as PredictionType;
@@ -202,7 +202,15 @@ export class EditTemplateComponent implements OnInit {
   proceedWithTemplate(): void {
     if (this.selectedTemplate) {
       console.log('Proceeding with template:', this.selectedTemplate);
-      // this.router.navigate(['/next-step', this.predictionId]);
+
+      // Navigate to select teams page with the template data
+      this.router.navigate(['/select-teams', this.predictionId, this.selectedTemplate.id, this.predictionType], {
+        state: {
+          template: this.selectedTemplate,
+          predictionId: this.predictionId,
+          predictionType: this.predictionType
+        }
+      });
     }
   }
 

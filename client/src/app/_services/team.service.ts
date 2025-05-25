@@ -1,3 +1,4 @@
+// client/src/app/_services/team.service.ts
 import { Injectable, OnInit, signal, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
@@ -11,6 +12,7 @@ import { AccountService } from './account.service';
 export class TeamService implements OnInit {
   private baseUrl = environment.apiUrl + 'team';
   private http = inject(HttpClient);
+  private accountService = inject(AccountService);
 
   teams = signal<Team[]>([]);
 
@@ -35,11 +37,34 @@ export class TeamService implements OnInit {
     return this.teams().filter(t => (t as any).templateId === templateId);
   }
 
-  /** Create a new team */
-  async createTeam(team: Partial<Team> & { templateId: number }): Promise<Team> {
+  /** Create a new team with all required fields */
+  async createTeam(teamData: {
+    name: string;
+    description?: string;
+    photoUrl?: string;
+    templateId?: number;
+    score?: number;
+  }): Promise<Team> {
     try {
+      const currentUser = this.accountService.currentUser();
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      // Prepare team data with all required fields
+      const teamToCreate = {
+        name: teamData.name.trim(),
+        description: teamData.description?.trim() || null,
+        photoUrl: teamData.photoUrl?.trim() || null,
+        score: teamData.score || 0,
+        createdByUserId: currentUser.id, // This should be set automatically by the API
+        createdAt: new Date().toISOString() // This should be set automatically by the API
+      };
+
+      console.log('Creating team with data:', teamToCreate);
+
       const result = await firstValueFrom(
-        this.http.post<Team>(`${this.baseUrl}/create`, team).pipe(
+        this.http.post<Team>(`${this.baseUrl}/create`, teamToCreate).pipe(
           tap((newTeam: Team) => {
             this.teams.update(ts => [...ts, newTeam]);
           })
