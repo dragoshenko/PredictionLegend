@@ -18,7 +18,7 @@ export class TeamService implements OnInit {
 
   ngOnInit(): void {}
 
-  loadUserTeams(): Promise<void> {
+  async loadUserTeams(): Promise<void> {
     try {
       const result = await firstValueFrom(
         this.http.get<Team[]>(`${this.baseUrl}/user`)

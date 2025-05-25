@@ -1,0 +1,247 @@
+<!-- select-teams/select-teams.component.html -->
+<div class="container-fluid mt-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <!-- Header -->
+      <div class="card bg-primary border-primary mb-4">
+        <div class="card-header bg-primary border-primary">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h2 class="text-light mb-1">
+                <i class="fa fa-users me-2"></i>
+                Select Teams for {{ predictionType }} Prediction
+              </h2>
+              <p class="text-light mb-0 opacity-75">
+                Choose teams for your "{{ template?.name }}" template
+                ({{ selectedTeams.length }}/{{ minimumTeamsRequired }} required, max {{ maximumTeamsAllowed }})
+              </p>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-light" (click)="goBack()">
+                <i class="fa fa-arrow-left me-2"></i>Back
+              </button>
+              <button class="btn btn-danger" (click)="abandonFlow()">
+                <i class="fa fa-times me-2"></i>Abandon
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress Indicator -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="progress" style="height: 8px;">
+            <div class="progress-bar bg-success" role="progressbar"
+                 [style.width.%]="(selectedTeams.length / minimumTeamsRequired) * 100"
+                 [attr.aria-valuenow]="selectedTeams.length"
+                 [attr.aria-valuemin]="0"
+                 [attr.aria-valuemax]="minimumTeamsRequired">
+            </div>
+          </div>
+          <div class="d-flex justify-content-between mt-2">
+            <span class="text-muted">Teams Selected</span>
+            <span class="text-muted">{{ selectedTeams.length }} / {{ minimumTeamsRequired }} minimum</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Selected Teams Preview -->
+      <div class="card bg-success border-success mb-4" *ngIf="selectedTeams.length > 0">
+        <div class="card-header bg-success border-success">
+          <h4 class="text-light mb-0">
+            <i class="fa fa-check-circle me-2"></i>Selected Teams ({{ selectedTeams.length }})
+          </h4>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-3 mb-2" *ngFor="let team of selectedTeams">
+              <div class="d-flex align-items-center bg-light rounded p-2">
+                <img *ngIf="team.photoUrl" [src]="team.photoUrl"
+                     class="rounded me-2" width="32" height="32" alt="Team">
+                <div class="me-auto">
+                  <div class="fw-bold">{{ team.name }}</div>
+                </div>
+                <button class="btn btn-sm btn-outline-danger" (click)="toggleTeamSelection(team)">
+                  <i class="fa fa-times"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Template Teams -->
+      <div class="card bg-secondary border-secondary mb-4" *ngIf="existingTeams.length > 0">
+        <div class="card-header bg-secondary border-secondary">
+          <h4 class="text-light mb-0">
+            <i class="fa fa-star me-2 text-warning"></i>
+            Template Teams ({{ existingTeams.length }})
+          </h4>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 col-lg-4 mb-3" *ngFor="let team of existingTeams">
+              <div class="card h-100"
+                   [class.border-success]="isTeamSelected(team)"
+                   [class.bg-success]="isTeamSelected(team)"
+                   [class.text-light]="isTeamSelected(team)"
+                   style="cursor: pointer;"
+                   (click)="toggleTeamSelection(team)">
+                <div class="card-body d-flex align-items-center">
+                  <img *ngIf="team.photoUrl" [src]="team.photoUrl"
+                       class="rounded me-3" width="48" height="48" alt="Team">
+                  <div class="me-auto">
+                    <h6 class="card-title mb-1">{{ team.name }}</h6>
+                    <p class="card-text small mb-0"
+                       [class.text-light]="isTeamSelected(team)"
+                       [class.text-muted]="!isTeamSelected(team)">
+                      {{ team.description || 'No description' }}
+                    </p>
+                  </div>
+                  <div *ngIf="isTeamSelected(team)">
+                    <i class="fa fa-check-circle fa-2x text-light"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Teams -->
+      <div class="card bg-secondary border-secondary mb-4">
+        <div class="card-header bg-secondary border-secondary">
+          <div class="d-flex justify-content-between align-items-center">
+            <h4 class="text-light mb-0">
+              <i class="fa fa-user me-2 text-info"></i>
+              Your Teams ({{ userTeams.length }})
+            </h4>
+            <button class="btn btn-outline-success btn-sm" (click)="showCreateForm = !showCreateForm">
+              <i class="fa fa-plus me-2"></i>Create New Team
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <!-- Create Team Form -->
+          <div *ngIf="showCreateForm" class="card bg-dark border-dark mb-4">
+            <div class="card-header bg-dark border-dark">
+              <h5 class="text-light mb-0">Create New Team</h5>
+            </div>
+            <div class="card-body">
+              <form [formGroup]="teamForm" (ngSubmit)="createTeam()">
+                <div class="row">
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label text-light">Name *</label>
+                    <input type="text" formControlName="name"
+                           class="form-control bg-dark text-light border-secondary"
+                           placeholder="Team name">
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label text-light">Description</label>
+                    <input type="text" formControlName="description"
+                           class="form-control bg-dark text-light border-secondary"
+                           placeholder="Optional description">
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label text-light">Photo URL</label>
+                    <input type="url" formControlName="photoUrl"
+                           class="form-control bg-dark text-light border-secondary"
+                           placeholder="Optional photo URL">
+                  </div>
+                </div>
+                <div class="d-flex gap-2">
+                  <button type="submit" class="btn btn-success"
+                          [disabled]="teamForm.invalid || isLoading">
+                    <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-2"></span>
+                    <i class="fa fa-plus me-2" *ngIf="!isLoading"></i>
+                    Create Team
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary"
+                          (click)="showCreateForm = false">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- User Teams List -->
+          <div *ngIf="userTeams.length === 0 && !showCreateForm" class="text-center py-4">
+            <i class="fa fa-users fa-3x text-muted mb-3"></i>
+            <p class="text-muted">You haven't created any teams yet.</p>
+            <button class="btn btn-outline-primary" (click)="showCreateForm = true">
+              Create Your First Team
+            </button>
+          </div>
+
+          <div class="row" *ngIf="userTeams.length > 0">
+            <div class="col-md-6 col-lg-4 mb-3" *ngFor="let team of userTeams">
+              <div class="card h-100"
+                   [class.border-success]="isTeamSelected(team)"
+                   [class.bg-success]="isTeamSelected(team)"
+                   [class.text-light]="isTeamSelected(team)"
+                   style="cursor: pointer;"
+                   (click)="toggleTeamSelection(team)">
+                <div class="card-body d-flex align-items-center">
+                  <img *ngIf="team.photoUrl" [src]="team.photoUrl"
+                       class="rounded me-3" width="48" height="48" alt="Team">
+                  <div class="me-auto">
+                    <h6 class="card-title mb-1">{{ team.name }}</h6>
+                    <p class="card-text small mb-0"
+                       [class.text-light]="isTeamSelected(team)"
+                       [class.text-muted]="!isTeamSelected(team)">
+                      {{ team.description || 'No description' }}
+                    </p>
+                    <div class="d-flex align-items-center mt-1">
+                      <span class="badge"
+                            [class.bg-light]="isTeamSelected(team)"
+                            [class.text-dark]="isTeamSelected(team)"
+                            [class.bg-secondary]="!isTeamSelected(team)">
+                        Custom Team
+                      </span>
+                    </div>
+                  </div>
+                  <div *ngIf="isTeamSelected(team)">
+                    <i class="fa fa-check-circle fa-2x text-light"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Continue Button -->
+      <div class="card bg-primary border-primary" *ngIf="selectedTeams.length > 0">
+        <div class="card-body text-center">
+          <div *ngIf="!canProceed()" class="alert alert-warning">
+            <i class="fa fa-exclamation-triangle me-2"></i>
+            You need at least {{ minimumTeamsRequired }} teams to proceed
+            ({{ minimumTeamsRequired - selectedTeams.length }} more required)
+          </div>
+
+          <div *ngIf="canProceed()" class="alert alert-success">
+            <i class="fa fa-check-circle me-2"></i>
+            Great! You have enough teams to create your {{ predictionType.toLowerCase() }} prediction.
+          </div>
+
+          <button class="btn btn-success btn-lg px-5"
+                  [disabled]="!canProceed()"
+                  (click)="proceedToPost()">
+            <i class="fa fa-arrow-right me-2"></i>
+            Continue to Create Post
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="isLoading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3 text-muted">Loading teams...</p>
+      </div>
+    </div>
+  </div>
+</div>

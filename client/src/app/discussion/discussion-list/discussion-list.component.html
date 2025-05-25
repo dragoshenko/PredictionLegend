@@ -1,0 +1,437 @@
+<!-- discussion/discussion-list/discussion-list.component.html -->
+<div class="container mt-4">
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h1 class="display-6 mb-2">
+        <i class="fa fa-comments me-3 text-primary"></i>Community Discussions
+      </h1>
+      <p class="text-muted">Share your thoughts and engage with the community</p>
+    </div>
+    <div class="col-md-4 text-end">
+      <button class="btn btn-primary btn-lg" (click)="toggleCreateForm()">
+        <i class="fa fa-plus me-2"></i>Start Discussion
+      </button>
+    </div>
+  </div>
+
+  <!-- Create Post Form -->
+  <div class="card border-primary mb-4" *ngIf="showCreateForm()">
+    <div class="card-header bg-primary text-white">
+      <div class="d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+          <i class="fa fa-edit me-2"></i>Start New Discussion
+        </h5>
+        <button class="btn btn-sm btn-outline-light" (click)="toggleCreateForm()">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+    </div>
+    <div class="card-body">
+      <form [formGroup]="createPostForm" (ngSubmit)="createDiscussionPost()">
+        <div class="row">
+          <div class="col-md-8 mb-3">
+            <label class="form-label fw-bold">Title *</label>
+            <input type="text"
+                   class="form-control"
+                   [class.is-invalid]="hasFormFieldError('title')"
+                   formControlName="title"
+                   placeholder="What would you like to discuss?">
+            <div class="invalid-feedback" *ngIf="hasFormFieldError('title')">
+              {{ getFormFieldError('title') }}
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-3">
+            <label class="form-label fw-bold">Privacy</label>
+            <select class="form-select" formControlName="privacyType">
+              <option value="Public">Public</option>
+              <option value="Private">Private</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-bold">Description</label>
+          <textarea class="form-control"
+                    [class.is-invalid]="hasFormFieldError('description')"
+                    formControlName="description"
+                    rows="4"
+                    placeholder="Provide more details about your discussion topic..."></textarea>
+          <div class="invalid-feedback" *ngIf="hasFormFieldError('description')">
+            {{ getFormFieldError('description') }}
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-bold">Tags</label>
+          <input type="text"
+                 class="form-control"
+                 [class.is-invalid]="hasFormFieldError('tags')"
+                 formControlName="tags"
+                 placeholder="Enter tags separated by commas (e.g., sports, predictions, entertainment)">
+          <div class="form-text">Add relevant tags to help others find your discussion (max 10 tags)</div>
+          <div class="invalid-feedback" *ngIf="hasFormFieldError('tags')">
+            {{ getFormFieldError('tags') }}
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+          <button type="button"
+                  class="btn btn-outline-secondary"
+                  (click)="toggleCreateForm()">
+            Cancel
+          </button>
+          <button type="submit"
+                  class="btn btn-primary"
+                  [disabled]="createPostForm.invalid || isCreatingPost()">
+            <span *ngIf="isCreatingPost()" class="spinner-border spinner-border-sm me-2"></span>
+            <i class="fa fa-paper-plane me-2" *ngIf="!isCreatingPost()"></i>
+            Create Discussion
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Filters and Search -->
+  <div class="card border-secondary mb-4">
+    <div class="card-body">
+      <div class="row align-items-center">
+        <!-- Search -->
+        <div class="col-md-4 mb-3 mb-md-0">
+          <form [formGroup]="searchForm">
+            <div class="input-group">
+              <span class="input-group-text">
+                <i class="fa fa-search"></i>
+              </span>
+              <input type="text"
+                     class="form-control"
+                     formControlName="searchTerm"
+                     placeholder="Search discussions...">
+              <button class="btn btn-outline-secondary"
+                      type="button"
+                      (click)="clearSearch()"
+                      *ngIf="searchTerm()">
+                <i class="fa fa-times"></i>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Sort -->
+        <div class="col-md-3 mb-3 mb-md-0">
+          <select class="form-select"
+                  [value]="sortBy()"
+                  (change)="changeSortOrder($any($event.target).value)">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="most_commented">Most Commented</option>
+            <option value="most_voted">Most Voted</option>
+          </select>
+        </div>
+
+        <!-- Results Info -->
+        <div class="col-md-3 mb-3 mb-md-0">
+          <span class="text-muted small">
+            Showing {{ filteredPosts().length }} of {{ discussionPosts().length }} discussions
+          </span>
+        </div>
+
+        <!-- Clear Filters -->
+        <div class="col-md-2 text-end">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary"
+                    (click)="clearFilters()"
+                    *ngIf="hasActiveFilters()">
+              <i class="fa fa-times me-1"></i>Clear
+            </button>
+            <button class="btn btn-outline-primary"
+                    (click)="refreshPosts()"
+                    [disabled]="isLoading()">
+              <i class="fa fa-refresh me-1" [class.fa-spin]="isLoading()"></i>Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Main Content -->
+    <div class="col-md-8">
+      <!-- Loading State -->
+      <div *ngIf="isLoading()" class="text-center py-5">
+        <div class="spinner-border text-primary mb-3" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="text-muted">Loading discussions...</p>
+      </div>
+
+      <!-- Discussion Posts -->
+      <div *ngIf="!isLoading() && filteredPosts().length > 0">
+        <div *ngFor="let post of filteredPosts(); trackBy: trackByPostId"
+             class="card border-light shadow-sm mb-3 discussion-post-card"
+             style="cursor: pointer; transition: all 0.2s;"
+             (mouseenter)="onCardHover($event, true)"
+             (mouseleave)="onCardHover($event, false)"
+             (click)="viewPost(post.id)">
+          <div class="card-body">
+            <!-- Post Header -->
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <div class="d-flex align-items-center">
+                <img *ngIf="post.author?.photoUrl"
+                     [src]="post.author.photoUrl"
+                     class="rounded-circle me-2"
+                     width="32" height="32" alt="Author">
+                <div class="placeholder-avatar me-2" *ngIf="!post.author?.photoUrl"
+                     style="width: 32px; height: 32px; background: #dee2e6; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                  <i class="fa fa-user text-muted"></i>
+                </div>
+                <div>
+                  <div class="fw-bold">{{ post.author?.displayName || 'Anonymous' }}</div>
+                  <div class="text-muted small">{{ getRelativeTime(post.createdAt) }}</div>
+                </div>
+              </div>
+
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge"
+                      [class.bg-success]="post.privacyType === 'Public'"
+                      [class.bg-warning]="post.privacyType === 'Private'">
+                  <i class="fa"
+                     [class.fa-globe]="post.privacyType === 'Public'"
+                     [class.fa-lock]="post.privacyType === 'Private'"
+                     class="me-1"></i>
+                  {{ post.privacyType }}
+                </span>
+
+                <span *ngIf="post.isDraft" class="badge bg-secondary">
+                  <i class="fa fa-edit me-1"></i>Draft
+                </span>
+
+                <!-- Post Actions Dropdown -->
+                <div class="dropdown" *ngIf="canEditPost(post) || canDeletePost(post)">
+                  <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                          type="button" data-bs-toggle="dropdown"
+                          (click)="$event.stopPropagation()">
+                    <i class="fa fa-ellipsis-v"></i>
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end">
+                    <li *ngIf="canEditPost(post)">
+                      <a class="dropdown-item" (click)="editPost(post.id); $event.stopPropagation()">
+                        <i class="fa fa-edit me-2"></i>Edit
+                      </a>
+                    </li>
+                    <li *ngIf="canDeletePost(post)">
+                      <a class="dropdown-item text-danger" (click)="deletePost(post.id); $event.stopPropagation()">
+                        <i class="fa fa-trash me-2"></i>Delete
+                      </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                      <a class="dropdown-item" (click)="sharePost(post); $event.stopPropagation()">
+                        <i class="fa fa-share me-2"></i>Share
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- Post Title -->
+            <h5 class="card-title mb-2">
+              <a [routerLink]="['/discussions', post.id]"
+                 class="text-decoration-none text-dark"
+                 (click)="$event.stopPropagation()">
+                {{ post.title }}
+              </a>
+            </h5>
+
+            <!-- Post Description -->
+            <p class="card-text text-muted mb-3" *ngIf="post.description">
+              {{ getPostExcerpt(post.description) }}
+            </p>
+
+            <!-- Tags -->
+            <div class="mb-3" *ngIf="post.tags && post.tags.length > 0">
+              <ng-container *ngFor="let tag of getTagsDisplay(post.tags).displayed; trackBy: trackByTag">
+                <span class="badge bg-light text-dark me-1 mb-1 tag-badge"
+                      [class.active]="isTagSelected(tag)"
+                      (click)="selectTag(tag); $event.stopPropagation()">
+                  #{{ tag }}
+                </span>
+              </ng-container>
+              <span *ngIf="getTagsDisplay(post.tags).remaining > 0"
+                    class="badge bg-secondary me-1 mb-1">
+                +{{ getTagsDisplay(post.tags).remaining }} more
+              </span>
+            </div>
+
+            <!-- Post Stats -->
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="d-flex align-items-center gap-3">
+                <span class="text-muted small">
+                  <i class="fa fa-comments me-1"></i>
+                  {{ post.commentsCount }}
+                  {{ post.commentsCount === 1 ? 'comment' : 'comments' }}
+                </span>
+
+                <span class="text-muted small">
+                  <i class="fa fa-thumbs-up me-1 text-success"></i>
+                  {{ post.upVotes }}
+                </span>
+
+                <span class="text-muted small" *ngIf="post.downVotes > 0">
+                  <i class="fa fa-thumbs-down me-1 text-danger"></i>
+                  {{ post.downVotes }}
+                </span>
+
+                <span class="text-muted small" *ngIf="post.lastModified !== post.createdAt">
+                  <i class="fa fa-pencil me-1"></i>Edited
+                </span>
+              </div>
+
+              <div class="text-muted small">
+                <i class="fa fa-clock me-1"></i>
+                {{ getRelativeTime(post.lastModified) }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- No Posts Message -->
+      <div *ngIf="!isLoading() && filteredPosts().length === 0"
+           class="text-center py-5">
+        <div class="mb-4">
+          <i class="fa fa-comments fa-4x text-muted"></i>
+        </div>
+        <h4 class="text-muted">No discussions found</h4>
+        <p class="text-muted mb-4">
+          <span *ngIf="searchTerm() || selectedTag()">
+            Try adjusting your search criteria or clear the filters to see all discussions.
+          </span>
+          <span *ngIf="!searchTerm() && !selectedTag()">
+            Be the first to start a discussion in the community!
+          </span>
+        </p>
+        <div class="d-flex gap-2 justify-content-center">
+          <button class="btn btn-primary"
+                  (click)="toggleCreateForm()"
+                  *ngIf="!searchTerm() && !selectedTag()">
+            <i class="fa fa-plus me-2"></i>Start First Discussion
+          </button>
+          <button class="btn btn-outline-secondary"
+                  (click)="clearFilters()"
+                  *ngIf="searchTerm() || selectedTag()">
+            <i class="fa fa-times me-2"></i>Clear Filters
+          </button>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <nav *ngIf="totalPages > 1" class="mt-4">
+        <ul class="pagination justify-content-center">
+          <li class="page-item" [class.disabled]="!canGoPrevious">
+            <a class="page-link" (click)="previousPage()" style="cursor: pointer;">
+              <i class="fa fa-chevron-left"></i> Previous
+            </a>
+          </li>
+
+          <li class="page-item"
+              *ngFor="let page of getPaginationArray(); let i = index"
+              [class.active]="currentPage() === page">
+            <a class="page-link"
+               (click)="goToPage(page)"
+               style="cursor: pointer;">
+              {{ page }}
+            </a>
+          </li>
+
+          <li class="page-item" [class.disabled]="!canGoNext">
+            <a class="page-link" (click)="nextPage()" style="cursor: pointer;">
+              Next <i class="fa fa-chevron-right"></i>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-md-4">
+      <!-- Popular Tags -->
+      <div class="card border-info mb-4">
+        <div class="card-header bg-info text-white">
+          <h6 class="mb-0">
+            <i class="fa fa-tags me-2"></i>Popular Tags
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="d-flex flex-wrap gap-2">
+            <button *ngFor="let tag of popularTags()"
+                    class="btn btn-sm"
+                    [class.btn-primary]="isTagSelected(tag)"
+                    [class.btn-outline-secondary]="!isTagSelected(tag)"
+                    (click)="selectTag(tag)">
+              #{{ tag }}
+            </button>
+          </div>
+          <div class="text-center mt-3" *ngIf="popularTags().length === 0">
+            <span class="text-muted small">No tags available</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="card border-success">
+        <div class="card-header bg-success text-white">
+          <h6 class="mb-0">
+            <i class="fa fa-chart-bar me-2"></i>Community Stats
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="row text-center">
+            <div class="col-6 mb-3">
+              <div class="h4 text-primary">{{ discussionPosts().length }}</div>
+              <div class="small text-muted">Total Discussions</div>
+            </div>
+            <div class="col-6 mb-3">
+              <div class="h4 text-success">{{ getTotalComments() }}</div>
+              <div class="small text-muted">Total Comments</div>
+            </div>
+            <div class="col-6">
+              <div class="h4 text-info">{{ getTotalVotes() }}</div>
+              <div class="small text-muted">Total Votes</div>
+            </div>
+            <div class="col-6">
+              <div class="h6 text-warning">#{{ getMostActiveTag() }}</div>
+              <div class="small text-muted">Most Active Tag</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.discussion-post-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
+}
+
+.tag-badge {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tag-badge:hover {
+  background-color: #007bff !important;
+  color: white !important;
+}
+
+.tag-badge.active {
+  background-color: #007bff !important;
+  color: white !important;
+}
+</style>
