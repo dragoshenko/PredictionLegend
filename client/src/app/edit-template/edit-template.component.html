@@ -156,7 +156,9 @@
 
         <!-- User Templates Section -->
         <div class="card bg-secondary border-secondary mb-4"
-          *ngIf="userRankingTemplates().length > 0 || userBracketTemplates().length > 0 || userBingoTemplates().length > 0">
+          *ngIf="(predictionType === 'Ranking' && userRankingTemplates().length > 0) ||
+                 (predictionType === 'Bracket' && userBracketTemplates().length > 0) ||
+                 (predictionType === 'Bingo' && userBingoTemplates().length > 0)">
           <div class="card-header bg-secondary border-secondary">
             <h4 class="text-light mb-0">
               <i class="fa fa-user me-2 text-info"></i>
@@ -186,7 +188,68 @@
                         <i class="fa fa-tag me-1"></i>{{ template.name }}
                       </span>
                       <span class="badge bg-primary text-light">
-                        <i class="fa fa-users me-1"></i>{{ template.teams.length }} Teams Included
+                        <i class="fa fa-users me-1"></i>{{ (template.teams || []).length }} Teams Included
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- User Bracket Templates -->
+            <div *ngIf="predictionType === 'Bracket' && userBracketTemplates().length > 0" class="row">
+              <div class="col-md-6 col-lg-4 mb-3" *ngFor="let template of userBracketTemplates(); trackBy: trackById">
+                <div class="card bg-dark border-dark h-100" [class.border-primary]="selectedTemplate?.id === template.id"
+                  [class.bg-primary]="selectedTemplate?.id === template.id" style="cursor: pointer;"
+                  (click)="selectTemplate(template)">
+                  <div class="card-body text-center">
+                    <i class="fa fa-sitemap fa-2x text-info mb-3"
+                      [class.text-light]="selectedTemplate?.id === template.id"></i>
+                    <h6 class="card-title text-light">{{ template.numberOfRounds }} Rounds</h6>
+                    <p class="card-text text-muted small">
+                      Tournament with {{ template.numberOfRounds }} elimination rounds
+                    </p>
+                    <p class="card-text text-muted small">
+                      Bracket Type: {{ template.bracketType === 'SingleTeam' ? 'Single Team' : 'Matchup' }}
+                    </p>
+                    <div class="mt-2">
+                      <span class="badge bg-info text-dark me-1">
+                        <i class="fa fa-user me-1"></i>Custom
+                      </span>
+                      <span class="badge bg-secondary text-light me-1">
+                        <i class="fa fa-tag me-1"></i>{{ template.name }}
+                      </span>
+                      <span class="badge bg-primary text-light">
+                        <i class="fa fa-users me-1"></i>{{ (template.teams || []).length }} Teams Included
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- User Bingo Templates -->
+            <div *ngIf="predictionType === 'Bingo' && userBingoTemplates().length > 0" class="row">
+              <div class="col-md-6 col-lg-4 mb-3" *ngFor="let template of userBingoTemplates(); trackBy: trackById">
+                <div class="card bg-dark border-dark h-100" [class.border-primary]="selectedTemplate?.id === template.id"
+                  [class.bg-primary]="selectedTemplate?.id === template.id" style="cursor: pointer;"
+                  (click)="selectTemplate(template)">
+                  <div class="card-body text-center">
+                    <i class="fa fa-th fa-2x text-info mb-3"
+                      [class.text-light]="selectedTemplate?.id === template.id"></i>
+                    <h6 class="card-title text-light">{{ template.gridSize }}x{{ template.gridSize }} Grid</h6>
+                    <p class="card-text text-muted small">
+                      Bingo card with {{ template.gridSize * template.gridSize }} squares
+                    </p>
+                    <div class="mt-2">
+                      <span class="badge bg-info text-dark me-1">
+                        <i class="fa fa-user me-1"></i>Custom
+                      </span>
+                      <span class="badge bg-secondary text-light me-1">
+                        <i class="fa fa-tag me-1"></i>{{ template.name }}
+                      </span>
+                      <span class="badge bg-primary text-light">
+                        <i class="fa fa-users me-1"></i>{{ (template.teams || []).length }} Teams Included
                       </span>
                     </div>
                   </div>
@@ -194,67 +257,6 @@
               </div>
             </div>
           </div>
-          <!-- User Bracket Templates -->
-          <div *ngIf="predictionType === 'Bracket' && userBracketTemplates().length > 0" class="row">
-            <div class="col-md-6 col-lg-4 mb-3" *ngFor="let template of userBracketTemplates(); trackBy: trackById">
-              <div class="card bg-dark border-dark h-100" [class.border-primary]="selectedTemplate?.id === template.id"
-                [class.bg-primary]="selectedTemplate?.id === template.id" style="cursor: pointer;"
-                (click)="selectTemplate(template)">
-                <div class="card-body text-center">
-                  <i class="fa fa-sitemap fa-2x text-info mb-3"
-                    [class.text-light]="selectedTemplate?.id === template.id"></i>
-                  <h6 class="card-title text-light">{{ template.numberOfRounds }} Rounds</h6>
-                  <p class="card-text text-muted small">
-                    Tournament with {{ template.numberOfRounds }} elimination rounds
-                  </p>
-                  <p class="card-text text-muted small">
-                    Bracket Type: {{ template.bracketType === 'SingleTeam' ? 'Single Team' : 'Matchup' }}
-                  </p>
-                  <div class="mt-2">
-                    <span class="badge bg-info text-dark me-1">
-                      <i class="fa fa-user me-1"></i>Custom
-                    </span>
-                    <span class="badge bg-secondary text-light me-1">
-                      <i class="fa fa-tag me-1"></i>{{ template.name }}
-                    </span>
-                    <span class="badge bg-primary text-light">
-                      <i class="fa fa-users me-1"></i>{{ template.teams.length }} Teams Included
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- User Bingo Templates -->
-          <div *ngIf="predictionType === 'Bingo' && userBingoTemplates().length > 0" class="row">
-            <div class="col-md-6 col-lg-4 mb-3" *ngFor="let template of userBingoTemplates(); trackBy: trackById">
-              <div class="card bg-dark border-dark h-100" [class.border-primary]="selectedTemplate?.id === template.id"
-                [class.bg-primary]="selectedTemplate?.id === template.id" style="cursor: pointer;"
-                (click)="selectTemplate(template)">
-                <div class="card-body text-center">
-                  <i class="fa fa-th fa-2x text-info mb-3"
-                    [class.text-light]="selectedTemplate?.id === template.id"></i>
-                  <h6 class="card-title text-light">{{ template.gridSize }}x{{ template.gridSize }} Grid</h6>
-                  <p class="card-text text-muted small">
-                    Bingo card with {{ template.gridSize * template.gridSize }} squares
-                  </p>
-                  <div class="mt-2">
-                    <span class="badge bg-info text-dark me-1">
-                      <i class="fa fa-user
-                        me-1"></i>Custom
-                    </span>
-                    <span class="badge bg-secondary text-light me-1">
-                      <i class="fa fa-tag me-1"></i>{{ template.name }}
-                    </span>
-                    <span class="badge bg-primary text-light">
-                      <i class="fa fa-users me-1"></i>{{ template.teams.length }} Teams Included
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
         </div>
 
         <!-- Create Custom Template Section -->
@@ -272,6 +274,7 @@
             </div>
           </div>
           <div class="card-body" *ngIf="showCustomForm">
+            <!-- Custom Ranking Form -->
             <form *ngIf="predictionType === 'Ranking'" [formGroup]="customRankingForm"
               (ngSubmit)="createCustomRankingTemplate()">
               <div class="row">
@@ -381,77 +384,83 @@
                 Create Bingo Template
               </button>
             </form>
-            <!-- No Selection Message -->
-            <div *ngIf="!selectedTemplate && !showCustomForm" class="text-center py-5">
+          </div>
+
+          <!-- No Selection Message -->
+          <div *ngIf="!selectedTemplate && !showCustomForm" class="card-body">
+            <div class="text-center py-5">
               <i class="fa fa-hand-pointer-o fa-3x text-muted mb-3"></i>
               <h5 class="text-muted">Select a template to continue</h5>
               <p class="text-muted">Choose from official templates or create your own custom template</p>
             </div>
           </div>
-          <!-- Selected Template Preview -->
-          <div *ngIf="selectedTemplate" class="card bg-dark border-success shadow mb-4">
-            <div class="card-header bg-success border-success d-flex justify-content-between align-items-center">
-              <h4 class="text-light mb-0">
-                <i class="fa fa-check-circle me-2"></i> Selected {{ predictionType }} Template
-              </h4>
-              <span class="badge" [class.bg-warning]="selectedTemplate.officialTemplate"
-                [class.bg-info]="!selectedTemplate.officialTemplate"
-                [class.text-dark]="selectedTemplate.officialTemplate">
-                <i class="fa" [class.fa-star]="selectedTemplate.officialTemplate"
-                  [class.fa-user]="!selectedTemplate.officialTemplate"></i>
-                {{ selectedTemplate.officialTemplate ? 'Official' : 'Custom' }}
-              </span>
-            </div>
-            <div class="card-body">
-              <div class="row">
-                <div class="col-md-8">
-                  <h5 class="text-light mb-3"><i class="fa fa-info-circle me-2"></i>Template Details</h5>
+        </div>
 
-                  <!-- Ranking -->
-                  <ng-container *ngIf="predictionType === 'Ranking'">
-                    <p class="text-light mb-2">
-                      <strong>Dimensions:</strong> {{ selectedTemplate.numberOfRows }} rows × {{
-                      selectedTemplate.numberOfColumns }} columns
-                    </p>
-                    <p class="text-light mb-2">
-                      <strong>Total Items:</strong> {{ selectedTemplate.numberOfRows * selectedTemplate.numberOfColumns
-                      }}
-                    </p>
-                  </ng-container>
+        <!-- Selected Template Preview -->
+        <div *ngIf="selectedTemplate" class="card bg-dark border-success shadow mb-4">
+          <div class="card-header bg-success border-success d-flex justify-content-between align-items-center">
+            <h4 class="text-light mb-0">
+              <i class="fa fa-check-circle me-2"></i> Selected {{ predictionType }} Template
+            </h4>
+            <span class="badge" [class.bg-warning]="selectedTemplate.officialTemplate"
+              [class.bg-info]="!selectedTemplate.officialTemplate"
+              [class.text-dark]="selectedTemplate.officialTemplate">
+              <i class="fa" [class.fa-star]="selectedTemplate.officialTemplate"
+                [class.fa-user]="!selectedTemplate.officialTemplate"></i>
+              {{ selectedTemplate.officialTemplate ? 'Official' : 'Custom' }}
+            </span>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-8">
+                <h5 class="text-light mb-3"><i class="fa fa-info-circle me-2"></i>Template Details</h5>
 
-                  <!-- Bracket -->
-                  <ng-container *ngIf="predictionType === 'Bracket'">
-                    <p class="text-light mb-2">
-                      <strong>Rounds:</strong> {{ selectedTemplate.numberOfRounds }}
-                    </p>
-                    <p class="text-light mb-2">
-                      <strong>Max Participants:</strong> {{ pow(2, selectedTemplate.numberOfRounds) }}
-                    </p>
-                    <p class="text-light mb-2">
-                      <strong>Bracket Type:</strong> {{ selectedTemplate.bracketType === 'SingleTeam' ? 'Single Team' :
-                      'Matchup' }}
-                    </p>
-                  </ng-container>
+                <!-- Ranking -->
+                <ng-container *ngIf="predictionType === 'Ranking'">
+                  <p class="text-light mb-2">
+                    <strong>Dimensions:</strong> {{ selectedTemplate.numberOfRows }} rows × {{
+                    selectedTemplate.numberOfColumns }} columns
+                  </p>
+                  <p class="text-light mb-2">
+                    <strong>Total Items:</strong> {{ selectedTemplate.numberOfRows * selectedTemplate.numberOfColumns
+                    }}
+                  </p>
+                </ng-container>
 
-                  <!-- Bingo -->
-                  <ng-container *ngIf="predictionType === 'Bingo'">
-                    <p class="text-light mb-2">
-                      <strong>Grid Size:</strong> {{ selectedTemplate.gridSize }}×{{ selectedTemplate.gridSize }}
-                    </p>
-                    <p class="text-light mb-2">
-                      <strong>Total Squares:</strong> {{ selectedTemplate.gridSize * selectedTemplate.gridSize }}
-                    </p>
-                  </ng-container>
-                </div>
+                <!-- Bracket -->
+                <ng-container *ngIf="predictionType === 'Bracket'">
+                  <p class="text-light mb-2">
+                    <strong>Rounds:</strong> {{ selectedTemplate.numberOfRounds }}
+                  </p>
+                  <p class="text-light mb-2">
+                    <strong>Max Participants:</strong> {{ pow(2, selectedTemplate.numberOfRounds) }}
+                  </p>
+                  <p class="text-light mb-2">
+                    <strong>Bracket Type:</strong> {{ selectedTemplate.bracketType === 'SingleTeam' ? 'Single Team' :
+                    'Matchup' }}
+                  </p>
+                </ng-container>
 
-                <div class="col-md-4 text-end d-flex align-items-end justify-content-end">
-                  <button class="btn btn-outline-light btn-lg mt-3" (click)="proceedWithTemplate()">
-                    <i class="fa fa-arrow-right me-2"></i> Continue
-                  </button>
-                </div>
+                <!-- Bingo -->
+                <ng-container *ngIf="predictionType === 'Bingo'">
+                  <p class="text-light mb-2">
+                    <strong>Grid Size:</strong> {{ selectedTemplate.gridSize }}×{{ selectedTemplate.gridSize }}
+                  </p>
+                  <p class="text-light mb-2">
+                    <strong>Total Squares:</strong> {{ selectedTemplate.gridSize * selectedTemplate.gridSize }}
+                  </p>
+                </ng-container>
+              </div>
+
+              <div class="col-md-4 text-end d-flex align-items-end justify-content-end">
+                <button class="btn btn-outline-light btn-lg mt-3" (click)="proceedWithTemplate()">
+                  <i class="fa fa-arrow-right me-2"></i> Continue
+                </button>
               </div>
             </div>
-          </div> 
+          </div>
         </div>
       </div>
     </div>
+  </div>
+</div>
