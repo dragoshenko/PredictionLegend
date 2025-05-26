@@ -104,7 +104,7 @@ public class TeamService : ITeamService
         return teamDTOs;
     }
 
-    public async Task<ActionResult> UpdateTeamAsync(TeamDTO teamDTO)
+    public async Task<ActionResult<TeamDTO>> UpdateTeamAsync(TeamDTO teamDTO)
     {
         var teamEntity = await _unitOfWork.TeamRepository.GetTeamAsync(teamDTO.Id);
         if (teamEntity == null) return new NotFoundResult();
@@ -130,7 +130,7 @@ public class TeamService : ITeamService
         }
         
         var teamDTOResult = _mapper.Map<TeamDTO>(teamEntity);
-        return new OkObjectResult(teamDTOResult);
+        return teamDTOResult; // This returns ActionResult<TeamDTO> implicitly
     }
 
     public async Task<ActionResult> DeleteTeamAsync(int id)

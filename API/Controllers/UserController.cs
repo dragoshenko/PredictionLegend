@@ -34,50 +34,50 @@ public class UserController : BaseAPIController
 
     }
     public class DirectProfileUpdateRequest
-{
-    public string Username { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public string Bio { get; set; } = string.Empty;
-}
-
-[HttpPost("direct-profile-update")]
-public async Task<IActionResult> DirectProfileUpdate([FromBody] DirectProfileUpdateRequest request)
-{
-    if (string.IsNullOrEmpty(request.Username))
     {
-        return BadRequest("Username is required");
+        public string Username { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string Bio { get; set; } = string.Empty;
     }
 
-    var user = await _userManager.FindByNameAsync(request.Username);
-    if (user == null)
+    [HttpPost("direct-profile-update")]
+    public async Task<IActionResult> DirectProfileUpdate([FromBody] DirectProfileUpdateRequest request)
     {
-        return BadRequest("User not found");
-    }
+        if (string.IsNullOrEmpty(request.Username))
+        {
+            return BadRequest("Username is required");
+        }
 
-    // Update the properties directly (same as password change approach)
-    if (!string.IsNullOrEmpty(request.DisplayName))
-    {
-        user.DisplayName = request.DisplayName;
-    }
-    
-    if (request.Bio != null)
-    {
-        user.Bio = request.Bio;
-    }
+        var user = await _userManager.FindByNameAsync(request.Username);
+        if (user == null)
+        {
+            return BadRequest("User not found");
+        }
 
-    // Use UserManager.UpdateAsync directly (same as password change)
-    var result = await _userManager.UpdateAsync(user);
+        // Update the properties directly (same as password change approach)
+        if (!string.IsNullOrEmpty(request.DisplayName))
+        {
+            user.DisplayName = request.DisplayName;
+        }
+        
+        if (request.Bio != null)
+        {
+            user.Bio = request.Bio;
+        }
 
-    if (result.Succeeded)
-    {
-        return Ok(new { message = "Profile updated successfully" });
+        // Use UserManager.UpdateAsync directly (same as password change)
+        var result = await _userManager.UpdateAsync(user);
+
+        if (result.Succeeded)
+        {
+            return Ok(new { message = "Profile updated successfully" });
+        }
+        else
+        {
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            return BadRequest(new { errors = errors });
+        }
     }
-    else
-    {
-        var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-        return BadRequest(new { errors = errors });
-    }
-}
 
     // Get current user data
     [HttpGet]
