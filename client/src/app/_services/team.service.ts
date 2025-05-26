@@ -51,24 +51,14 @@ export class TeamService implements OnInit {
         throw new Error('User not authenticated');
       }
 
-      // Validate required fields
-      if (!teamData.name || teamData.name.trim().length === 0) {
-        throw new Error('Team name is required');
-      }
-
-      if (teamData.name.trim().length < 2 || teamData.name.trim().length > 100) {
-        throw new Error('Team name must be between 2 and 100 characters');
-      }
-
-      // Prepare team data with all required fields according to the DTO and Entity
+      // Prepare team data with all required fields
       const teamToCreate = {
-        id: 0, // This will be set by the server
         name: teamData.name.trim(),
-        description: teamData.description?.trim() || '',
-        photoUrl: teamData.photoUrl?.trim() || '',
+        description: teamData.description?.trim() || null,
+        photoUrl: teamData.photoUrl?.trim() || null,
         score: teamData.score || 0,
-        createdByUserId: currentUser.id,
-        createdAt: new Date() // This should be set automatically by the API but we include it for completeness
+        createdByUserId: currentUser.id, // This should be set automatically by the API
+        createdAt: new Date().toISOString() // This should be set automatically by the API
       };
 
       console.log('Creating team with data:', teamToCreate);
@@ -76,34 +66,14 @@ export class TeamService implements OnInit {
       const result = await firstValueFrom(
         this.http.post<Team>(`${this.baseUrl}/create`, teamToCreate).pipe(
           tap((newTeam: Team) => {
-            // Update local teams signal
             this.teams.update(ts => [...ts, newTeam]);
-            console.log('Team created successfully:', newTeam);
           })
         )
       );
       return result;
-    } catch (error: any) {
-      console.error('Failed to create team:', error);
-
-      // Extract meaningful error message
-      let errorMessage = 'Failed to create team';
-
-      if (error?.error) {
-        if (typeof error.error === 'string') {
-          errorMessage = error.error;
-        } else if (error.error.message) {
-          errorMessage = error.error.message;
-        } else if (error.error.errors) {
-          // Handle ASP.NET Core validation errors
-          const validationErrors = Object.values(error.error.errors).flat();
-          errorMessage = validationErrors.join(', ');
-        }
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-
-      throw new Error(errorMessage);
+    } catch (error) {
+      console.error('Failed to create team', error);
+      throw error;
     }
   }
 
@@ -126,27 +96,8 @@ export class TeamService implements OnInit {
   /** Update a team */
   async updateTeam(team: Team): Promise<Team> {
     try {
-      // Validate the team data before sending
-      if (!team.name || team.name.trim().length === 0) {
-        throw new Error('Team name is required');
-      }
-
-      if (team.name.trim().length < 2 || team.name.trim().length > 100) {
-        throw new Error('Team name must be between 2 and 100 characters');
-      }
-
-      const teamToUpdate = {
-        id: team.id,
-        name: team.name.trim(),
-        description: team.description?.trim() || '',
-        photoUrl: team.photoUrl?.trim() || '',
-        score: team.score || 0,
-        createdByUserId: team.createdByUserId,
-        createdAt: team.createdAt
-      };
-
       const updated = await firstValueFrom(
-        this.http.put<Team>(`${this.baseUrl}/update`, teamToUpdate).pipe(
+        this.http.put<Team>(`${this.baseUrl}/update`, team).pipe(
           tap((updatedTeam: Team) => {
             this.teams.update(ts => ts.map(t => (t.id === updatedTeam.id ? updatedTeam : t)));
           })

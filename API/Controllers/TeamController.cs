@@ -35,10 +35,6 @@ public class TeamController : BaseAPIController
                 return BadRequest("Team name must be between 2 and 100 characters");
             }
 
-            // Ensure the team has the userId set
-            team.CreatedByUserId = userId;
-            team.CreatedAt = DateTime.UtcNow;
-
             var createdTeam = await _teamService.CreateTeamAsync(team, userId);
             return createdTeam;
         }
@@ -47,14 +43,7 @@ public class TeamController : BaseAPIController
             // Log the exception details
             Console.WriteLine($"Error creating team: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            
-            // Return a more specific error message
-            if (ex.Message.Contains("duplicate") || ex.Message.Contains("unique"))
-            {
-                return BadRequest("A team with this name already exists");
-            }
-            
-            return StatusCode(500, new { message = "An error occurred while creating the team", details = ex.Message });
+            return StatusCode(500, "An error occurred while creating the team");
         }
     }
 
@@ -63,8 +52,6 @@ public class TeamController : BaseAPIController
     {
         try
         {
-            var userId = User.GetUserId();
-            
             // Validate input
             if (team.Id <= 0)
             {
@@ -81,13 +68,6 @@ public class TeamController : BaseAPIController
                 return BadRequest("Team name must be between 2 and 100 characters");
             }
 
-            // Check if the user owns this team or is an admin
-            var existingTeam = await _teamService.GetTeamAsync(team.Id);
-            if (existingTeam.Value?.CreatedByUserId != userId)
-            {
-                return Forbid("You can only update teams you created");
-            }
-
             var updatedTeam = await _teamService.UpdateTeamAsync(team);
             return updatedTeam;
         }
@@ -95,7 +75,7 @@ public class TeamController : BaseAPIController
         {
             Console.WriteLine($"Error updating team: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            return StatusCode(500, new { message = "An error occurred while updating the team", details = ex.Message });
+            return StatusCode(500, "An error occurred while updating the team");
         }
     }
 
@@ -112,7 +92,7 @@ public class TeamController : BaseAPIController
         {
             Console.WriteLine($"Error getting user teams: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            return StatusCode(500, new { message = "An error occurred while retrieving teams", details = ex.Message });
+            return StatusCode(500, "An error occurred while retrieving teams");
         }
     }
 
@@ -133,7 +113,7 @@ public class TeamController : BaseAPIController
         {
             Console.WriteLine($"Error getting team: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            return StatusCode(500, new { message = "An error occurred while retrieving the team", details = ex.Message });
+            return StatusCode(500, "An error occurred while retrieving the team");
         }
     }
 
@@ -147,15 +127,6 @@ public class TeamController : BaseAPIController
                 return BadRequest("Valid team ID is required");
             }
 
-            var userId = User.GetUserId();
-            
-            // Check if the user owns this team
-            var existingTeam = await _teamService.GetTeamAsync(id);
-            if (existingTeam.Value?.CreatedByUserId != userId)
-            {
-                return Forbid("You can only delete teams you created");
-            }
-
             var result = await _teamService.DeleteTeamAsync(id);
             return result;
         }
@@ -163,7 +134,7 @@ public class TeamController : BaseAPIController
         {
             Console.WriteLine($"Error deleting team: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            return StatusCode(500, new { message = "An error occurred while deleting the team", details = ex.Message });
+            return StatusCode(500, "An error occurred while deleting the team");
         }
     }
 }

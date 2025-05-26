@@ -22,17 +22,6 @@ public class TeamRepository : ITeamRepository
     {
         try
         {
-            // Validate required fields
-            if (string.IsNullOrWhiteSpace(team.Name))
-            {
-                throw new ArgumentException("Team name is required");
-            }
-
-            if (team.CreatedByUserId <= 0)
-            {
-                throw new ArgumentException("CreatedByUserId is required");
-            }
-
             // Ensure CreatedAt is set
             if (team.CreatedAt == default(DateTime))
             {
@@ -43,25 +32,11 @@ public class TeamRepository : ITeamRepository
             if (team.CreatedByUser == null && team.CreatedByUserId > 0)
             {
                 team.CreatedByUser = await _userManager.FindByIdAsync(team.CreatedByUserId.ToString());
-                if (team.CreatedByUser == null)
-                {
-                    throw new ArgumentException($"User with ID {team.CreatedByUserId} not found");
-                }
             }
-
-            // Ensure description is not null (set to empty string if null)
-            if (team.Description == null)
-            {
-                team.Description = string.Empty;
-            }
-
-            Console.WriteLine($"Adding team to context: {team.Name}, UserId: {team.CreatedByUserId}");
 
             // Add to context
             await _context.Teams.AddAsync(team);
             await _context.SaveChangesAsync();
-            
-            Console.WriteLine($"Team saved to database with ID: {team.Id}");
             
             // Reload the team with all navigation properties
             var savedTeam = await _context.Teams
@@ -74,13 +49,6 @@ public class TeamRepository : ITeamRepository
         {
             Console.WriteLine($"Error in CreateTeamAsync: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            
-            // Log inner exception if it exists
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
-            }
-            
             throw;
         }
     }
@@ -89,11 +57,6 @@ public class TeamRepository : ITeamRepository
     {
         try
         {
-            if (team.Id <= 0)
-            {
-                throw new ArgumentException("Team ID is required for update");
-            }
-
             _context.Entry(team).State = EntityState.Modified;
             await _context.SaveChangesAsync();
             
@@ -114,34 +77,18 @@ public class TeamRepository : ITeamRepository
 
     public async Task<Team?> GetTeamAsync(int id)
     {
-        try
-        {
-            var team = await _context.Teams
-                .Include(t => t.CreatedByUser)
-                .FirstOrDefaultAsync(t => t.Id == id);
-            return team;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error in GetTeamAsync: {ex.Message}");
-            throw;
-        }
+        var team = await _context.Teams
+            .Include(t => t.CreatedByUser)
+            .FirstOrDefaultAsync(t => t.Id == id);
+        return team;
     }
 
     public async Task<List<Team>> GetAllTeamsAsync()
     {
-        try
-        {
-            var teams = await _context.Teams
-                .Include(t => t.CreatedByUser)
-                .ToListAsync();
-            return teams;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error in GetAllTeamsAsync: {ex.Message}");
-            throw;
-        }
+        var teams = await _context.Teams
+            .Include(t => t.CreatedByUser)
+            .ToListAsync();
+        return teams;
     }
 
     public async Task<List<Team>> GetTemplateTeamsAsync(int templateId, PredictionType predictionType)
@@ -206,13 +153,23 @@ public class TeamRepository : ITeamRepository
     {
         try
         {
-            // Get teams created by the user
-            var userTeams = await _context.Teams
+            var user = await _userManager.Users
+                .Include(u => u.Teams)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user?.Teams == null)
+            {
+                return new List<Team>();
+            }
+
+            // Load the teams with CreatedByUser navigation property
+            var teamIds = user.Teams.Select(t => t.Id).ToList();
+            var teamsWithNavigation = await _context.Teams
                 .Include(t => t.CreatedByUser)
-                .Where(t => t.CreatedByUserId == userId)
+                .Where(t => teamIds.Contains(t.Id))
                 .ToListAsync();
 
-            return userTeams;
+            return teamsWithNavigation;
         }
         catch (Exception ex)
         {
@@ -243,14 +200,6 @@ public class TeamRepository : ITeamRepository
 
     public async Task<bool> TeamExistsAsync(int id)
     {
-        try
-        {
-            return await _context.Teams.AnyAsync(t => t.Id == id);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error in TeamExistsAsync: {ex.Message}");
-            throw;
-        }
+        return await _context.Teams.AnyAsync(t => t.Id == id);
     }
 }
