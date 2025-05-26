@@ -14,6 +14,7 @@ import { Router } from '@angular/router';
 import { take } from 'rxjs/operators';
 import { HttpHeaders } from '@angular/common/http';
 
+
 @Component({
   selector: 'app-profile',
   standalone: true,
@@ -154,13 +155,17 @@ export class ProfileComponent implements OnInit {
     if (this.profileForm.valid) {
       this.loading = true;
 
+      // Use the same pattern as password change - direct API call
       const updateModel = {
-        DisplayName: this.profileForm.get('displayName')?.value,
-        Bio: this.profileForm.get('bio')?.value || ''
+        username: this.user?.username || '',
+        displayName: this.profileForm.get('displayName')?.value,
+        bio: this.profileForm.get('bio')?.value || ''
       };
 
-      // Direct API call to update profile
-      this.http.put(environment.apiUrl + 'user', updateModel).subscribe({
+      console.log('Sending direct profile update:', updateModel);
+
+      // Use the new direct endpoint (following password change pattern)
+      this.http.post(environment.apiUrl + 'user/direct-profile-update', updateModel).subscribe({
         next: (response) => {
           console.log('Profile update response:', response);
           this.toastr.success('Profile updated successfully');
@@ -170,7 +175,8 @@ export class ProfileComponent implements OnInit {
         },
         error: error => {
           console.error('Update profile error:', error);
-          this.toastr.error(error.error || 'Failed to update profile');
+          console.error('Error details:', error.error);
+          this.toastr.error(error.error?.message || error.error || 'Failed to update profile');
           this.loading = false;
         }
       });

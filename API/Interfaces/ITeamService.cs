@@ -13,6 +13,6 @@ public interface ITeamService
     Task<ActionResult<List<TeamDTO>>> GetTemplateTeamsAsync(int templateId, PredictionType predictionType);
     Task<ActionResult<TeamDTO>> GetTeamAsync(int id);
     Task<ActionResult<List<TeamDTO>>> GetAllTeamsAsync();
-    Task<ActionResult> UpdateTeamAsync(TeamDTO team);
+    Task<ActionResult<TeamDTO>> UpdateTeamAsync(TeamDTO team);
     Task<ActionResult> DeleteTeamAsync(int id);
 }

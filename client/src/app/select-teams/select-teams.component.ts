@@ -1,4 +1,4 @@
-// select-teams/select-teams.component.ts
+// client/src/app/select-teams/select-teams.component.ts
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -8,6 +8,7 @@ import { TeamService } from '../_services/team.service';
 import { TemplateService } from '../_services/template.service';
 import { ToastrService } from 'ngx-toastr';
 import { PredictionType } from '../_models/predictionType';
+import { AccountService } from '../_services/account.service';
 
 @Component({
   selector: 'app-select-teams',
@@ -22,6 +23,7 @@ export class SelectTeamsComponent implements OnInit {
   private templateService = inject(TemplateService);
   private toastr = inject(ToastrService);
   private fb = inject(FormBuilder);
+  private accountService = inject(AccountService);
 
   predictionId: number = 0;
   templateId: number = 0;
@@ -50,9 +52,14 @@ export class SelectTeamsComponent implements OnInit {
 
   initializeForm(): void {
     this.teamForm = this.fb.group({
-      name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]],
-      description: [''],
-      photoUrl: ['']
+      name: ['', [
+        Validators.required,
+        Validators.minLength(2),
+        Validators.maxLength(100),
+        Validators.pattern(/^[a-zA-Z0-9\s\-_.]+$/) // Allow letters, numbers, spaces, hyphens, underscores, dots
+      ]],
+      description: ['', [Validators.maxLength(1000)]],
+      photoUrl: ['', [Validators.pattern(/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/)]] // URL validation
     });
   }
 
@@ -173,8 +180,6 @@ export class SelectTeamsComponent implements OnInit {
     }
   }
 
-
-
   toggleTeamSelection(team: Team): void {
     const index = this.selectedTeams.findIndex(t => t.id === team.id);
     if (index > -1) {
@@ -193,25 +198,84 @@ export class SelectTeamsComponent implements OnInit {
   }
 
   async createTeam(): Promise<void> {
-    if (this.teamForm.valid) {
-      this.isLoading = true;
-      try {
-        const newTeam = await this.teamService.createTeam({
-          ...this.teamForm.value,
-          templateId: this.templateId
-        });
+    if (this.teamForm.invalid) {
+      // Mark all fields as touched to show validation errors
+      Object.keys(this.teamForm.controls).forEach(key => {
+        this.teamForm.get(key)?.markAsTouched();
+      });
+      this.toastr.error('Please fix the validation errors');
+      return;
+    }
 
-        this.userTeams.push(newTeam);
-        this.selectedTeams.push(newTeam);
-        this.teamForm.reset();
-        this.showCreateForm = false;
-        this.toastr.success('Team created successfully');
-      } catch (error) {
-        console.error('Error creating team:', error);
-        this.toastr.error('Failed to create team');
-      } finally {
+    this.isLoading = true;
+    try {
+      const currentUser = this.accountService.currentUser();
+      if (!currentUser) {
+        this.toastr.error('You must be logged in to create teams');
         this.isLoading = false;
+        return;
       }
+
+      const formValue = this.teamForm.value;
+
+      // Prepare team data with validation
+      const teamData = {
+        name: formValue.name?.trim() || '',
+        description: formValue.description?.trim() || '',
+        photoUrl: formValue.photoUrl?.trim() || '',
+        score: 0,
+        templateId: this.templateId
+      };
+
+      // Additional validation
+      if (!teamData.name || teamData.name.length < 2) {
+        this.toastr.error('Team name must be at least 2 characters long');
+        this.isLoading = false;
+        return;
+      }
+
+      if (teamData.name.length > 100) {
+        this.toastr.error('Team name must be less than 100 characters');
+        this.isLoading = false;
+        return;
+      }
+
+      // Check for duplicate team names
+      const duplicateTeam = [...this.userTeams, ...this.existingTeams].find(
+        team => team.name.toLowerCase() === teamData.name.toLowerCase()
+      );
+
+      if (duplicateTeam) {
+        this.toastr.error('A team with this name already exists');
+        this.isLoading = false;
+        return;
+      }
+
+      console.log('Creating team with data:', teamData);
+
+      const newTeam = await this.teamService.createTeam(teamData);
+
+      this.userTeams.push(newTeam);
+      this.selectedTeams.push(newTeam);
+      this.teamForm.reset();
+      this.showCreateForm = false;
+      this.toastr.success(`Team "${newTeam.name}" created successfully!`);
+
+    } catch (error: any) {
+      console.error('Error creating team:', error);
+
+      // Extract meaningful error message
+      let errorMessage = 'Failed to create team';
+
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+
+      this.toastr.error(errorMessage);
+    } finally {
+      this.isLoading = false;
     }
   }
 
@@ -237,5 +301,22 @@ export class SelectTeamsComponent implements OnInit {
 
   goBack(): void {
     this.router.navigate(['/edit-template', this.predictionId, this.predictionType]);
+  }
+
+  // Helper methods for form validation display
+  isFieldInvalid(fieldName: string): boolean {
+    const field = this.teamForm.get(fieldName);
+    return !!(field && field.invalid && field.touched);
+  }
+
+  getFieldError(fieldName: string): string {
+    const field = this.teamForm.get(fieldName);
+    if (field && field.errors && field.touched) {
+      if (field.errors['required']) return `${fieldName} is required`;
+      if (field.errors['minlength']) return `${fieldName} must be at least ${field.errors['minlength'].requiredLength} characters`;
+      if (field.errors['maxlength']) return `${fieldName} must be less than ${field.errors['maxlength'].requiredLength} characters`;
+      if (field.errors['pattern']) return `${fieldName} contains invalid characters`;
+    }
+    return '';
   }
 }

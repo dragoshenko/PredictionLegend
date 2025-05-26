@@ -35,7 +35,7 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
     public DbSet<PostBingo> PostBingos { get; set; } = null!;
     #endregion
 
-    
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         #region UserDbConfig
@@ -109,7 +109,7 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
         .WithMany(c => c.Replies)
         .HasForeignKey(c => c.ParentCommentId)
         .OnDelete(DeleteBehavior.NoAction);
-        
+
         builder.Entity<Comment>()
             .HasOne(c => c.DiscussionPost)
             .WithMany(p => p.Comments)
@@ -134,7 +134,7 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
             .WithMany()
             .HasForeignKey(b => b.RightBracketId)
             .OnDelete(DeleteBehavior.NoAction);
-      
+
         // PostBracket and AppUser
         builder.Entity<PostBracket>()
             .HasOne(p => p.User)
@@ -178,5 +178,34 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
             .HasForeignKey(d => d.UserId)
             .OnDelete(DeleteBehavior.NoAction);
         #endregion
-    }
+        builder.Entity<Team>()
+        .HasOne(t => t.CreatedByUser)
+        .WithMany(u => u.Teams)
+        .HasForeignKey(t => t.CreatedByUserId)
+        .OnDelete(DeleteBehavior.NoAction);
+
+        builder.Entity<Team>()
+            .Property(t => t.Name)
+            .IsRequired()
+            .HasMaxLength(100);
+
+        builder.Entity<Team>()
+            .Property(t => t.Description)
+            .IsRequired()
+            .HasMaxLength(1000)
+            .HasDefaultValue(string.Empty);
+
+        builder.Entity<Team>()
+            .Property(t => t.CreatedAt)
+            .IsRequired()
+            .HasDefaultValueSql("GETUTCDATE()");
+
+        builder.Entity<Team>()
+            .Property(t => t.PhotoUrl)
+            .HasMaxLength(500);
+
+        builder.Entity<Team>()
+            .HasIndex(t => new { t.CreatedByUserId, t.Name })
+            .IsUnique(); // Prevent duplicate team names per user
+            }
 }
