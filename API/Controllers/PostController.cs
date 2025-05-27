@@ -24,19 +24,19 @@ public class PostController : BaseAPIController
         return result;
     }
 
-    // DEBUGGING: Enhanced publish endpoint with detailed logging
+    // FIXED: Corrected publish endpoint with proper error handling
     [HttpPost("rank/publish")]
     public async Task<ActionResult> PublishRankingPost([FromBody] PublishPostRequestDTO request)
     {
         try
         {
             Console.WriteLine("=== PUBLISH RANKING POST CALLED ===");
-            Console.WriteLine($"Request is null: {request == null}");
+            Console.WriteLine($"Request received: {request != null}");
             
             if (request == null)
             {
-                Console.WriteLine("REQUEST IS NULL - returning BadRequest");
-                return BadRequest(new string[] { "Request data is required" });
+                Console.WriteLine("REQUEST IS NULL");
+                return BadRequest("Request data is required");
             }
 
             Console.WriteLine($"PredictionId: {request.PredictionId}");
@@ -46,22 +46,23 @@ public class PostController : BaseAPIController
             Console.WriteLine($"Notes: {request.Notes ?? "null"}");
             Console.WriteLine($"PostRank is null: {request.PostRank == null}");
 
+            // Validate required fields
             if (request.PredictionId <= 0)
             {
-                Console.WriteLine("INVALID PREDICTION ID - returning BadRequest");
-                return BadRequest(new string[] { "Valid prediction ID is required" });
+                Console.WriteLine("INVALID PREDICTION ID");
+                return BadRequest("Valid prediction ID is required");
             }
 
             if (request.TemplateId <= 0)
             {
-                Console.WriteLine("INVALID TEMPLATE ID - returning BadRequest");
-                return BadRequest(new string[] { "Valid template ID is required" });
+                Console.WriteLine("INVALID TEMPLATE ID");
+                return BadRequest("Valid template ID is required");
             }
 
             if (request.PostRank == null)
             {
-                Console.WriteLine("POSTRANK IS NULL - returning BadRequest");
-                return BadRequest(new string[] { "PostRank data is required for ranking predictions" });
+                Console.WriteLine("POSTRANK IS NULL");
+                return BadRequest("PostRank data is required for ranking predictions");
             }
 
             var userId = User.GetUserId();
@@ -69,15 +70,15 @@ public class PostController : BaseAPIController
             
             if (userId <= 0)
             {
-                Console.WriteLine("INVALID USER ID - returning Unauthorized");
-                return Unauthorized(new string[] { "Invalid user ID" });
+                Console.WriteLine("INVALID USER ID");
+                return Unauthorized("Invalid user ID");
             }
 
             Console.WriteLine("All validations passed, calling service...");
             
             var result = await _postService.PublishPostAsync(request, userId);
             
-            Console.WriteLine($"Service returned result type: {result.GetType().Name}");
+            Console.WriteLine($"Service returned result");
             
             return result;
         }
@@ -87,7 +88,12 @@ public class PostController : BaseAPIController
             Console.WriteLine($"Exception type: {ex.GetType().Name}");
             Console.WriteLine($"Exception message: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            return BadRequest(new string[] { "An error occurred while publishing the post", ex.Message });
+            
+            // Return proper error response
+            return BadRequest(new { 
+                message = "An error occurred while publishing the post", 
+                error = ex.Message 
+            });
         }
     }
 

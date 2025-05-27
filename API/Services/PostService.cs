@@ -23,17 +23,32 @@ public class PostService : IPostService
     {
         try
         {
+            Console.WriteLine("=== CreatePostRankAsync called ===");
+            Console.WriteLine($"PostRank ID: {postRank.Id}");
+            Console.WriteLine($"TemplateId: {postRank.RankingTemplateId}");
+            Console.WriteLine($"PredictionId: {postRank.PredictionId}");
+            Console.WriteLine($"UserId: {userId}");
+
             var rankingTemplate = await _unitOfWork.TemplateRepository.GetRankingTemplate(postRank.RankingTemplateId);
             if (rankingTemplate == null)
+            {
+                Console.WriteLine("Ranking template not found");
                 return new BadRequestObjectResult("Ranking template not found");
+            }
 
             var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId);
             if (user == null)
+            {
+                Console.WriteLine("User not found");
                 return new BadRequestObjectResult("User not found");
+            }
 
             var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(postRank.PredictionId);
             if (prediction == null)
+            {
+                Console.WriteLine("Prediction not found");
                 return new BadRequestObjectResult("Prediction not found");
+            }
 
             // Create PostRank entity
             var postRankEntity = new PostRank
@@ -107,9 +122,11 @@ public class PostService : IPostService
 
             if (!saveResult)
             {
+                Console.WriteLine("Failed to save to database");
                 return new BadRequestObjectResult("Failed to save post rank to database");
             }
 
+            Console.WriteLine("PostRank created successfully");
             var resultDto = _mapper.Map<PostRankDTO>(createdPostRank);
             return new OkObjectResult(resultDto);
         }
@@ -121,32 +138,36 @@ public class PostService : IPostService
         }
     }
 
-    // FIXED: PublishPostAsync with correct return type
+    // FIXED: PublishPostAsync with proper error handling and validation
     public async Task<ActionResult> PublishPostAsync(PublishPostRequestDTO request, int userId)
     {
         try
         {
-            Console.WriteLine($"PublishPostAsync called with PredictionId: {request.PredictionId}, TemplateId: {request.TemplateId}, UserId: {userId}");
+            Console.WriteLine($"=== PublishPostAsync called ===");
+            Console.WriteLine($"PredictionId: {request.PredictionId}");
+            Console.WriteLine($"TemplateId: {request.TemplateId}");
+            Console.WriteLine($"PredictionType: {request.PredictionType}");
+            Console.WriteLine($"UserId: {userId}");
 
             var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId);
             if (user == null)
             {
                 Console.WriteLine("User not found");
-                return new BadRequestObjectResult(new string[] { "User not found" });
+                return new BadRequestObjectResult("User not found");
             }
 
             var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(request.PredictionId);
             if (prediction == null)
             {
                 Console.WriteLine("Prediction not found");
-                return new BadRequestObjectResult(new string[] { "Prediction not found" });
+                return new BadRequestObjectResult("Prediction not found");
             }
 
             // Validate that the user owns this prediction
             if (prediction.UserId != userId)
             {
                 Console.WriteLine($"User {userId} trying to publish prediction owned by {prediction.UserId}");
-                return new BadRequestObjectResult(new string[] { "You can only publish your own predictions" });
+                return new BadRequestObjectResult("You can only publish your own predictions");
             }
 
             // Update prediction status
@@ -160,7 +181,7 @@ public class PostService : IPostService
                     if (request.PostRank == null)
                     {
                         Console.WriteLine("PostRank data is null");
-                        return new BadRequestObjectResult(new string[] { "PostRank data required for ranking predictions" });
+                        return new BadRequestObjectResult("PostRank data required for ranking predictions");
                     }
 
                     // Validate template exists
@@ -168,40 +189,45 @@ public class PostService : IPostService
                     if (template == null)
                     {
                         Console.WriteLine($"Template {request.TemplateId} not found");
-                        return new BadRequestObjectResult(new string[] { "Template not found" });
+                        return new BadRequestObjectResult("Template not found");
                     }
 
-                    // Ensure all required fields are set
+                    // Ensure all required fields are set in PostRank
                     request.PostRank.PredictionId = request.PredictionId;
                     request.PostRank.RankingTemplateId = request.TemplateId;
+                    request.PostRank.UserId = userId;
 
+                    Console.WriteLine("Creating PostRank...");
                     var rankResult = await CreatePostRankAsync(request.PostRank, userId);
+                    
                     if (rankResult.Result is BadRequestObjectResult badResult)
                     {
                         Console.WriteLine($"CreatePostRankAsync failed: {badResult.Value}");
                         return badResult;
                     }
 
+                    Console.WriteLine("PostRank created successfully");
                     break;
 
                 case PredictionType.Bracket:
-                    return new BadRequestObjectResult(new string[] { "Bracket publishing not yet implemented" });
+                    return new BadRequestObjectResult("Bracket publishing not yet implemented");
 
                 case PredictionType.Bingo:
-                    return new BadRequestObjectResult(new string[] { "Bingo publishing not yet implemented" });
+                    return new BadRequestObjectResult("Bingo publishing not yet implemented");
 
                 default:
-                    return new BadRequestObjectResult(new string[] { "Invalid prediction type" });
+                    return new BadRequestObjectResult("Invalid prediction type");
             }
 
             // Update the prediction
+            Console.WriteLine("Updating prediction...");
             await _unitOfWork.PredictionRepository.UpdatePredictionAsync(prediction);
             var saveResult = await _unitOfWork.Complete();
 
             if (!saveResult)
             {
-                Console.WriteLine("Failed to save changes to database");
-                return new BadRequestObjectResult(new string[] { "Failed to save changes to database" });
+                Console.WriteLine("Failed to save prediction changes");
+                return new BadRequestObjectResult("Failed to save prediction changes");
             }
 
             Console.WriteLine("Post published successfully");
@@ -216,7 +242,7 @@ public class PostService : IPostService
         {
             Console.WriteLine($"Exception in PublishPostAsync: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            return new BadRequestObjectResult(new string[] { "Error publishing post", ex.Message });
+            return new BadRequestObjectResult($"Error publishing post: {ex.Message}");
         }
     }
 

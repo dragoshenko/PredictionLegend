@@ -443,9 +443,7 @@ async submitPost(): Promise<void> {
 
       if (Array.isArray(error.error)) {
         console.error('Error Array Length:', error.error.length);
-        error.error.forEach((err, index) => {
-          console.error(`Error ${index}:`, err);
-        });
+
       }
     }
 
