@@ -19,6 +19,7 @@ interface RankColumn {
 interface RankRow {
   order: number;
   columns: RankColumn[];
+  isWrong?: boolean;
 }
 
 interface RankTable {
@@ -37,7 +38,7 @@ interface PostRankData {
 interface PublishPostRequest {
   predictionId: number;
   templateId: number;
-  predictionType: PredictionType;
+  predictionType: PredictionType | string; // Allow both enum and string
   notes: string;
   isDraft: boolean;
   postRank?: PostRankData | null;
@@ -326,54 +327,173 @@ export class CreatePostComponent implements OnInit {
     );
   }
 
-  // Submit post - UPDATED WITH PUBLISHING LOGIC
-  async submitPost(): Promise<void> {
-    if (!this.isValidPost()) {
-      this.toastr.error('Please assign teams to at least some positions');
+  // FINAL VERSION: Replace your submitPost method with this properly typed version
+
+async submitPost(): Promise<void> {
+  if (!this.isValidPost()) {
+    this.toastr.error('Please assign teams to at least some positions');
+    return;
+  }
+
+  this.isSubmitting = true;
+
+  try {
+    console.log('=== SUBMITTING POST ===');
+    console.log('predictionId:', this.predictionId);
+    console.log('templateId:', this.templateId);
+    console.log('predictionType:', this.predictionType);
+
+    // Validate required data
+    if (!this.postRank || !this.template) {
+      this.toastr.error('Missing required data. Please refresh and try again.');
+      this.isSubmitting = false;
       return;
     }
 
-    this.isSubmitting = true;
-
-    try {
-      const publishRequest: PublishPostRequest = {
+    // Create the request payload matching your backend DTO exactly
+    const publishRequest = {
+      predictionId: this.predictionId,
+      templateId: this.templateId,
+      predictionType: this.predictionType, // This should be the enum value
+      notes: this.postForm.get('notes')?.value || '',
+      isDraft: this.postForm.get('isDraft')?.value || false,
+      postRank: {
+        id: 0,
+        rankingTemplateId: this.templateId,
         predictionId: this.predictionId,
-        templateId: this.templateId,
-        predictionType: this.predictionType,
-        notes: this.postForm.get('notes')?.value || '',
-        isDraft: this.postForm.get('isDraft')?.value || false,
-        postRank: this.predictionType === PredictionType.Ranking ? this.postRank : undefined
-      };
-
-      console.log('Publishing post with data:', publishRequest);
-
-      // Call the new publish endpoint
-      const response = await this.http.post(
-        `${environment.apiUrl}post/rank/publish`,
-        publishRequest
-      ).toPromise();
-
-      console.log('Publish response:', response);
-
-      const isDraft = this.postForm.get('isDraft')?.value;
-
-      if (isDraft) {
-        this.toastr.success('Prediction saved as draft successfully!');
-      } else {
-        this.toastr.success('Prediction published successfully! Other users can now counter-predict.');
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        userId: 0, // Will be set by server
+        rankTable: {
+          id: 0,
+          numberOfRows: this.postRank.rankTable.numberOfRows,
+          numberOfColumns: this.postRank.rankTable.numberOfColumns,
+          rows: this.postRank.rankTable.rows.map((row, rowIndex) => ({
+            id: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            order: row.order,
+            isWrong: false,
+            columns: row.columns.map((column, colIndex) => ({
+              id: 0,
+              team: column.team ? {
+                id: column.team.id,
+                name: column.team.name,
+                description: column.team.description || '',
+                photoUrl: column.team.photoUrl || '',
+                score: column.team.score || 0,
+                createdByUserId: column.team.createdByUserId,
+                createdAt: column.team.createdAt
+              } : null,
+              officialScore: 0,
+              order: colIndex
+            }))
+          }))
+        },
+        teams: this.selectedTeams.map(team => ({
+          id: team.id,
+          name: team.name,
+          description: team.description || '',
+          photoUrl: team.photoUrl || '',
+          score: team.score || 0,
+          createdByUserId: team.createdByUserId,
+          createdAt: team.createdAt
+        })),
+        isOfficialResult: false,
+        totalScore: 0
       }
+    };
 
-      // Navigate to prediction details or user profile
-      this.router.navigate(['/prediction-details', this.predictionId]);
+    console.log('Request payload:', JSON.stringify(publishRequest, null, 2));
 
-    } catch (error) {
-      console.error('Error publishing post:', error);
-      this.toastr.error('Failed to publish prediction post');
-    } finally {
-      this.isSubmitting = false;
+    // Make the API call
+    const response = await this.http.post(
+      `${environment.apiUrl}post/rank/publish`,
+      publishRequest,
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    ).toPromise();
+
+    console.log('Success response:', response);
+
+    const isDraft = this.postForm.get('isDraft')?.value;
+    if (isDraft) {
+      this.toastr.success('Prediction saved as draft successfully!');
+    } else {
+      this.toastr.success('Prediction published successfully!');
     }
-  }
 
+    // Navigate to home or wherever appropriate
+    this.router.navigate(['/']);
+
+  } catch (error: any) {
+    console.error('=== SUBMISSION ERROR ===');
+    console.error('Full error:', error);
+    console.error('Status:', error.status);
+    console.error('Status Text:', error.statusText);
+    console.error('Error URL:', error.url);
+
+    // DETAILED ERROR LOGGING
+    if (error.error) {
+      console.error('Error Body Type:', typeof error.error);
+      console.error('Error Body:', error.error);
+
+      if (Array.isArray(error.error)) {
+        console.error('Error Array Length:', error.error.length);
+        error.error.forEach((err, index) => {
+          console.error(`Error ${index}:`, err);
+        });
+      }
+    }
+
+    // Handle the error response with better debugging
+    let errorMessage = 'Failed to publish prediction';
+
+    if (error.status === 400) {
+      console.log('400 Bad Request - analyzing error body...');
+
+      if (error.error) {
+        if (Array.isArray(error.error)) {
+          console.log('Error is array:', error.error);
+          errorMessage = `Validation errors: ${error.error.join(', ')}`;
+        } else if (typeof error.error === 'string') {
+          console.log('Error is string:', error.error);
+          errorMessage = error.error;
+        } else if (typeof error.error === 'object') {
+          console.log('Error is object:', error.error);
+          if (error.error.message) {
+            errorMessage = error.error.message;
+          } else if (error.error.title) {
+            errorMessage = error.error.title;
+          } else {
+            // Try to extract meaningful error info from object
+            const errorKeys = Object.keys(error.error);
+            console.log('Error object keys:', errorKeys);
+            errorMessage = `Server error: ${JSON.stringify(error.error)}`;
+          }
+        }
+      } else {
+        errorMessage = 'Bad request - no error details provided';
+      }
+    } else if (error.status === 401) {
+      errorMessage = 'You are not authorized to perform this action. Please log in again.';
+    } else if (error.status === 404) {
+      errorMessage = 'API endpoint not found. Please check your server configuration.';
+    } else if (error.status === 500) {
+      errorMessage = 'Server error occurred. Please try again later.';
+    } else if (error.status === 0) {
+      errorMessage = 'Network error - cannot reach server. Check if the API is running.';
+    }
+
+    console.error('Final error message:', errorMessage);
+    this.toastr.error(errorMessage);
+  } finally {
+    this.isSubmitting = false;
+  }
+}
   // Navigation
   goBack(): void {
     this.router.navigate(['/select-teams', this.predictionId, this.templateId, this.predictionType]);

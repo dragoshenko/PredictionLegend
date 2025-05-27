@@ -178,7 +178,7 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
             .HasForeignKey(d => d.UserId)
             .OnDelete(DeleteBehavior.NoAction);
         #endregion
-        
+
         builder.Entity<Team>()
             .HasOne(t => t.CreatedByUser)
             .WithMany(u => u.Teams)
@@ -215,5 +215,48 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
         builder.Entity<Team>()
             .HasIndex(t => t.CreatedByUserId)
             .HasDatabaseName("IX_Teams_CreatedByUserId");
+        #region PostRank Relationships - FIXED
+        builder.Entity<PostRank>()
+        .HasOne(pr => pr.RankTable)
+        .WithOne(rt => rt.PostRank)
+        .HasForeignKey<RankTable>(rt => rt.PostRankId)
+        .OnDelete(DeleteBehavior.Cascade);
+
+        // PostRank to User
+        builder.Entity<PostRank>()
+            .HasOne(pr => pr.User)
+            .WithMany(u => u.PostRanks)
+            .HasForeignKey(pr => pr.UserId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        // PostRank to Prediction
+        builder.Entity<PostRank>()
+            .HasOne(pr => pr.Prediction)
+            .WithMany(p => p.PostRanks)
+            .HasForeignKey(pr => pr.PredictionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // RankTable to Rows (One-to-Many)
+        builder.Entity<RankTable>()
+            .HasMany(rt => rt.Rows)
+            .WithOne(r => r.RankTable)
+            .HasForeignKey(r => r.RankTableId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Row to Columns (One-to-Many)
+        builder.Entity<Row>()
+            .HasMany(r => r.Columns)
+            .WithOne(c => c.Row)
+            .HasForeignKey(c => c.RowId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Column to Team (Many-to-One) - FIXED
+        builder.Entity<Column>()
+            .HasOne(c => c.Team)
+            .WithMany()
+            .HasForeignKey("TeamId")
+            .OnDelete(DeleteBehavior.SetNull);
+
+        #endregion
     }
 }

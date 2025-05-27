@@ -21,45 +21,133 @@ public class PostService : IPostService
     #region PostRank
     public async Task<ActionResult<PostRankDTO>> CreatePostRankAsync(PostRankDTO postRank, int userId)
     {
-        var rankingTemplate = await _unitOfWork.TemplateRepository.GetRankingTemplate(postRank.RankingTemplateId) ?? throw new Exception("Ranking template not found");
-        var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId) ?? throw new Exception("User not found");
-
-        var mappedPostRank = _mapper.Map<PostRank>(postRank);
-        var rankTable = new RankTable(rankingTemplate.NumberOfRows, rankingTemplate.NumberOfColumns);
-
-        List<Row> rows = new List<Row>();
-        for (int i = 0; i < rankTable.NumberOfRows; i++)
+        try
         {
-            List<Column> columns = [];
-            for (int j = 0; j < rankTable.NumberOfColumns; j++)
+            var rankingTemplate = await _unitOfWork.TemplateRepository.GetRankingTemplate(postRank.RankingTemplateId);
+            if (rankingTemplate == null)
+                return new BadRequestObjectResult("Ranking template not found");
+
+            var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId);
+            if (user == null)
+                return new BadRequestObjectResult("User not found");
+
+            var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(postRank.PredictionId);
+            if (prediction == null)
+                return new BadRequestObjectResult("Prediction not found");
+
+            // Create PostRank entity
+            var postRankEntity = new PostRank
             {
-                columns.Add(new Column());
-                columns[j] = _mapper.Map<Column>(postRank.RankTable.Rows[i].Columns[j]);
+                UserId = userId,
+                User = user,
+                PredictionId = postRank.PredictionId,
+                Prediction = prediction,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                TotalScore = postRank.TotalScore,
+                IsOfficialResult = postRank.IsOfficialResult,
+                Teams = new List<Team>()
+            };
+
+            // Create RankTable
+            var rankTable = new RankTable
+            {
+                NumberOfRows = postRank.RankTable.NumberOfRows,
+                NumberOfColumns = postRank.RankTable.NumberOfColumns,
+                PostRank = postRankEntity,
+                Rows = new List<Row>()
+            };
+
+            // Create Rows and Columns
+            foreach (var rowDto in postRank.RankTable.Rows)
+            {
+                var row = new Row
+                {
+                    Order = rowDto.Order,
+                    RankTable = rankTable,
+                    Columns = new List<Column>(),
+                    IsWrong = false
+                };
+
+                foreach (var columnDto in rowDto.Columns)
+                {
+                    var column = new Column
+                    {
+                        Row = row,
+                        Order = columnDto.Order,
+                        OfficialScore = columnDto.OfficialScore,
+                        Team = null
+                    };
+
+                    // Handle team assignment
+                    if (columnDto.Team != null)
+                    {
+                        var team = await _unitOfWork.TeamRepository.GetTeamAsync(columnDto.Team.Id);
+                        if (team != null)
+                        {
+                            column.Team = team;
+                            if (!postRankEntity.Teams.Any(t => t.Id == team.Id))
+                            {
+                                postRankEntity.Teams.Add(team);
+                            }
+                        }
+                    }
+
+                    row.Columns.Add(column);
+                }
+
+                rankTable.Rows.Add(row);
             }
-            rows.Add(new Row(columns));
+
+            postRankEntity.RankTable = rankTable;
+
+            // Save to database
+            var createdPostRank = await _unitOfWork.PostRepository.CreatePostRank(postRankEntity);
+            var saveResult = await _unitOfWork.Complete();
+
+            if (!saveResult)
+            {
+                return new BadRequestObjectResult("Failed to save post rank to database");
+            }
+
+            var resultDto = _mapper.Map<PostRankDTO>(createdPostRank);
+            return new OkObjectResult(resultDto);
         }
-        rankTable.Rows = rows;
-
-        mappedPostRank.User = user;
-        mappedPostRank.UserId = userId;
-
-        var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(postRank.PredictionId) ?? throw new Exception("Prediction not found");
-        mappedPostRank.Prediction = prediction;
-        mappedPostRank.RankTable = rankTable;
-        rankingTemplate.PostRanks.Add(mappedPostRank);
-        await _unitOfWork.PostRepository.CreatePostRank(mappedPostRank);
-        user.PostRanks.Add(mappedPostRank);
-        await _unitOfWork.Complete();
-
-        return _mapper.Map<PostRankDTO>(mappedPostRank);
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in CreatePostRankAsync: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return new BadRequestObjectResult($"Error creating post rank: {ex.Message}");
+        }
     }
 
-    public async Task<ActionResult<PostRankDTO>> PublishPostAsync(PublishPostRequestDTO request, int userId)
+    // FIXED: PublishPostAsync with correct return type
+    public async Task<ActionResult> PublishPostAsync(PublishPostRequestDTO request, int userId)
     {
         try
         {
-            var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId) ?? throw new Exception("User not found");
-            var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(request.PredictionId) ?? throw new Exception("Prediction not found");
+            Console.WriteLine($"PublishPostAsync called with PredictionId: {request.PredictionId}, TemplateId: {request.TemplateId}, UserId: {userId}");
+
+            var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId);
+            if (user == null)
+            {
+                Console.WriteLine("User not found");
+                return new BadRequestObjectResult(new string[] { "User not found" });
+            }
+
+            var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(request.PredictionId);
+            if (prediction == null)
+            {
+                Console.WriteLine("Prediction not found");
+                return new BadRequestObjectResult(new string[] { "Prediction not found" });
+            }
+
+            // Validate that the user owns this prediction
+            if (prediction.UserId != userId)
+            {
+                Console.WriteLine($"User {userId} trying to publish prediction owned by {prediction.UserId}");
+                return new BadRequestObjectResult(new string[] { "You can only publish your own predictions" });
+            }
 
             // Update prediction status
             prediction.IsDraft = request.IsDraft;
@@ -69,30 +157,66 @@ public class PostService : IPostService
             switch (request.PredictionType)
             {
                 case PredictionType.Ranking:
-                    if (request.PostRank == null) throw new Exception("PostRank data required for ranking predictions");
+                    if (request.PostRank == null)
+                    {
+                        Console.WriteLine("PostRank data is null");
+                        return new BadRequestObjectResult(new string[] { "PostRank data required for ranking predictions" });
+                    }
+
+                    // Validate template exists
+                    var template = await _unitOfWork.TemplateRepository.GetRankingTemplate(request.TemplateId);
+                    if (template == null)
+                    {
+                        Console.WriteLine($"Template {request.TemplateId} not found");
+                        return new BadRequestObjectResult(new string[] { "Template not found" });
+                    }
+
+                    // Ensure all required fields are set
                     request.PostRank.PredictionId = request.PredictionId;
+                    request.PostRank.RankingTemplateId = request.TemplateId;
+
                     var rankResult = await CreatePostRankAsync(request.PostRank, userId);
+                    if (rankResult.Result is BadRequestObjectResult badResult)
+                    {
+                        Console.WriteLine($"CreatePostRankAsync failed: {badResult.Value}");
+                        return badResult;
+                    }
+
                     break;
 
                 case PredictionType.Bracket:
-                    if (request.PostBracket == null) throw new Exception("PostBracket data required for bracket predictions");
-                    // Implement bracket creation logic
-                    break;
+                    return new BadRequestObjectResult(new string[] { "Bracket publishing not yet implemented" });
 
                 case PredictionType.Bingo:
-                    if (request.PostBingo == null) throw new Exception("PostBingo data required for bingo predictions");
-                    // Implement bingo creation logic
-                    break;
+                    return new BadRequestObjectResult(new string[] { "Bingo publishing not yet implemented" });
+
+                default:
+                    return new BadRequestObjectResult(new string[] { "Invalid prediction type" });
             }
 
+            // Update the prediction
             await _unitOfWork.PredictionRepository.UpdatePredictionAsync(prediction);
-            await _unitOfWork.Complete();
+            var saveResult = await _unitOfWork.Complete();
 
-            return new OkObjectResult(new { message = "Post published successfully", predictionId = prediction.Id });
+            if (!saveResult)
+            {
+                Console.WriteLine("Failed to save changes to database");
+                return new BadRequestObjectResult(new string[] { "Failed to save changes to database" });
+            }
+
+            Console.WriteLine("Post published successfully");
+            return new OkObjectResult(new
+            {
+                message = "Post published successfully",
+                predictionId = prediction.Id,
+                isDraft = request.IsDraft
+            });
         }
         catch (Exception ex)
         {
-            return new BadRequestObjectResult($"Error publishing post: {ex.Message}");
+            Console.WriteLine($"Exception in PublishPostAsync: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return new BadRequestObjectResult(new string[] { "Error publishing post", ex.Message });
         }
     }
 
@@ -100,12 +224,9 @@ public class PostService : IPostService
     {
         try
         {
-            // Get published predictions with their posts
-            var publishedPosts = new List<PublishedPostDTO>();
-
             // This would typically be a more complex query joining predictions with their posts
             // For now, return a placeholder implementation
-
+            var publishedPosts = new List<PublishedPostDTO>();
             return new OkObjectResult(publishedPosts);
         }
         catch (Exception ex)
@@ -236,13 +357,10 @@ public class PostService : IPostService
         }
     }
 
+    #region Helper Methods
+
     private bool CanUserCounterPredict(Prediction prediction, int userId)
     {
-        // User can counter predict if:
-        // 1. The prediction is published (not draft)
-        // 2. The prediction is active
-        // 3. The user is not the author
-        // 4. The user hasn't already counter predicted
         return !prediction.IsDraft &&
                prediction.IsActive &&
                prediction.UserId != userId &&
@@ -251,7 +369,6 @@ public class PostService : IPostService
 
     private bool HasUserCounterPredicted(Prediction prediction, int userId)
     {
-        // Check if user has already made a counter prediction
         switch (prediction.PredictionType)
         {
             case PredictionType.Ranking:
@@ -266,7 +383,6 @@ public class PostService : IPostService
 
     private int GetCounterPredictionsCount(Prediction prediction)
     {
-        // Count counter predictions (excluding the original author's post)
         switch (prediction.PredictionType)
         {
             case PredictionType.Ranking:
@@ -298,14 +414,15 @@ public class PostService : IPostService
                     });
                 }
                 break;
-
-                // Add similar logic for Bracket and Bingo
         }
 
         return counterPredictions;
     }
 
-    #region Other Methods (keeping existing methods)
+    #endregion
+
+    #region Other Interface Methods (keeping existing implementation)
+
     public async Task<ActionResult> UpdatePostRankAsync(PostRankDTO postRank)
     {
         var mappedPostRank = _mapper.Map<PostRank>(postRank);
@@ -348,9 +465,10 @@ public class PostService : IPostService
     {
         throw new Exception("Not implemented");
     }
+
     #endregion
 
-    #region PostBracket
+    #region PostBracket - Stub implementations
     public async Task<ActionResult<PostBracketDTO>> CreatePostBracketAsync(PostBracketDTO userPostBracket, int userId)
     {
         throw new Exception("Not implemented");
@@ -387,7 +505,7 @@ public class PostService : IPostService
     }
     #endregion
 
-    #region PostBingo
+    #region PostBingo - Stub implementations
     public async Task<ActionResult<PostBingoDTO>> CreatePostBingoAsync(PostBingoDTO postBingoDTO, int userId)
     {
         throw new Exception("Not implemented");
