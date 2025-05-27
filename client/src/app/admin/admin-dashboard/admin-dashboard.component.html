@@ -13,7 +13,7 @@
   </div>
 
   <!-- Stats Cards -->
-  <div class="row mb-4">
+  <div class="row mb-4" id="stats-section">
     <div class="col-md-4 col-lg-2 mb-3">
       <div class="card bg-primary text-white h-100">
         <div class="card-body text-center">
@@ -47,7 +47,7 @@
       </div>
     </div>
     <div class="col-md-4 col-lg-2 mb-3">
-      <div class="card bg-info text-dark h-100">
+      <div class="card bg-info text-white h-100">
         <div class="card-body text-center">
           <h3 class="display-4">{{ stats.moderators }}</h3>
           <p class="mb-0">Moderators</p>
@@ -65,14 +65,14 @@
   </div>
 
   <!-- System Info Component -->
-  <div class="row mb-4">
+  <div class="row mb-4" id="system-info-section">
     <div class="col-12">
       <app-system-info></app-system-info>
     </div>
   </div>
 
   <!-- User Management -->
-  <div class="row mb-4">
+  <div class="row mb-4" id="user-management-section">
     <div class="col-12">
       <div class="card">
         <div class="card-header bg-primary text-white">
@@ -95,23 +95,27 @@
               </div>
             </div>
             <div class="col-md-6">
-              <div class="btn-group w-100">
-                <button class="btn" [class.btn-primary]="filterRole === 'All'"
+              <div class="btn-group w-100 role-filter-group">
+                <button class="btn btn-filter"
+                        [class.btn-primary]="filterRole === 'All'"
                         [class.btn-outline-primary]="filterRole !== 'All'"
                         (click)="onFilterRole('All')">
                   All
                 </button>
-                <button class="btn" [class.btn-primary]="filterRole === 'Admin'"
+                <button class="btn btn-filter"
+                        [class.btn-primary]="filterRole === 'Admin'"
                         [class.btn-outline-primary]="filterRole !== 'Admin'"
                         (click)="onFilterRole('Admin')">
                   Admins
                 </button>
-                <button class="btn" [class.btn-primary]="filterRole === 'Moderator'"
+                <button class="btn btn-filter"
+                        [class.btn-primary]="filterRole === 'Moderator'"
                         [class.btn-outline-primary]="filterRole !== 'Moderator'"
                         (click)="onFilterRole('Moderator')">
                   Moderators
                 </button>
-                <button class="btn" [class.btn-primary]="filterRole === 'Member'"
+                <button class="btn btn-filter"
+                        [class.btn-primary]="filterRole === 'Member'"
                         [class.btn-outline-primary]="filterRole !== 'Member'"
                         (click)="onFilterRole('Member')">
                   Members
@@ -125,7 +129,7 @@
             <div class="spinner-border text-primary" role="status">
               <span class="visually-hidden">Loading...</span>
             </div>
-            <p class="mt-3">Loading users...</p>
+            <p class="mt-3 text-dark">Loading users...</p>
           </div>
 
           <!-- Error message -->
@@ -136,7 +140,7 @@
           <!-- Users table -->
           <div *ngIf="!loading && !error && filteredUsers.length > 0" class="table-responsive">
             <table class="table table-hover table-striped">
-              <thead>
+              <thead class="table-dark">
                 <tr>
                   <th style="cursor: pointer" (click)="onSort('id')">
                     ID
@@ -170,9 +174,9 @@
               </thead>
               <tbody>
                 <tr *ngFor="let user of filteredUsers">
-                  <td>{{ user.id }}</td>
-                  <td>{{ user.username }}</td>
-                  <td>
+                  <td class="text-dark">{{ user.id }}</td>
+                  <td class="text-dark">{{ user.username }}</td>
+                  <td class="text-dark">
                     <div class="d-flex align-items-center">
                       <div *ngIf="user.hasPhoto" class="me-2">
                         <i class="fa fa-user-circle text-primary"></i>
@@ -180,13 +184,13 @@
                       {{ user.displayName }}
                     </div>
                   </td>
-                  <td>{{ user.email }}</td>
+                  <td class="text-dark">{{ user.email }}</td>
                   <td>
                     <span class="badge" [ngClass]="user.emailConfirmed ? 'bg-success' : 'bg-warning text-dark'">
                       {{ user.emailConfirmed ? 'Verified' : 'Unverified' }}
                     </span>
                   </td>
-                  <td>{{ formatDate(user.createdAt) }}</td>
+                  <td class="text-dark">{{ formatDate(user.createdAt) }}</td>
                   <td>
                     <span class="badge" [ngClass]="getRolesBadgeClass(user.roles)">
                       {{ user.roles.length > 0 ? user.roles.join(', ') : 'Member' }}
@@ -222,7 +226,7 @@
             <div class="mb-4">
               <i class="fa fa-search fa-4x text-muted"></i>
             </div>
-            <h3>No Users Match Your Filters</h3>
+            <h3 class="text-dark">No Users Match Your Filters</h3>
             <p class="text-muted">Try adjusting your search criteria.</p>
             <button class="btn btn-outline-primary" (click)="clearFilters()">
               Clear All Filters
@@ -234,7 +238,7 @@
             <div class="mb-4">
               <i class="fa fa-users fa-4x text-muted"></i>
             </div>
-            <h3>No Users Found</h3>
+            <h3 class="text-dark">No Users Found</h3>
             <p class="text-muted">There are no users registered on the platform yet.</p>
           </div>
         </div>
@@ -243,7 +247,7 @@
   </div>
 
   <!-- Future Expansion: Additional Management Sections -->
-  <div class="row mb-4">
+  <div class="row mb-4" id="content-management-section">
     <div class="col-md-6">
       <div class="card h-100">
         <div class="card-header bg-secondary text-white">
@@ -251,7 +255,7 @@
         </div>
         <div class="card-body text-center py-5">
           <i class="fa fa-file-text fa-4x text-muted mb-3"></i>
-          <h4>Content Management</h4>
+          <h4 class="text-dark">Content Management</h4>
           <p class="text-muted">Manage predictions, categories, and other content.</p>
           <button class="btn btn-outline-secondary" disabled>Coming Soon</button>
         </div>
@@ -264,7 +268,7 @@
         </div>
         <div class="card-body text-center py-5">
           <i class="fa fa-cogs fa-4x text-muted mb-3"></i>
-          <h4>Site Configuration</h4>
+          <h4 class="text-dark">Site Configuration</h4>
           <p class="text-muted">Configure site settings, preferences, and features.</p>
           <button class="btn btn-outline-secondary" disabled>Coming Soon</button>
         </div>

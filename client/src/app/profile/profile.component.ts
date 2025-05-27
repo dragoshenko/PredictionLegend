@@ -155,6 +155,10 @@ export class ProfileComponent implements OnInit {
     if (this.profileForm.valid) {
       this.loading = true;
 
+      // Store the original password flags before updating
+      const originalHasChangedGenericPassword = this.user?.hasChangedGenericPassword;
+      const originalWasWarnedAboutPasswordChange = this.user?.wasWarnedAboutPasswordChange;
+
       // Use the same pattern as password change - direct API call
       const updateModel = {
         username: this.user?.username || '',
@@ -169,7 +173,21 @@ export class ProfileComponent implements OnInit {
         next: (response) => {
           console.log('Profile update response:', response);
           this.toastr.success('Profile updated successfully');
-          this.refreshUserData();
+
+          // Update the local user object directly instead of calling refreshUserData
+          if (this.user) {
+            this.user.displayName = this.profileForm.get('displayName')?.value;
+            // Preserve the original password flags
+            this.user.hasChangedGenericPassword = originalHasChangedGenericPassword || false;
+            this.user.wasWarnedAboutPasswordChange = originalWasWarnedAboutPasswordChange || false;
+
+            // Update the account service with the modified user data
+            this.accountService.setCurrentUser(this.user, true);
+
+            // Update the flag for UI display
+            this.isGoogleAuthenticatedWithoutPassword = !this.user.hasChangedGenericPassword;
+          }
+
           this.loading = false;
           this.editMode = false;
         },
@@ -395,14 +413,26 @@ export class ProfileComponent implements OnInit {
   }
 
   refreshUserData() {
+    // Store the original password flags before refreshing
+    const originalHasChangedGenericPassword = this.user?.hasChangedGenericPassword;
+    const originalWasWarnedAboutPasswordChange = this.user?.wasWarnedAboutPasswordChange;
+
     this.accountService.refreshUserData().subscribe({
       next: user => {
         if (user) {
           console.log('Refreshed user data:', user);
           this.user = user;
 
-          // Update the flag based on fresh data
-          this.isGoogleAuthenticatedWithoutPassword = !user.hasChangedGenericPassword;
+          // If we're just updating profile (not password), preserve the original password flags
+          if (originalHasChangedGenericPassword !== undefined) {
+            this.user.hasChangedGenericPassword = originalHasChangedGenericPassword;
+          }
+          if (originalWasWarnedAboutPasswordChange !== undefined) {
+            this.user.wasWarnedAboutPasswordChange = originalWasWarnedAboutPasswordChange;
+          }
+
+          // Update the flag based on preserved data
+          this.isGoogleAuthenticatedWithoutPassword = !this.user.hasChangedGenericPassword;
 
           this.profileForm.patchValue({
             displayName: user.displayName,
@@ -410,8 +440,8 @@ export class ProfileComponent implements OnInit {
             email: user.email
           });
 
-          // Force nav component reload by updating the source
-          this.accountService.setCurrentUser(user, true);
+          // Force nav component reload by updating the source with preserved flags
+          this.accountService.setCurrentUser(this.user, true);
           this.loadUserStats();
         }
       },

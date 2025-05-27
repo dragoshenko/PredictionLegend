@@ -11,24 +11,42 @@
           <ul class="nav flex-column">
             <li class="nav-item">
               <a class="nav-link" [class.active]="activeLink === 'dashboard'"
-                 routerLink="/admin" (click)="setActiveLink('dashboard')">
+                 (click)="scrollToSection('stats-section'); setActiveLink('dashboard')"
+                 href="javascript:void(0)">
                 <i class="fa fa-dashboard me-2"></i> Dashboard
               </a>
             </li>
             <li class="nav-item">
+              <a class="nav-link" [class.active]="activeLink === 'system-info'"
+                 (click)="scrollToSection('system-info-section'); setActiveLink('system-info')"
+                 href="javascript:void(0)">
+                <i class="fa fa-info-circle me-2"></i> System Info
+              </a>
+            </li>
+            <li class="nav-item">
               <a class="nav-link" [class.active]="activeLink === 'users'"
-                 routerLink="/admin" (click)="setActiveLink('users')">
-                <i class="fa fa-users me-2"></i> Users
+                 (click)="scrollToSection('user-management-section'); setActiveLink('users')"
+                 href="javascript:void(0)">
+                <i class="fa fa-users me-2"></i> User Management
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link disabled" href="#">
+              <a class="nav-link" [class.active]="activeLink === 'content'"
+                 (click)="scrollToSection('content-management-section'); setActiveLink('content')"
+                 href="javascript:void(0)">
+                <i class="fa fa-file-text me-2"></i> Content Management
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link disabled" href="javascript:void(0)">
                 <i class="fa fa-line-chart me-2"></i> Analytics
+                <small class="text-muted d-block">Coming Soon</small>
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link disabled" href="#">
+              <a class="nav-link disabled" href="javascript:void(0)">
                 <i class="fa fa-cogs me-2"></i> Settings
+                <small class="text-muted d-block">Coming Soon</small>
               </a>
             </li>
           </ul>

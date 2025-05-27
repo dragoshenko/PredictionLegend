@@ -54,7 +54,11 @@ public class UserController : BaseAPIController
             return BadRequest("User not found");
         }
 
-        // Update the properties directly (same as password change approach)
+        // Store the original password flags to preserve them
+        var originalHasChangedGenericPassword = user.HasChangedGenericPassword;
+        var originalWasWarnedAboutPasswordChange = user.WasWarnedAboutPasswordChange;
+
+        // Update only the profile fields (same as password change approach)
         if (!string.IsNullOrEmpty(request.DisplayName))
         {
             user.DisplayName = request.DisplayName;
@@ -65,12 +69,21 @@ public class UserController : BaseAPIController
             user.Bio = request.Bio;
         }
 
+        // IMPORTANT: Preserve the password-related flags
+        user.HasChangedGenericPassword = originalHasChangedGenericPassword;
+        user.WasWarnedAboutPasswordChange = originalWasWarnedAboutPasswordChange;
+
         // Use UserManager.UpdateAsync directly (same as password change)
         var result = await _userManager.UpdateAsync(user);
 
         if (result.Succeeded)
         {
-            return Ok(new { message = "Profile updated successfully" });
+            return Ok(new
+            {
+                message = "Profile updated successfully",
+                hasChangedGenericPassword = user.HasChangedGenericPassword,
+                wasWarnedAboutPasswordChange = user.WasWarnedAboutPasswordChange
+            });
         }
         else
         {

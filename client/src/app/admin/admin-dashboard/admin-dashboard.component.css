@@ -10,7 +10,8 @@
 }
 
 .table th {
-  background-color: #f8f9fa;
+  background-color: #343a40 !important;
+  color: white !important;
   font-weight: 500;
 }
 
@@ -19,9 +20,61 @@
   vertical-align: middle;
 }
 
+/* Fix for table text visibility */
+.table td {
+  color: #333 !important;
+  background-color: white;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > td {
+  background-color: #f8f9fa;
+  color: #333 !important;
+}
+
+/* Role filter buttons styling */
+.role-filter-group .btn-filter {
+  border-radius: 0;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  border: 1px solid #0d6efd;
+  color: #0d6efd;
+  background-color: white;
+  transition: all 0.2s ease;
+}
+
+.role-filter-group .btn-filter:first-child {
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+}
+
+.role-filter-group .btn-filter:last-child {
+  border-top-right-radius: 6px;
+  border-bottom-right-radius: 6px;
+}
+
+.role-filter-group .btn-filter:hover {
+  background-color: #0d6efd;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.role-filter-group .btn-filter.btn-primary {
+  background-color: #0d6efd;
+  color: white;
+  border-color: #0d6efd;
+}
+
+.role-filter-group .btn-filter.btn-outline-primary {
+  background-color: white;
+  color: #0d6efd;
+  border-color: #0d6efd;
+}
+
+/* Action buttons styling */
 .btn-group .btn {
   border-radius: 0;
   padding: 0.25rem 0.5rem;
+  margin: 0 1px;
 }
 
 .btn-group .btn:first-child {
@@ -37,4 +90,65 @@
 .badge {
   padding: 0.5em 0.75em;
   font-weight: 400;
+}
+
+/* Text visibility fixes */
+.text-dark {
+  color: #333 !important;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #333 !important;
+}
+
+/* Loading and error states */
+.spinner-border {
+  color: #0d6efd;
+}
+
+/* Search input styling */
+.input-group .form-control {
+  border-color: #ced4da;
+}
+
+.input-group .form-control:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Card headers */
+.card-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+/* Stats cards hover effect */
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+/* Better spacing for stats */
+.display-4 {
+  font-weight: bold;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .role-filter-group {
+    flex-direction: column;
+  }
+
+  .role-filter-group .btn-filter {
+    border-radius: 4px !important;
+    margin-bottom: 2px;
+  }
+
+  .table-responsive {
+    font-size: 0.875rem;
+  }
+}
+
+.mb-0{
+  color:black;
 }
