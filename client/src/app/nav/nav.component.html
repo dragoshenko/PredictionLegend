@@ -36,7 +36,7 @@
             {{(accountService.currentUser())?.displayName}}
           </a>
           <ul class="dropdown-menu dropdown-menu-end">
-            <li *ngIf="(accountService.currentUser())?.roles?.includes('Admin')">
+            <li *ngIf="(accountService.roles().includes('Admin'))">
               <a class="dropdown-item" routerLink="/admin">
                 <i class="fa fa-shield me-2"></i> Admin Dashboard
               </a>
