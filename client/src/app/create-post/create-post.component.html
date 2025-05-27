@@ -2,8 +2,8 @@
   <div class="row justify-content-center">
     <div class="col-lg-11">
       <!-- Header -->
-      <div class="card bg-primary border-primary mb-4">
-        <div class="card-header bg-primary border-primary">
+      <div class="card header-card mb-4">
+        <div class="card-header">
           <div class="d-flex justify-content-between align-items-center">
             <div>
               <h2 class="text-light mb-1">
@@ -34,46 +34,63 @@
         <!-- Main Content Area -->
         <div class="col-lg-8">
           <!-- Ranking View -->
-          <div *ngIf="predictionType === 'Ranking' && postRank" class="card bg-secondary border-secondary mb-4">
-            <div class="card-header bg-secondary border-secondary">
+          <div *ngIf="predictionType === 'Ranking' && postRank" class="card ranking-card mb-4">
+            <div class="card-header">
               <h4 class="text-light mb-0">
                 <i class="fa fa-list-ol me-2"></i>Ranking Table
               </h4>
             </div>
-            <div class="card-body">
+            <div class="card-body p-0">
               <div class="table-responsive">
-                <table class="table table-dark table-striped">
+                <table class="table ranking-table mb-0">
                   <thead>
                     <tr>
-                      <th width="80">Rank</th>
-                      <th *ngFor="let col of postRank.rankTable.rows[0]?.columns || []; let i = index">
-                        Column {{ i + 1 }}
+                      <th width="100">Rank</th>
+                      <th *ngFor="let col of postRank.rankTable.rows[0]?.columns || []; let i = index; trackBy: trackByIndex">
+                        Position {{ i + 1 }}
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr *ngFor="let row of postRank.rankTable.rows || []; let rowIndex = index">
-                      <td class="fw-bold">{{ row.order }}</td>
-                      <td *ngFor="let column of row.columns || []; let colIndex = index">
-                        <div class="team-slot"
-                            cdkDropList
-                            [cdkDropListData]="[column.team]"
-                            (cdkDropListDropped)="dropTeamInRanking($event, rowIndex, colIndex)"
-                            [class.occupied]="column.team"
-                            style="min-height: 60px; border: 2px dashed #6c757d; border-radius: 4px; padding: 8px;">
-                          <div *ngIf="column.team" class="d-flex align-items-center">
-                            <img *ngIf="column.team.photoUrl" [src]="column.team.photoUrl"
-                                class="rounded me-2" width="32" height="32" alt="Team">
+                    <tr *ngFor="let row of postRank.rankTable.rows || []; let rowIndex = index; trackBy: trackByRowIndex">
+                      <td>
+                        <div class="rank-number">{{ row.order }}</div>
+                      </td>
+                      <td *ngFor="let column of row.columns || []; let colIndex = index; trackBy: trackByIndex">
+                        <div
+                          class="team-slot"
+                          [class.occupied]="column.team"
+                          [class.empty]="!column.team"
+                          cdkDropList
+                          [cdkDropListData]="[column]"
+                          (cdkDropListDropped)="dropTeamInRanking($event, rowIndex, colIndex)"
+                          cdkDropListSortingDisabled>
+
+                          <!-- Occupied Slot -->
+                          <div *ngIf="column.team" class="team-item d-flex align-items-center">
+                            <img
+                              *ngIf="column.team.photoUrl"
+                              [src]="column.team.photoUrl"
+                              class="team-image rounded me-2"
+                              width="32"
+                              height="32"
+                              alt="Team"
+                              loading="lazy">
                             <div class="me-auto">
-                              <div class="fw-bold">{{ column.team.name }}</div>
+                              <div class="fw-bold team-name">{{ column.team.name }}</div>
+                              <div class="small team-description">{{ column.team.description || 'No description' }}</div>
                             </div>
-                            <button class="btn btn-sm btn-outline-danger"
-                                    (click)="removeTeamFromPosition('rank', rowIndex, colIndex)">
+                            <button
+                              class="btn btn-sm btn-outline-light remove-btn"
+                              (click)="removeTeamFromSlot(rowIndex, colIndex)"
+                              type="button">
                               <i class="fa fa-times"></i>
                             </button>
                           </div>
-                          <div *ngIf="!column.team" class="text-center text-muted">
-                            <i class="fa fa-plus-circle fa-2x"></i>
+
+                          <!-- Empty Slot -->
+                          <div *ngIf="!column.team" class="empty-slot text-center text-muted">
+                            <i class="fa fa-plus-circle fa-2x mb-1"></i>
                             <div class="small">Drop team here</div>
                           </div>
                         </div>
@@ -85,94 +102,32 @@
             </div>
           </div>
 
-          <!-- Bracket View -->
-          <div *ngIf="predictionType === 'Bracket'" class="card bg-secondary border-secondary mb-4">
-            <div class="card-header bg-secondary border-secondary">
-              <h4 class="text-light mb-0">
-                <i class="fa fa-sitemap me-2"></i>Tournament Bracket
-              </h4>
+          <!-- Quick Actions -->
+          <div class="card quick-actions-card mb-4">
+            <div class="card-header">
+              <h5 class="text-light mb-0">
+                <i class="fa fa-bolt me-2"></i>Quick Actions
+              </h5>
             </div>
             <div class="card-body">
-              <div class="bracket-container">
-                <div *ngFor="let round of [].constructor(template?.numberOfRounds); let roundIndex = index"
-                     class="bracket-round">
-                  <h6 class="text-light mb-3">Round {{ roundIndex + 1 }}</h6>
-                  <div *ngFor="let bracket of getBracketByRound(roundIndex + 1); let bracketIndex = index"
-                       class="bracket-match mb-3">
-                    <div class="card bg-dark border-dark">
-                      <div class="card-body p-2">
-                        <!-- Left Team -->
-                        <div class="team-slot mb-2"
-                             [class.occupied]="bracket.leftTeam"
-                             style="min-height: 40px; border: 1px dashed #6c757d; border-radius: 4px; padding: 8px;">
-                          <div *ngIf="bracket.leftTeam" class="d-flex align-items-center">
-                            <img *ngIf="bracket.leftTeam.photoUrl" [src]="bracket.leftTeam.photoUrl"
-                                 class="rounded me-2" width="24" height="24" alt="Team">
-                            <div class="me-auto text-light">{{ bracket.leftTeam.name }}</div>
-                            <button class="btn btn-sm btn-outline-danger"
-                                    (click)="removeTeamFromPosition('bracket', bracketIndex, 'left')">
-                              <i class="fa fa-times"></i>
-                            </button>
-                          </div>
-                          <div *ngIf="!bracket.leftTeam" class="text-center text-muted small">
-                            Team 1
-                          </div>
-                        </div>
-
-                        <div class="text-center text-muted small">VS</div>
-
-                        <!-- Right Team -->
-                        <div class="team-slot"
-                             [class.occupied]="bracket.rightTeam"
-                             style="min-height: 40px; border: 1px dashed #6c757d; border-radius: 4px; padding: 8px;">
-                          <div *ngIf="bracket.rightTeam" class="d-flex align-items-center">
-                            <img *ngIf="bracket.rightTeam.photoUrl" [src]="bracket.rightTeam.photoUrl"
-                                 class="rounded me-2" width="24" height="24" alt="Team">
-                            <div class="me-auto text-light">{{ bracket.rightTeam.name }}</div>
-                            <button class="btn btn-sm btn-outline-danger"
-                                    (click)="removeTeamFromPosition('bracket', bracketIndex, 'right')">
-                              <i class="fa fa-times"></i>
-                            </button>
-                          </div>
-                          <div *ngIf="!bracket.rightTeam" class="text-center text-muted small">
-                            Team 2
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Bingo View -->
-        <div *ngIf="predictionType === 'Bingo' && postBingo" class="card bg-secondary border-secondary mb-4">
-          <div class="card-header bg-secondary border-secondary">
-            <h4 class="text-light mb-0">
-              <i class="fa fa-th me-2"></i>Bingo Card
-            </h4>
-          </div>
-          <div class="card-body">
-            <div class="bingo-grid"
-                [style.grid-template-columns]="'repeat(' + (postBingo.gridSize || 5) + ', 1fr)'"
-                style="display: grid; gap: 8px;">
-              <div *ngFor="let cell of postBingo.bingoCells || []; let cellIndex = index"
-                  class="bingo-cell"
-                  style="aspect-ratio: 1; border: 2px dashed #6c757d; border-radius: 4px; padding: 8px; display: flex; align-items: center; justify-content: center;">
-                <div *ngIf="cell.team" class="text-center">
-                  <img *ngIf="cell.team.photoUrl" [src]="cell.team.photoUrl"
-                      class="rounded mb-1" width="32" height="32" alt="Team">
-                  <div class="small text-light">{{ cell.team.name }}</div>
-                  <button class="btn btn-sm btn-outline-danger mt-1"
-                          (click)="removeTeamFromPosition('bingo', cellIndex)">
-                    <i class="fa fa-times"></i>
-                  </button>
-                </div>
-                <div *ngIf="!cell.team" class="text-center text-muted">
-                  <i class="fa fa-plus-circle fa-lg"></i>
-                  <div class="small mt-1">Add team</div>
-                </div>
+              <div class="d-flex flex-wrap gap-2">
+                <button
+                  class="btn btn-outline-info btn-sm"
+                  (click)="autoFillRanking()"
+                  [disabled]="getAvailableTeams().length === 0">
+                  <i class="fa fa-magic me-1"></i>Auto Fill
+                </button>
+                <button
+                  class="btn btn-outline-warning btn-sm"
+                  (click)="clearAllRankings()">
+                  <i class="fa fa-eraser me-1"></i>Clear All
+                </button>
+                <button
+                  class="btn btn-outline-success btn-sm"
+                  (click)="shuffleTeams()"
+                  [disabled]="getAvailableTeams().length === 0">
+                  <i class="fa fa-random me-1"></i>Shuffle
+                </button>
               </div>
             </div>
           </div>
@@ -181,32 +136,59 @@
         <!-- Sidebar -->
         <div class="col-lg-4">
           <!-- Available Teams -->
-          <div class="card bg-info border-info mb-4">
-            <div class="card-header bg-info border-info">
-              <h5 class="text-dark mb-0">
+          <div class="card available-teams-card mb-4">
+            <div class="card-header">
+              <h5 class="text-light mb-0">
                 <i class="fa fa-users me-2"></i>Available Teams ({{ getAvailableTeams().length }})
               </h5>
             </div>
-            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
-              <div *ngIf="getAvailableTeams().length === 0" class="text-center text-muted py-3">
+            <div class="card-body">
+              <div *ngIf="getAvailableTeams().length === 0" class="text-center text-light py-3">
                 <i class="fa fa-check-circle fa-2x mb-2"></i>
                 <div>All teams assigned!</div>
               </div>
 
-              <div cdkDropList
-                   [cdkDropListData]="getAvailableTeams()"
-                   cdkDropListSortingDisabled
-                   class="team-list">
-                <div *ngFor="let team of getAvailableTeams()"
-                     class="team-card mb-2 p-2 bg-dark rounded"
-                     cdkDrag
-                     style="cursor: grab;">
-                  <div class="d-flex align-items-center">
-                    <img *ngIf="team.photoUrl" [src]="team.photoUrl"
-                         class="rounded me-2" width="32" height="32" alt="Team">
+              <div
+                *ngIf="getAvailableTeams().length > 0"
+                cdkDropList
+                [cdkDropListData]="getAvailableTeams()"
+                cdkDropListSortingDisabled
+                id="available-teams"
+                class="team-list">
+
+                <div
+                  *ngFor="let team of getAvailableTeams(); trackBy: trackByTeamId"
+                  class="team-card mb-2"
+                  cdkDrag
+                  [cdkDragData]="team">
+
+                  <div class="team-card-content d-flex align-items-center">
+                    <img
+                      *ngIf="team.photoUrl"
+                      [src]="team.photoUrl"
+                      class="team-image rounded me-2"
+                      width="32"
+                      height="32"
+                      alt="Team"
+                      loading="lazy">
                     <div class="me-auto">
-                      <div class="fw-bold text-light">{{ team.name }}</div>
-                      <div class="small text-muted">{{ team.description || 'No description' }}</div>
+                      <div class="fw-bold team-name">{{ team.name }}</div>
+                      <div class="small team-description">{{ team.description || 'No description' }}</div>
+                    </div>
+                    <i class="fa fa-grip-vertical drag-handle"></i>
+                  </div>
+
+                  <!-- Custom drag preview -->
+                  <div *cdkDragPreview class="drag-preview">
+                    <div class="team-card-content d-flex align-items-center">
+                      <img
+                        *ngIf="team.photoUrl"
+                        [src]="team.photoUrl"
+                        class="team-image rounded me-2"
+                        width="32"
+                        height="32"
+                        alt="Team">
+                      <div class="fw-bold team-name">{{ team.name }}</div>
                     </div>
                   </div>
                 </div>
@@ -214,41 +196,9 @@
             </div>
           </div>
 
-          <!-- Quick Actions for Bingo/Bracket -->
-          <div *ngIf="predictionType === 'Bingo' || predictionType === 'Bracket'"
-               class="card bg-warning border-warning mb-4">
-            <div class="card-header bg-warning border-warning">
-              <h6 class="text-dark mb-0">Quick Actions</h6>
-            </div>
-            <div *ngIf="predictionType === 'Bingo' || predictionType === 'Bracket'"
-     class="card bg-warning border-warning mb-4">
-  <div class="card-header bg-warning border-warning">
-    <h6 class="text-dark mb-0">Quick Actions</h6>
-  </div>
-  <div class="card-body">
-    <div *ngIf="predictionType === 'Bingo'">
-      <button class="btn btn-sm btn-outline-dark w-100 mb-2"
-              *ngFor="let team of getAvailableTeams().slice(0, 5)"
-              (click)="quickAssignToBingo(team)">
-        Add {{ team.name }}
-      </button>
-    </div>
-
-    <div *ngIf="predictionType === 'Bracket'">
-      <div class="small text-dark mb-2">Quick assign to first round:</div>
-      <button class="btn btn-sm btn-outline-dark w-100 mb-1"
-              *ngFor="let team of getAvailableTeams().slice(0, 4)"
-              (click)="quickAssignToBracket(team)">
-        Add {{ team.name }}
-      </button>
-    </div>
-  </div>
-</div>
-          </div>
-
           <!-- Post Settings -->
-          <div class="card bg-success border-success mb-4">
-            <div class="card-header bg-success border-success">
+          <div class="card settings-card mb-4">
+            <div class="card-header">
               <h5 class="text-light mb-0">
                 <i class="fa fa-cogs me-2"></i>Post Settings
               </h5>
@@ -267,17 +217,16 @@
 
                 <div class="mb-3">
                   <label class="form-label text-light">Notes (Optional)</label>
-                  <textarea class="form-control bg-dark text-light border-secondary"
-                            formControlName="notes"
-                            rows="3"
-                            placeholder="Add any notes about your prediction..."></textarea>
+                  <textarea
+                    class="form-control bg-dark text-light border-secondary"
+                    formControlName="notes"
+                    rows="3"
+                    placeholder="Add any notes about your prediction..."></textarea>
                 </div>
               </form>
 
               <!-- Validation Status -->
-              <div class="alert"
-                   [class.alert-success]="isValidPost()"
-                   [class.alert-warning]="!isValidPost()">
+              <div class="alert" [class.alert-success]="isValidPost()" [class.alert-warning]="!isValidPost()">
                 <div *ngIf="isValidPost()">
                   <i class="fa fa-check-circle me-2"></i>
                   Ready to publish!
@@ -289,13 +238,39 @@
               </div>
 
               <!-- Submit Button -->
-              <button class="btn btn-primary btn-lg w-100"
-                      [disabled]="!isValidPost() || isSubmitting"
-                      (click)="submitPost()">
+              <button
+                class="btn btn-primary btn-lg w-100"
+                [disabled]="!isValidPost() || isSubmitting"
+                (click)="submitPost()">
                 <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-2"></span>
                 <i class="fa fa-save me-2" *ngIf="!isSubmitting"></i>
                 {{ postForm.get('isDraft')?.value ? 'Save Draft' : 'Publish Prediction' }}
               </button>
+            </div>
+          </div>
+
+          <!-- Progress Indicator -->
+          <div class="card progress-card">
+            <div class="card-header">
+              <h6 class="text-light mb-0">
+                <i class="fa fa-chart-bar me-2"></i>Progress
+              </h6>
+            </div>
+            <div class="card-body">
+              <div class="progress mb-2" style="height: 8px;">
+                <div
+                  class="progress-bar bg-success"
+                  role="progressbar"
+                  [style.width.%]="getProgressPercentage()"
+                  [attr.aria-valuenow]="getAssignedTeamsCount()"
+                  [attr.aria-valuemin]="0"
+                  [attr.aria-valuemax]="getTotalSlotsCount()">
+                </div>
+              </div>
+              <div class="d-flex justify-content-between">
+                <small class="text-muted">{{ getAssignedTeamsCount() }} / {{ getTotalSlotsCount() }} assigned</small>
+                <small class="text-muted">{{ getProgressPercentage() }}%</small>
+              </div>
             </div>
           </div>
         </div>

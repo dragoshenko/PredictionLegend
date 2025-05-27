@@ -1,64 +1,232 @@
-.cdk-drag-preview {
+/* Performance optimizations */
+* {
   box-sizing: border-box;
-  border-radius: 4px;
-  box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2),
-              0 8px 10px 1px rgba(0, 0, 0, 0.14),
-              0 3px 14px 2px rgba(0, 0, 0, 0.12);
-  z-index: 1000;
 }
 
-.cdk-drag-placeholder {
-  opacity: 0.5;
-  border: 2px dashed #ccc;
+.team-card, .team-slot, .team-item {
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
-.cdk-drag-animating {
-  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+/* Header styling */
+.header-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
 }
 
-.cdk-drop-list {
-  min-height: 40px;
+.header-card .card-header {
+  background: transparent;
+  border: none;
+  padding: 1.5rem;
 }
 
-.cdk-drop-list-dragging .cdk-drag {
-  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+/* Ranking card styling */
+.ranking-card {
+  background: #1a1a1a;
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
 }
 
-.cdk-drop-list-receiving {
-  background-color: rgba(0, 255, 0, 0.1);
+.ranking-card .card-header {
+  background: linear-gradient(145deg, #2c3e50, #34495e);
+  border: none;
+  padding: 1rem 1.5rem;
 }
 
-/* Team slot styles */
+/* Ranking table */
+.ranking-table {
+  background: transparent;
+  margin: 0;
+}
+
+.ranking-table th {
+  background: linear-gradient(145deg, #007bff, #0056b3);
+  color: white;
+  font-weight: 600;
+  padding: 16px;
+  text-align: center;
+  border: none;
+  font-size: 1.1rem;
+}
+
+.ranking-table td {
+  padding: 8px;
+  border: 1px solid #343a40;
+  background: #2c3e50;
+  vertical-align: middle;
+}
+
+.rank-number {
+  background: linear-gradient(145deg, #ffc107, #e0a800);
+  color: #000;
+  font-weight: bold;
+  text-align: center;
+  padding: 16px 12px;
+  font-size: 1.2rem;
+  border-radius: 8px;
+  margin: 4px;
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+}
+
+/* Team slot styling */
 .team-slot {
-  transition: all 0.3s ease;
+  min-height: 80px;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 4px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  overflow: hidden;
 }
 
-.team-slot:hover {
-  border-color: #007bff !important;
-  background-color: rgba(0, 123, 255, 0.1);
+.team-slot.empty {
+  border: 2px dashed #6c757d;
+  background: linear-gradient(145deg, #495057, #6c757d);
 }
 
 .team-slot.occupied {
-  border-color: #28a745 !important;
-  background-color: rgba(40, 167, 69, 0.1);
+  border: 2px solid #28a745;
+  background: linear-gradient(145deg, #1e5128, #28a745);
 }
 
 .team-slot.cdk-drop-list-receiving {
-  border-color: #17a2b8 !important;
-  background-color: rgba(23, 162, 184, 0.2);
+  border-color: #17a2b8;
+  background: linear-gradient(145deg, #0c5460, #17a2b8);
   transform: scale(1.02);
+  box-shadow: 0 8px 25px rgba(23, 162, 184, 0.4);
 }
 
-/* Team card styles */
-.team-card {
+.team-slot::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  transition: left 0.3s ease;
+  pointer-events: none;
+}
+
+.team-slot:hover::before {
+  left: 100%;
+}
+
+/* Team item styling */
+.team-item {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 8px;
+  color: white;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.team-image {
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.team-name {
+  font-size: 0.9rem;
+  line-height: 1.2;
+  margin-bottom: 2px;
+}
+
+.team-description {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  line-height: 1.1;
+}
+
+.remove-btn {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 4px 8px;
+  font-size: 0.75rem;
   transition: all 0.2s ease;
+}
+
+.remove-btn:hover {
+  background: rgba(220, 53, 69, 0.2);
+  border-color: #dc3545;
+  color: #dc3545;
+}
+
+/* Empty slot styling */
+.empty-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 60px;
+  opacity: 0.7;
+}
+
+.empty-slot i {
+  opacity: 0.5;
+}
+
+/* Available teams card */
+.available-teams-card {
+  background: linear-gradient(145deg, #17a2b8, #138496);
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(23, 162, 184, 0.2);
+}
+
+.available-teams-card .card-header {
+  background: linear-gradient(145deg, #138496, #0c5460);
+  border: none;
+  padding: 1rem 1.5rem;
+}
+
+/* Team list */
+.team-list {
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.team-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.team-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.team-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.team-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Team card styling */
+.team-card {
+  background: linear-gradient(145deg, #007bff, #0056b3);
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
   cursor: grab;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+  user-select: none;
 }
 
 .team-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3);
 }
 
 .team-card.cdk-drag-disabled {
@@ -66,82 +234,227 @@
   opacity: 0.5;
 }
 
-/* Drag preview styles */
+.team-card-content {
+  pointer-events: none;
+}
+
+.drag-handle {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1rem;
+  pointer-events: none;
+}
+
+/* Drag preview */
 .drag-preview {
+  background: linear-gradient(145deg, #007bff, #0056b3);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   transform: rotate(5deg);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  color: white;
+  max-width: 200px;
 }
 
-.drag-placeholder {
-  border-style: dashed;
-  border-width: 2px;
-  border-color: #6c757d;
+/* CDK Drag placeholders */
+.cdk-drag-placeholder {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px dashed #6c757d;
+  border-radius: 8px;
+  min-height: 60px;
+  opacity: 0.5;
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
 }
 
-/* Animation for successful drops */
-.team-slot.drop-success {
-  animation: dropSuccess 0.5s ease-in-out;
+.cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
 }
 
+/* Settings card */
+.settings-card {
+  background: linear-gradient(145deg, #28a745, #1e7e34);
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(40, 167, 69, 0.2);
+}
+
+.settings-card .card-header {
+  background: linear-gradient(145deg, #1e7e34, #155724);
+  border: none;
+  padding: 1rem 1.5rem;
+}
+
+/* Quick actions card */
+.quick-actions-card {
+  background: linear-gradient(145deg, #6f42c1, #5a32a3);
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(111, 66, 193, 0.2);
+}
+
+.quick-actions-card .card-header {
+  background: linear-gradient(145deg, #5a32a3, #4c2a85);
+  border: none;
+  padding: 1rem 1.5rem;
+}
+
+/* Progress card */
+.progress-card {
+  background: linear-gradient(145deg, #6c757d, #495057);
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(108, 117, 125, 0.2);
+}
+
+.progress-card .card-header {
+  background: linear-gradient(145deg, #495057, #343a40);
+  border: none;
+  padding: 1rem 1.5rem;
+}
+
+/* Form controls */
+.form-control.bg-dark {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.form-control.bg-dark:focus {
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  color: white;
+}
+
+.form-check-input:checked {
+  background-color: #007bff;
+  border-color: #007bff;
+}
+
+/* Animations */
 @keyframes dropSuccess {
   0% {
-    background-color: rgba(40, 167, 69, 0.3);
-    transform: scale(1.05);
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
   }
   50% {
-    background-color: rgba(40, 167, 69, 0.5);
-    transform: scale(1.1);
+    transform: scale(1.05);
+    box-shadow: 0 0 0 20px rgba(40, 167, 69, 0);
   }
   100% {
-    background-color: rgba(40, 167, 69, 0.1);
     transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
   }
 }
 
-/* Responsive drag and drop */
-@media (max-width: 768px) {
-  .team-card {
-    margin-bottom: 0.5rem;
+.drop-success {
+  animation: dropSuccess 0.6s ease-in-out;
+}
+
+/* Button improvements */
+.btn {
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+/* Progress bar */
+.progress {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.progress-bar {
+  transition: width 0.3s ease;
+}
+
+/* Responsive design */
+@media (max-width: 992px) {
+  .ranking-table th,
+  .ranking-table td {
+    padding: 8px 4px;
+    font-size: 0.9rem;
+  }
+
+  .rank-number {
+    padding: 12px 8px;
+    font-size: 1rem;
   }
 
   .team-slot {
-    min-height: 50px;
-    font-size: 0.875rem;
+    min-height: 70px;
+    padding: 8px;
   }
 }
 
-/* Bracket specific styles */
-.bracket-container {
-  display: flex;
-  gap: 20px;
-  overflow-x: auto;
-  padding: 10px;
+@media (max-width: 768px) {
+  .header-card .card-header {
+    padding: 1rem;
+  }
+
+  .header-card h2 {
+    font-size: 1.5rem;
+  }
+
+  .team-slot {
+    min-height: 60px;
+    padding: 6px;
+  }
+
+  .team-item {
+    padding: 6px;
+  }
+
+  .team-name {
+    font-size: 0.8rem;
+  }
+
+  .team-description {
+    font-size: 0.7rem;
+  }
+
+  .rank-number {
+    padding: 10px 6px;
+    font-size: 0.9rem;
+  }
 }
 
-.bracket-round {
-  min-width: 200px;
-  flex-shrink: 0;
+/* Accessibility improvements */
+.team-card:focus,
+.team-slot:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
 }
 
-.bracket-match {
-  margin-bottom: 20px;
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .team-slot.empty {
+    border-width: 3px;
+  }
+
+  .team-slot.occupied {
+    border-width: 3px;
+  }
 }
 
-/* Bingo grid responsive */
-.bingo-grid {
-  max-width: 100%;
-}
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .team-card,
+  .team-slot,
+  .btn {
+    transition: none;
+  }
 
-.bingo-cell {
-  position: relative;
-  overflow: hidden;
-}
-
-.bingo-cell .btn {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  z-index: 10;
+  .team-slot::before {
+    display: none;
+  }
 }
 
 /* Loading states */
@@ -156,22 +469,18 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  border-radius: 8px;
 }
 
-/* Accessibility improvements */
-.team-card:focus,
-.team-slot:focus {
-  outline: 2px solid #007bff;
-  outline-offset: 2px;
+/* Performance optimizations for large lists */
+.team-list {
+  contain: layout style paint;
 }
 
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-  .team-slot {
-    border-width: 3px;
-  }
+.team-card {
+  contain: layout style paint;
+}
 
-  .cdk-drag-placeholder {
-    border-width: 3px;
-  }
+.team-slot {
+  contain: layout style paint;
 }
