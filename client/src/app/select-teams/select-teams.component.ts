@@ -1,4 +1,3 @@
-// client/src/app/select-teams/select-teams.component.ts
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -41,6 +40,7 @@ export class SelectTeamsComponent implements OnInit {
 
   // Flow state
   isLoading = false;
+  isCreatingTeam = false; // FIXED: Separate loading state for team creation
   minimumTeamsRequired = 0;
   maximumTeamsAllowed = 0;
 
@@ -56,11 +56,29 @@ export class SelectTeamsComponent implements OnInit {
         Validators.required,
         Validators.minLength(2),
         Validators.maxLength(100),
-        Validators.pattern(/^[a-zA-Z0-9\s\-_.]+$/) // Allow letters, numbers, spaces, hyphens, underscores, dots
+        this.teamNameValidator.bind(this) // FIXED: Custom validator for duplicate names
       ]],
-      description: ['', [Validators.maxLength(1000)]],
-      photoUrl: ['', [Validators.pattern(/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/)]] // URL validation
+      description: ['', [Validators.maxLength(500)]],
+      photoUrl: ['', [this.urlValidator]] // FIXED: Custom URL validator
     });
+  }
+
+  // FIXED: Custom validator for team names
+  teamNameValidator(control: any) {
+    if (!control.value) return null;
+
+    const name = control.value.trim().toLowerCase();
+    const exists = this.teamService.hasTeamWithName(name);
+
+    return exists ? { duplicate: true } : null;
+  }
+
+  // FIXED: Custom URL validator
+  urlValidator(control: any) {
+    if (!control.value) return null;
+
+    const urlPattern = /^https?:\/\/.+\..+/;
+    return urlPattern.test(control.value) ? null : { invalidUrl: true };
   }
 
   loadRouteParams(): void {
@@ -80,19 +98,15 @@ export class SelectTeamsComponent implements OnInit {
   }
 
   async loadTemplate(): Promise<void> {
-    // If template is already loaded from navigation state, skip this
     if (this.template) {
       console.log('Template already loaded:', this.template);
       return;
     }
 
-    // Fallback: Load template from service if not passed via navigation
     console.log('Loading template from service as fallback...');
 
-    // Load template based on type
     switch (this.predictionType) {
       case PredictionType.Ranking:
-        // Ensure templates are loaded first
         await this.templateService.getOfficialAndUserRankingTemplates();
         this.template = this.templateService.userRankingTemplates().find(t => t.id === this.templateId) ||
                       this.templateService.officialRankingTemplates().find(t => t.id === this.templateId);
@@ -121,7 +135,6 @@ export class SelectTeamsComponent implements OnInit {
   }
 
   calculateTeamRequirements(): void {
-    // Calculate based on template and prediction type
     if (this.template) {
       switch (this.predictionType) {
         case PredictionType.Ranking:
@@ -143,19 +156,17 @@ export class SelectTeamsComponent implements OnInit {
   async loadTeams(): Promise<void> {
     this.isLoading = true;
     try {
-      // Ensure template is loaded first
       if (!this.template) {
         await this.loadTemplate();
       }
 
-      // If still no template, show error and return
       if (!this.template) {
         this.toastr.error('Could not load template information');
         this.isLoading = false;
         return;
       }
 
-      // Load user's teams
+      // FIXED: Load user's teams and subscribe to changes
       await this.teamService.loadUserTeams();
       this.userTeams = this.teamService.teams();
 
@@ -198,73 +209,62 @@ export class SelectTeamsComponent implements OnInit {
   }
 
   async createTeam(): Promise<void> {
+    // FIXED: Validate form first
     if (this.teamForm.invalid) {
-      // Mark all fields as touched to show validation errors
-      Object.keys(this.teamForm.controls).forEach(key => {
-        this.teamForm.get(key)?.markAsTouched();
-      });
+      this.markFormGroupTouched();
       this.toastr.error('Please fix the validation errors');
       return;
     }
 
-    this.isLoading = true;
-    try {
-      const currentUser = this.accountService.currentUser();
-      if (!currentUser) {
-        this.toastr.error('You must be logged in to create teams');
-        this.isLoading = false;
-        return;
-      }
+    // FIXED: Check authentication
+    const currentUser = this.accountService.currentUser();
+    if (!currentUser) {
+      this.toastr.error('You must be logged in to create teams');
+      return;
+    }
 
+    // FIXED: Use separate loading state
+    this.isCreatingTeam = true;
+
+    try {
       const formValue = this.teamForm.value;
 
-      // Prepare team data with validation
+      // FIXED: Prepare clean data
       const teamData = {
         name: formValue.name?.trim() || '',
         description: formValue.description?.trim() || '',
         photoUrl: formValue.photoUrl?.trim() || '',
-        score: 0,
-        templateId: this.templateId
+        score: 0
       };
-
-      // Additional validation
-      if (!teamData.name || teamData.name.length < 2) {
-        this.toastr.error('Team name must be at least 2 characters long');
-        this.isLoading = false;
-        return;
-      }
-
-      if (teamData.name.length > 100) {
-        this.toastr.error('Team name must be less than 100 characters');
-        this.isLoading = false;
-        return;
-      }
-
-      // Check for duplicate team names
-      const duplicateTeam = [...this.userTeams, ...this.existingTeams].find(
-        team => team.name.toLowerCase() === teamData.name.toLowerCase()
-      );
-
-      if (duplicateTeam) {
-        this.toastr.error('A team with this name already exists');
-        this.isLoading = false;
-        return;
-      }
 
       console.log('Creating team with data:', teamData);
 
+      // FIXED: Call service and handle response properly
       const newTeam = await this.teamService.createTeam(teamData);
 
-      this.userTeams.push(newTeam);
-      this.selectedTeams.push(newTeam);
+      console.log('Team created successfully:', newTeam);
+
+      // FIXED: Update local state immediately
+      this.userTeams = this.teamService.teams(); // Get updated teams from service
+      this.selectedTeams.push(newTeam); // Add to selected teams
+
+      // FIXED: Reset form properly
       this.teamForm.reset();
+      this.teamForm.patchValue({
+        name: '',
+        description: '',
+        photoUrl: ''
+      });
+      this.teamForm.markAsUntouched();
+      this.teamForm.markAsPristine();
+
       this.showCreateForm = false;
       this.toastr.success(`Team "${newTeam.name}" created successfully!`);
 
     } catch (error: any) {
       console.error('Error creating team:', error);
 
-      // Extract meaningful error message
+      // FIXED: Display the actual error message
       let errorMessage = 'Failed to create team';
 
       if (error?.message) {
@@ -274,9 +274,29 @@ export class SelectTeamsComponent implements OnInit {
       }
 
       this.toastr.error(errorMessage);
+
+      // FIXED: If it's a duplicate error, reload teams to sync state
+      if (errorMessage.toLowerCase().includes('already exists') ||
+          errorMessage.toLowerCase().includes('duplicate')) {
+        try {
+          await this.teamService.reloadTeams();
+          this.userTeams = this.teamService.teams();
+        } catch (reloadError) {
+          console.error('Error reloading teams:', reloadError);
+        }
+      }
     } finally {
-      this.isLoading = false;
+      this.isCreatingTeam = false;
     }
+  }
+
+  // FIXED: Helper method to mark all form fields as touched
+  private markFormGroupTouched(): void {
+    Object.keys(this.teamForm.controls).forEach(key => {
+      const control = this.teamForm.get(key);
+      control?.markAsTouched();
+      control?.updateValueAndValidity();
+    });
   }
 
   canProceed(): boolean {
@@ -285,7 +305,6 @@ export class SelectTeamsComponent implements OnInit {
 
   proceedToPost(): void {
     if (this.canProceed()) {
-      // Navigate to create-post with selected teams
       this.router.navigate(['/create-post', this.predictionId, this.templateId, this.predictionType], {
         state: { selectedTeams: this.selectedTeams }
       });
@@ -294,7 +313,6 @@ export class SelectTeamsComponent implements OnInit {
 
   abandonFlow(): void {
     if (confirm('Are you sure you want to abandon this prediction? All progress will be lost.')) {
-      // Call abandonment service
       this.router.navigate(['/']);
     }
   }
@@ -303,20 +321,31 @@ export class SelectTeamsComponent implements OnInit {
     this.router.navigate(['/edit-template', this.predictionId, this.predictionType]);
   }
 
-  // Helper methods for form validation display
+  // FIXED: Helper methods for template access
   isFieldInvalid(fieldName: string): boolean {
     const field = this.teamForm.get(fieldName);
-    return !!(field && field.invalid && field.touched);
+    return !!(field && field.invalid && (field.dirty || field.touched));
   }
 
   getFieldError(fieldName: string): string {
     const field = this.teamForm.get(fieldName);
-    if (field && field.errors && field.touched) {
+    if (field && field.errors && (field.dirty || field.touched)) {
       if (field.errors['required']) return `${fieldName} is required`;
       if (field.errors['minlength']) return `${fieldName} must be at least ${field.errors['minlength'].requiredLength} characters`;
       if (field.errors['maxlength']) return `${fieldName} must be less than ${field.errors['maxlength'].requiredLength} characters`;
-      if (field.errors['pattern']) return `${fieldName} contains invalid characters`;
+      if (field.errors['duplicate']) return 'You already have a team with this name';
+      if (field.errors['invalidUrl']) return 'Please enter a valid URL';
     }
     return '';
+  }
+
+  // FIXED: Method to toggle create form
+  toggleCreateForm(): void {
+    this.showCreateForm = !this.showCreateForm;
+    if (!this.showCreateForm) {
+      this.teamForm.reset();
+      this.teamForm.markAsUntouched();
+      this.teamForm.markAsPristine();
+    }
   }
 }

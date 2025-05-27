@@ -47,29 +47,58 @@ public class UnitOfWork : IUnitOfWork
     {
         try
         {
-            return await _context.SaveChangesAsync() > 0;
+            var result = await _context.SaveChangesAsync();
+            Console.WriteLine($"UnitOfWork.Complete() - Changes saved: {result}");
+            return result > 0;
         }
         catch (DbUpdateConcurrencyException ex)
         {
+            Console.WriteLine($"Concurrency exception in UnitOfWork.Complete(): {ex.Message}");
+            
             // Handle concurrency exceptions
-            var entry = ex.Entries[0];
-            var databaseValues = await entry.GetDatabaseValuesAsync();
-            if (databaseValues == null)
+            foreach (var entry in ex.Entries)
             {
-                throw new DbUpdateConcurrencyException("The entity was deleted by another user.", ex);
+                var databaseValues = await entry.GetDatabaseValuesAsync();
+                if (databaseValues == null)
+                {
+                    // The entity was deleted by another user
+                    Console.WriteLine("Entity was deleted by another user");
+                    throw new DbUpdateConcurrencyException("The entity was deleted by another user.", ex);
+                }
+                else
+                {
+                    // The entity was modified by another user
+                    Console.WriteLine("Entity was modified by another user, refreshing values");
+                    entry.OriginalValues.SetValues(databaseValues);
+                }
             }
-            else
+            
+            // Try to save again after resolving conflicts
+            try
             {
-                entry.OriginalValues.SetValues(databaseValues);
-                return await _context.SaveChangesAsync() > 0;
+                var retryResult = await _context.SaveChangesAsync();
+                Console.WriteLine($"UnitOfWork.Complete() retry - Changes saved: {retryResult}");
+                return retryResult > 0;
+            }
+            catch (Exception retryEx)
+            {
+                Console.WriteLine($"Retry failed in UnitOfWork.Complete(): {retryEx.Message}");
+                throw new DbUpdateConcurrencyException("Failed to resolve concurrency conflict.", retryEx);
             }
         }
         catch (DbUpdateException ex)
         {
+            Console.WriteLine($"Database update exception in UnitOfWork.Complete(): {ex.Message}");
+            Console.WriteLine($"Inner exception: {ex.InnerException?.Message}");
+            
+            // FIXED: Don't throw here, let the calling service handle the specific error
+            // The repository methods now handle their own transactions
             throw new DbUpdateException("An error occurred while updating the database.", ex);
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"General exception in UnitOfWork.Complete(): {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
             throw new Exception("An error occurred while saving changes to the database.", ex);
         }
     }

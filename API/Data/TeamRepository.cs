@@ -1,4 +1,4 @@
-// API/Data/TeamRepository.cs
+// API/Data/TeamRepository.cs - FIXED VERSION
 using System;
 using API.Entities;
 using API.Interfaces;
@@ -22,28 +22,70 @@ public class TeamRepository : ITeamRepository
     {
         try
         {
-            // Ensure CreatedAt is set
+            // FIXED: Ensure all required properties are set
             if (team.CreatedAt == default(DateTime))
             {
                 team.CreatedAt = DateTime.UtcNow;
             }
 
-            // Ensure CreatedByUser is loaded if we have the ID
+            // FIXED: Ensure CreatedByUser is loaded properly
             if (team.CreatedByUser == null && team.CreatedByUserId > 0)
             {
                 team.CreatedByUser = await _userManager.FindByIdAsync(team.CreatedByUserId.ToString());
+                if (team.CreatedByUser == null)
+                {
+                    throw new InvalidOperationException($"User with ID {team.CreatedByUserId} not found");
+                }
+            }
+
+            // FIXED: Validate required fields before saving
+            if (string.IsNullOrWhiteSpace(team.Name))
+            {
+                throw new ArgumentException("Team name is required");
+            }
+
+            if (team.Name.Length < 2 || team.Name.Length > 100)
+            {
+                throw new ArgumentException("Team name must be between 2 and 100 characters");
+            }
+
+            // FIXED: Ensure Description is never null (entity requires non-null)
+            if (team.Description == null)
+            {
+                team.Description = string.Empty;
+            }
+
+            // FIXED: Check for duplicate team names per user
+            var existingTeam = await _context.Teams
+                .FirstOrDefaultAsync(t => t.CreatedByUserId == team.CreatedByUserId && 
+                                         t.Name.ToLower() == team.Name.ToLower());
+            
+            if (existingTeam != null)
+            {
+                throw new InvalidOperationException("A team with this name already exists for this user");
             }
 
             // Add to context
             await _context.Teams.AddAsync(team);
             await _context.SaveChangesAsync();
             
-            // Reload the team with all navigation properties
+            // FIXED: Reload the team with all navigation properties
             var savedTeam = await _context.Teams
                 .Include(t => t.CreatedByUser)
                 .FirstOrDefaultAsync(t => t.Id == team.Id);
             
             return savedTeam;
+        }
+        catch (DbUpdateException ex)
+        {
+            // FIXED: Handle database constraint violations
+            Console.WriteLine($"Database error in CreateTeamAsync: {ex.Message}");
+            if (ex.InnerException?.Message.Contains("UNIQUE") == true || 
+                ex.InnerException?.Message.Contains("duplicate") == true)
+            {
+                throw new InvalidOperationException("A team with this name already exists");
+            }
+            throw new InvalidOperationException("Failed to create team due to database error", ex);
         }
         catch (Exception ex)
         {
@@ -57,13 +99,28 @@ public class TeamRepository : ITeamRepository
     {
         try
         {
-            _context.Entry(team).State = EntityState.Modified;
+            // FIXED: Check if team exists before updating
+            var existingTeam = await _context.Teams
+                .FirstOrDefaultAsync(t => t.Id == team.Id);
+            
+            if (existingTeam == null)
+            {
+                throw new InvalidOperationException($"Team with ID {team.Id} not found");
+            }
+
+            // FIXED: Update only the changed properties
+            existingTeam.Name = team.Name;
+            existingTeam.Description = team.Description ?? string.Empty;
+            existingTeam.PhotoUrl = team.PhotoUrl;
+            existingTeam.Score = team.Score;
+
+            _context.Entry(existingTeam).State = EntityState.Modified;
             await _context.SaveChangesAsync();
             
             // Reload the team with navigation properties
             var updatedTeam = await _context.Teams
                 .Include(t => t.CreatedByUser)
-                .FirstOrDefaultAsync(t => t.Id == team.Id);
+                .FirstOrDefaultAsync(t => t.Id == existingTeam.Id);
             
             return updatedTeam;
         }
@@ -87,6 +144,7 @@ public class TeamRepository : ITeamRepository
     {
         var teams = await _context.Teams
             .Include(t => t.CreatedByUser)
+            .OrderBy(t => t.Name)
             .ToListAsync();
         return teams;
     }
@@ -153,23 +211,14 @@ public class TeamRepository : ITeamRepository
     {
         try
         {
-            var user = await _userManager.Users
-                .Include(u => u.Teams)
-                .FirstOrDefaultAsync(u => u.Id == userId);
-
-            if (user?.Teams == null)
-            {
-                return new List<Team>();
-            }
-
-            // Load the teams with CreatedByUser navigation property
-            var teamIds = user.Teams.Select(t => t.Id).ToList();
-            var teamsWithNavigation = await _context.Teams
+            // FIXED: Direct query instead of loading user first
+            var teams = await _context.Teams
                 .Include(t => t.CreatedByUser)
-                .Where(t => teamIds.Contains(t.Id))
+                .Where(t => t.CreatedByUserId == userId)
+                .OrderBy(t => t.Name)
                 .ToListAsync();
 
-            return teamsWithNavigation;
+            return teams;
         }
         catch (Exception ex)
         {

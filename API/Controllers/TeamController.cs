@@ -1,4 +1,4 @@
-// API/Controllers/TeamController.cs
+// API/Controllers/TeamController.cs - FIXED VERSION
 using System;
 using API.DTO;
 using API.Extensions;
@@ -18,31 +18,60 @@ public class TeamController : BaseAPIController
     }
 
     [HttpPost("create")]
-    public async Task<ActionResult<TeamDTO>> CreateTeam([FromBody] TeamDTO team)
+    public async Task<ActionResult<TeamDTO>> CreateTeam([FromBody] CreateTeamRequestDTO teamRequest)
     {
         try
         {
             var userId = User.GetUserId();
             
-            // Validate input
-            if (string.IsNullOrWhiteSpace(team.Name))
+            // FIXED: Validate input more thoroughly
+            if (teamRequest == null)
+            {
+                return BadRequest("Team data is required");
+            }
+
+            if (string.IsNullOrWhiteSpace(teamRequest.Name))
             {
                 return BadRequest("Team name is required");
             }
 
-            if (team.Name.Length < 2 || team.Name.Length > 100)
+            if (teamRequest.Name.Length < 2 || teamRequest.Name.Length > 100)
             {
                 return BadRequest("Team name must be between 2 and 100 characters");
             }
 
-            var createdTeam = await _teamService.CreateTeamAsync(team, userId);
+            // FIXED: Validate description length if provided
+            if (!string.IsNullOrEmpty(teamRequest.Description) && teamRequest.Description.Length > 500)
+            {
+                return BadRequest("Description must be less than 500 characters");
+            }
+
+            // FIXED: Create a proper TeamDTO with validated data
+            var teamDTO = new TeamDTO
+            {
+                Name = teamRequest.Name.Trim(),
+                Description = string.IsNullOrWhiteSpace(teamRequest.Description) ? string.Empty : teamRequest.Description.Trim(),
+                PhotoUrl = string.IsNullOrWhiteSpace(teamRequest.PhotoUrl) ? string.Empty : teamRequest.PhotoUrl.Trim(),
+                Score = teamRequest.Score ?? 0,
+                CreatedByUserId = userId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var createdTeam = await _teamService.CreateTeamAsync(teamDTO, userId);
             return createdTeam;
         }
         catch (Exception ex)
         {
-            // Log the exception details
+            // FIXED: Better error logging and response
             Console.WriteLine($"Error creating team: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            
+            // Return more specific error messages
+            if (ex.Message.Contains("duplicate") || ex.Message.Contains("unique"))
+            {
+                return BadRequest("A team with this name already exists");
+            }
+            
             return StatusCode(500, "An error occurred while creating the team");
         }
     }
@@ -137,4 +166,13 @@ public class TeamController : BaseAPIController
             return StatusCode(500, "An error occurred while deleting the team");
         }
     }
+}
+
+// FIXED: Create a separate DTO for create requests to avoid confusion
+public class CreateTeamRequestDTO
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? PhotoUrl { get; set; }
+    public float? Score { get; set; }
 }

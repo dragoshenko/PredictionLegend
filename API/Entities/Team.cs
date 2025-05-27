@@ -1,4 +1,3 @@
-// API/Entities/Team.cs
 using System;
 using System.ComponentModel.DataAnnotations;
 
@@ -15,8 +14,8 @@ public class Team
     [StringLength(500)]
     public string? PhotoUrl { get; set; }
     
-    [StringLength(1000)]
-    public string Description { get; set; } = string.Empty;
+    [StringLength(500)] // FIXED: Reduced from 1000 to 500 to match DTO validation
+    public string Description { get; set; } = string.Empty; // FIXED: Changed to non-nullable to match database constraint
     
     public float? Score { get; set; }
     

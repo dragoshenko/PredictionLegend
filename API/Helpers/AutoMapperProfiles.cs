@@ -102,6 +102,19 @@ public class AutoMapperProfiles: Profile
         CreateMap<CreationFlow, CreatePredictionFlowDTO>()
             .ForMember(dest => dest.SelectedTeamIds,
                     opt => opt.MapFrom<SelectedTeamIdsFromJsonResolver>());
+        
+        CreateMap<Team, TeamDTO>()
+            .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description ?? string.Empty))
+            .ForMember(dest => dest.PhotoUrl, opt => opt.MapFrom(src => src.PhotoUrl ?? string.Empty));
+
+        CreateMap<TeamDTO, Team>()
+            .ForMember(dest => dest.Description, opt => opt.MapFrom(src => 
+                string.IsNullOrWhiteSpace(src.Description) ? string.Empty : src.Description))
+            .ForMember(dest => dest.PhotoUrl, opt => opt.MapFrom(src => 
+                string.IsNullOrWhiteSpace(src.PhotoUrl) ? null : src.PhotoUrl))
+            .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => 
+                src.CreatedAt == default(DateTime) ? DateTime.UtcNow : src.CreatedAt))
+            .ForMember(dest => dest.CreatedByUser, opt => opt.Ignore()); // Don't map navigation property
 
     }
 }

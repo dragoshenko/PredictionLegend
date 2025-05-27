@@ -178,11 +178,12 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
             .HasForeignKey(d => d.UserId)
             .OnDelete(DeleteBehavior.NoAction);
         #endregion
+        
         builder.Entity<Team>()
-        .HasOne(t => t.CreatedByUser)
-        .WithMany(u => u.Teams)
-        .HasForeignKey(t => t.CreatedByUserId)
-        .OnDelete(DeleteBehavior.NoAction);
+            .HasOne(t => t.CreatedByUser)
+            .WithMany(u => u.Teams)
+            .HasForeignKey(t => t.CreatedByUserId)
+            .OnDelete(DeleteBehavior.NoAction);
 
         builder.Entity<Team>()
             .Property(t => t.Name)
@@ -192,7 +193,7 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
         builder.Entity<Team>()
             .Property(t => t.Description)
             .IsRequired()
-            .HasMaxLength(1000)
+            .HasMaxLength(500) // FIXED: Reduced from 1000 to 500
             .HasDefaultValue(string.Empty);
 
         builder.Entity<Team>()
@@ -204,8 +205,15 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
             .Property(t => t.PhotoUrl)
             .HasMaxLength(500);
 
+        // FIXED: Create unique constraint on Name + CreatedByUserId to prevent duplicate team names per user
         builder.Entity<Team>()
             .HasIndex(t => new { t.CreatedByUserId, t.Name })
-            .IsUnique(); // Prevent duplicate team names per user
-            }
+            .IsUnique()
+            .HasDatabaseName("IX_Teams_UserId_Name");
+
+        // FIXED: Add index on CreatedByUserId for better query performance
+        builder.Entity<Team>()
+            .HasIndex(t => t.CreatedByUserId)
+            .HasDatabaseName("IX_Teams_CreatedByUserId");
+    }
 }
