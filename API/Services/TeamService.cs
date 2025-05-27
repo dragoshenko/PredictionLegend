@@ -1,224 +1,189 @@
-// client/src/app/_services/team.service.ts - FIXED FRONTEND VERSION
-import { Injectable, OnInit, signal, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '../../environments/environment';
-import { Team } from '../_models/team';
-import { firstValueFrom, tap, catchError, throwError } from 'rxjs';
-import { AccountService } from './account.service';
+using System;
+using API.DTO;
+using API.Entities;
+using API.Interfaces;
+using AutoMapper;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 
-@Injectable({
-  providedIn: 'root'
-})
-export class TeamService implements OnInit {
-  private baseUrl = environment.apiUrl + 'team';
-  private http = inject(HttpClient);
-  private accountService = inject(AccountService);
+namespace API.Services;
 
-  teams = signal<Team[]>([]);
+public class TeamService : ITeamService
+{
+    private IUnitOfWork _unitOfWork;
+    private IMapper _mapper;
 
-  constructor() {}
-
-  ngOnInit(): void {}
-
-  async loadUserTeams(): Promise<void> {
-    try {
-      const result = await firstValueFrom(
-        this.http.get<Team[]>(`${this.baseUrl}/user`)
-      );
-      this.teams.set(result || []); // FIXED: Handle null/undefined response
-      console.log('User teams loaded:', result);
-    } catch (error) {
-      console.error('Failed to load user teams', error);
-      this.teams.set([]); // FIXED: Reset to empty array on error
+    public TeamService(IUnitOfWork unitOfWork, IMapper mapper)
+    {
+        _unitOfWork = unitOfWork;
+        _mapper = mapper;
     }
-  }
-
-  /** Get teams for a specific template (filtered locally) */
-  getTeamsForTemplate(templateId: number): Team[] {
-    return this.teams().filter(t => (t as any).templateId === templateId);
-  }
-
-  /** Create a new team with all required fields - FIXED FRONTEND VERSION */
-  async createTeam(teamData: {
-    name: string;
-    description?: string;
-    photoUrl?: string;
-    templateId?: number;
-    score?: number;
-  }): Promise<Team> {
-    try {
-      const currentUser = this.accountService.currentUser();
-      if (!currentUser) {
-        throw new Error('User not authenticated');
-      }
-
-      // FIXED: Clean and validate the data properly
-      const teamToCreate = {
-        name: teamData.name?.trim() || '',
-        description: teamData.description?.trim() || '',
-        photoUrl: teamData.photoUrl?.trim() || '',
-        score: teamData.score || 0
-      };
-
-      // FIXED: Client-side validation before sending
-      if (!teamToCreate.name || teamToCreate.name.length < 2) {
-        throw new Error('Team name must be at least 2 characters long');
-      }
-
-      if (teamToCreate.name.length > 100) {
-        throw new Error('Team name must be less than 100 characters');
-      }
-
-      if (teamToCreate.description && teamToCreate.description.length > 500) {
-        throw new Error('Description must be less than 500 characters');
-      }
-
-      // FIXED: Check for duplicates in current teams before API call
-      const currentTeams = this.teams();
-      const duplicateTeam = currentTeams.find(
-        team => team.name.toLowerCase().trim() === teamToCreate.name.toLowerCase().trim()
-      );
-
-      if (duplicateTeam) {
-        throw new Error('You already have a team with this name');
-      }
-
-      console.log('Creating team with cleaned data:', teamToCreate);
-
-      // FIXED: Properly handle the HTTP response
-      const result = await firstValueFrom(
-        this.http.post<Team>(`${this.baseUrl}/create`, teamToCreate).pipe(
-          tap((newTeam: Team) => {
-            console.log('Team created successfully:', newTeam);
-            // FIXED: Update the signal immediately with the new team
-            this.teams.update(currentTeams => {
-              // Double-check we don't already have this team ID
-              if (!currentTeams.find(t => t.id === newTeam.id)) {
-                return [...currentTeams, newTeam];
-              }
-              return currentTeams;
-            });
-          }),
-          catchError((error) => {
-            console.error('HTTP Error creating team:', error);
+    
+    public async Task<ActionResult<TeamDTO>> CreateTeamAsync(TeamDTO teamDTO, int userId)
+    {
+        try
+        {
+            var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId);
+            if (user == null) return new NotFoundResult();
             
-            // FIXED: Better error handling and re-throwing
-            if (error.status === 400) {
-              if (error.error && typeof error.error === 'string') {
-                throw new Error(error.error);
-              } else if (error.error?.message) {
-                throw new Error(error.error.message);
-              } else if (error.error?.errors) {
-                // Handle model validation errors
-                const validationErrors: string[] = [];
-                for (const key in error.error.errors) {
-                  if (error.error.errors[key]) {
-                    validationErrors.push(...error.error.errors[key]);
-                  }
-                }
-                throw new Error(validationErrors.join(', '));
-              }
+            // FIXED: Create team entity with proper validation and defaults
+            var teamEntity = new Team
+            {
+                Name = teamDTO.Name?.Trim() ?? throw new ArgumentException("Team name is required"),
+                Description = string.IsNullOrWhiteSpace(teamDTO.Description) ? string.Empty : teamDTO.Description.Trim(),
+                PhotoUrl = string.IsNullOrWhiteSpace(teamDTO.PhotoUrl) ? null : teamDTO.PhotoUrl.Trim(),
+                Score = teamDTO.Score ?? 0,
+                CreatedByUserId = userId,
+                CreatedByUser = user, // FIXED: Set the navigation property
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // FIXED: Additional validation
+            if (teamEntity.Name.Length < 2 || teamEntity.Name.Length > 100)
+            {
+                return new BadRequestObjectResult("Team name must be between 2 and 100 characters");
             }
+
+            if (!string.IsNullOrEmpty(teamEntity.Description) && teamEntity.Description.Length > 500)
+            {
+                return new BadRequestObjectResult("Description must be less than 500 characters");
+            }
+
+            // FIXED: Check for duplicate team names per user
+            var existingTeams = await _unitOfWork.TeamRepository.GetUserTeamsAsync(userId);
+            if (existingTeams.Any(t => t.Name.ToLower() == teamEntity.Name.ToLower()))
+            {
+                return new BadRequestObjectResult("You already have a team with this name");
+            }
+
+            // Create the team
+            var createdTeam = await _unitOfWork.TeamRepository.CreateTeamAsync(teamEntity);
+            if (createdTeam == null)
+            {
+                return new BadRequestObjectResult("Failed to create team");
+            }
+
+            // FIXED: Don't add to user's collection manually, let EF handle it
+            // user.Teams.Add(createdTeam); // Remove this line
             
-            throw new Error('Failed to create team. Please try again.');
-          })
-        )
-      );
+            // Save changes
+            var saveResult = await _unitOfWork.Complete();
+            if (!saveResult)
+            {
+                return new BadRequestObjectResult("Failed to save team");
+            }
 
-      return result;
-    } catch (error: any) {
-      console.error('Error in createTeam service:', error);
-      // FIXED: Re-throw the original error without modification
-      throw error;
+            // Map back to DTO for response
+            var teamDTOResult = _mapper.Map<TeamDTO>(createdTeam);
+            return teamDTOResult;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in CreateTeamAsync: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return new BadRequestObjectResult($"Failed to create team: {ex.Message}");
+        }
     }
-  }
 
-  /** Delete a team */
-  async deleteTeam(teamId: number): Promise<void> {
-    try {
-      await firstValueFrom(
-        this.http.delete<void>(`${this.baseUrl}/${teamId}`).pipe(
-          tap(() => {
-            // FIXED: Update the signal immediately
-            this.teams.update(currentTeams => 
-              currentTeams.filter(t => t.id !== teamId)
-            );
-          }),
-          catchError((error) => {
-            console.error('HTTP Error deleting team:', error);
-            throw new Error('Failed to delete team. Please try again.');
-          })
-        )
-      );
-    } catch (error) {
-      console.error('Error in deleteTeam service:', error);
-      throw error;
+    public async Task<ActionResult<List<TeamDTO>>> GetAllTeamsAsync()
+    {
+        var teams = await _unitOfWork.TeamRepository.GetAllTeamsAsync();
+        var teamDTOs = _mapper.Map<List<TeamDTO>>(teams);
+        return teamDTOs;
     }
-  }
 
-  /** Update a team */
-  async updateTeam(team: Team): Promise<Team> {
-    try {
-      const updated = await firstValueFrom(
-        this.http.put<Team>(`${this.baseUrl}/update`, team).pipe(
-          tap((updatedTeam: Team) => {
-            // FIXED: Update the signal immediately
-            this.teams.update(currentTeams => 
-              currentTeams.map(t => (t.id === updatedTeam.id ? updatedTeam : t))
-            );
-          }),
-          catchError((error) => {
-            console.error('HTTP Error updating team:', error);
-            throw new Error('Failed to update team. Please try again.');
-          })
-        )
-      );
-      return updated;
-    } catch (error) {
-      console.error('Error in updateTeam service:', error);
-      throw error;
+    public async Task<ActionResult<TeamDTO>> GetTeamAsync(int id)
+    {
+        var team = await _unitOfWork.TeamRepository.GetTeamAsync(id);
+        if (team == null) return new NotFoundResult();
+        var teamDTO = _mapper.Map<TeamDTO>(team);
+        return teamDTO;
     }
-  }
 
-  /** Get a specific team by ID */
-  async getTeam(teamId: number): Promise<Team> {
-    try {
-      const team = await firstValueFrom(
-        this.http.get<Team>(`${this.baseUrl}/${teamId}`).pipe(
-          catchError((error) => {
-            console.error('HTTP Error getting team:', error);
-            throw new Error('Failed to get team. Please try again.');
-          })
-        )
-      );
-      return team;
-    } catch (error) {
-      console.error('Error in getTeam service:', error);
-      throw error;
+    public async Task<ActionResult<List<TeamDTO>>> GetTemplateTeamsAsync(int templateId)
+    {
+        var teams = await _unitOfWork.TeamRepository.GetTemplateTeamsAsync(templateId, PredictionType.Ranking);
+        if (teams == null) return new NotFoundResult();
+        var teamDTOs = _mapper.Map<List<TeamDTO>>(teams);
+        return teamDTOs;
     }
-  }
 
-  /** Check if team name already exists for current user */
-  hasTeamWithName(name: string): boolean {
-    const currentTeams = this.teams();
-    return currentTeams.some(team => 
-      team.name.toLowerCase().trim() === name.toLowerCase().trim()
-    );
-  }
+    public async Task<ActionResult<List<TeamDTO>>> GetTemplateTeamsAsync(int templateId, PredictionType predictionType)
+    {
+        var teams = await _unitOfWork.TeamRepository.GetTemplateTeamsAsync(templateId, predictionType);
+        if (teams == null) return new NotFoundResult();
+        var teamDTOs = _mapper.Map<List<TeamDTO>>(teams);
+        return teamDTOs;
+    }
 
-  /** Get team count */
-  getTeamCount(): number {
-    return this.teams().length;
-  }
+    public async Task<ActionResult<List<TeamDTO>>> GetUserTeamsAsync(int userId)
+    {
+        var teams = await _unitOfWork.TeamRepository.GetUserTeamsAsync(userId);
+        if (teams == null) return new NotFoundResult();
+        var teamDTOs = _mapper.Map<List<TeamDTO>>(teams);
+        return teamDTOs;
+    }
 
-  /** Clear cache */
-  clearCache(): void {
-    this.teams.set([]);
-  }
+    public async Task<ActionResult<TeamDTO>> UpdateTeamAsync(TeamDTO teamDTO)
+    {
+        var teamEntity = await _unitOfWork.TeamRepository.GetTeamAsync(teamDTO.Id);
+        if (teamEntity == null) return new NotFoundResult();
+        
+        // FIXED: Update only the fields that can be changed with proper validation
+        if (!string.IsNullOrWhiteSpace(teamDTO.Name))
+        {
+            if (teamDTO.Name.Length < 2 || teamDTO.Name.Length > 100)
+            {
+                return new BadRequestObjectResult("Team name must be between 2 and 100 characters");
+            }
+            teamEntity.Name = teamDTO.Name.Trim();
+        }
 
-  /** Force reload teams from server */
-  async reloadTeams(): Promise<void> {
-    this.clearCache();
-    await this.loadUserTeams();
-  }
+        if (teamDTO.Description != null)
+        {
+            if (teamDTO.Description.Length > 500)
+            {
+                return new BadRequestObjectResult("Description must be less than 500 characters");
+            }
+            teamEntity.Description = string.IsNullOrWhiteSpace(teamDTO.Description) ? string.Empty : teamDTO.Description.Trim();
+        }
+
+        if (teamDTO.PhotoUrl != null)
+        {
+            teamEntity.PhotoUrl = string.IsNullOrWhiteSpace(teamDTO.PhotoUrl) ? null : teamDTO.PhotoUrl.Trim();
+        }
+
+        if (teamDTO.Score.HasValue)
+        {
+            teamEntity.Score = teamDTO.Score.Value;
+        }
+
+        await _unitOfWork.TeamRepository.UpdateTeamAsync(teamEntity);
+        var saveResult = await _unitOfWork.Complete();
+        
+        if (!saveResult)
+        {
+            return new BadRequestObjectResult("Failed to update team");
+        }
+        
+        var teamDTOResult = _mapper.Map<TeamDTO>(teamEntity);
+        return teamDTOResult;
+    }
+
+    public async Task<ActionResult> DeleteTeamAsync(int id)
+    {
+        var result = await _unitOfWork.TeamRepository.DeleteTeamAsync(id);
+        if (!result)
+        {
+            return new NotFoundResult();
+        }
+        
+        var saveResult = await _unitOfWork.Complete();
+        if (!saveResult)
+        {
+            return new BadRequestObjectResult("Failed to delete team");
+        }
+        
+        return new NoContentResult();
+    }
 }

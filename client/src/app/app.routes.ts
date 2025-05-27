@@ -1,4 +1,3 @@
-// app.routes.ts
 import { Routes } from '@angular/router';
 import { HomeComponent } from './home/home.component';
 import { CategoriesComponent } from './categories/categories.component';
@@ -47,11 +46,23 @@ export const routes: Routes = [
       { path: 'profile', component: ProfileComponent },
       { path: 'password-change-warning', component: PasswordChangeWarningComponent },
 
-      // Prediction creation flow
+      // FIXED: Prediction creation flow with proper parameter ordering
       { path: 'create-prediction', component: CreatePredictionComponent },
-      { path: 'edit-template/:predictionId/:type', component: EditTemplateComponent },
-      { path: 'select-teams/:predictionId/:templateId/:type', component: SelectTeamsComponent },
-      { path: 'create-post/:predictionId/:templateId/:type', component: CreatePostComponent },
+      {
+        path: 'edit-template/:id/:type',
+        component: EditTemplateComponent,
+        data: { title: 'Edit Template' }
+      },
+      {
+        path: 'select-teams/:predictionId/:templateId/:type',
+        component: SelectTeamsComponent,
+        data: { title: 'Select Teams' }
+      },
+      {
+        path: 'create-post/:predictionId/:templateId/:type',
+        component: CreatePostComponent,
+        data: { title: 'Create Post' }
+      },
 
       // Discussion creation/editing (protected)
       { path: 'discussions/create', component: DiscussionListComponent }, // Same component with create form

@@ -168,11 +168,3 @@ public class TeamController : BaseAPIController
     }
 }
 
-// FIXED: Create a separate DTO for create requests to avoid confusion
-public class CreateTeamRequestDTO
-{
-    public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public string? PhotoUrl { get; set; }
-    public float? Score { get; set; }
-}

@@ -1,4 +1,3 @@
-// create-post/create-post.component.ts
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -112,9 +111,15 @@ export class CreatePostComponent implements OnInit {
   isSubmitting = false;
 
   ngOnInit(): void {
+    console.log('CreatePostComponent ngOnInit called');
+
     this.initializeForm();
     this.loadRouteData();
-    this.initializePostStructure();
+
+    // Add a small delay to ensure navigation state is available
+    setTimeout(() => {
+      this.initializePostStructure();
+    }, 100);
   }
 
   initializeForm(): void {
@@ -125,23 +130,88 @@ export class CreatePostComponent implements OnInit {
   }
 
   loadRouteData(): void {
+    console.log('Loading route data...');
+
     this.route.params.subscribe(params => {
+      console.log('Route params:', params);
+
       this.predictionId = +params['predictionId'];
       this.templateId = +params['templateId'];
       this.predictionType = params['type'] as PredictionType;
+
+      console.log('Parsed route params:', {
+        predictionId: this.predictionId,
+        templateId: this.templateId,
+        predictionType: this.predictionType
+      });
     });
 
-    // Get selected teams from navigation state
+    // Get data from navigation state
     const navigation = this.router.getCurrentNavigation();
-    if (navigation?.extras.state?.['selectedTeams']) {
-      this.selectedTeams = navigation.extras.state['selectedTeams'];
+    console.log('Navigation object:', navigation);
+
+    if (navigation?.extras.state) {
+      console.log('Navigation state found:', navigation.extras.state);
+
+      this.selectedTeams = navigation.extras.state['selectedTeams'] || [];
+      this.template = navigation.extras.state['template'] || null;
+
+      console.log('Data from navigation state:', {
+        selectedTeams: this.selectedTeams.length,
+        template: this.template?.name || 'No template',
+        templateData: this.template
+      });
     } else {
-      // Fallback: redirect back to team selection
-      this.router.navigate(['/select-teams', this.predictionId, this.templateId, this.predictionType]);
+      console.warn('No navigation state found');
+
+      // Try to get from browser history state as fallback
+      const historyState = history.state;
+      console.log('Browser history state:', historyState);
+
+      if (historyState?.selectedTeams) {
+        this.selectedTeams = historyState.selectedTeams;
+        this.template = historyState.template;
+        console.log('Loaded from browser history state');
+      } else {
+        console.error('No selected teams or template found');
+        this.toastr.error('Missing required data. Redirecting back to team selection.');
+        this.goBack();
+        return;
+      }
     }
+
+    // Validate we have the required data
+    if (!this.selectedTeams || this.selectedTeams.length === 0) {
+      console.error('No teams selected');
+      this.toastr.error('No teams selected. Please go back and select teams.');
+      this.goBack();
+      return;
+    }
+
+    if (!this.template) {
+      console.error('No template provided');
+      this.toastr.error('Template information missing. Please go back and select a template.');
+      this.goBack();
+      return;
+    }
+
+    console.log('Route data loaded successfully:', {
+      predictionId: this.predictionId,
+      templateId: this.templateId,
+      predictionType: this.predictionType,
+      selectedTeams: this.selectedTeams.length,
+      template: this.template.name
+    });
   }
 
   initializePostStructure(): void {
+    console.log('Initializing post structure for:', this.predictionType);
+
+    if (!this.template) {
+      console.error('Cannot initialize post structure - no template');
+      return;
+    }
+
     switch (this.predictionType) {
       case PredictionType.Ranking:
         this.initializeRankingPost();
@@ -152,13 +222,20 @@ export class CreatePostComponent implements OnInit {
       case PredictionType.Bingo:
         this.initializeBingoPost();
         break;
+      default:
+        console.error('Unknown prediction type:', this.predictionType);
     }
+
+    console.log('Post structure initialized');
   }
 
   initializeRankingPost(): void {
-    // Create ranking structure based on template
+    console.log('Initializing ranking post');
+
     const numberOfRows = this.template?.numberOfRows || 10;
     const numberOfColumns = this.template?.numberOfColumns || 1;
+
+    console.log('Ranking dimensions:', { numberOfRows, numberOfColumns });
 
     this.postRank = {
       rankTable: {
@@ -190,11 +267,17 @@ export class CreatePostComponent implements OnInit {
 
       this.postRank.rankTable.rows.push(row);
     }
+
+    console.log('Ranking post initialized:', this.postRank);
   }
 
   initializeBracketPost(): void {
+    console.log('Initializing bracket post');
+
     const numberOfRounds = this.template?.numberOfRounds || 4;
     const totalParticipants = Math.pow(2, numberOfRounds);
+
+    console.log('Bracket dimensions:', { numberOfRounds, totalParticipants });
 
     this.postBracket = {
       rootBracket: {
@@ -209,12 +292,16 @@ export class CreatePostComponent implements OnInit {
       isOfficialResult: false
     };
 
-    // Initialize bracket structure with proper typing
     this.generateBracketStructure(numberOfRounds);
+    console.log('Bracket post initialized:', this.postBracket);
   }
 
   initializeBingoPost(): void {
+    console.log('Initializing bingo post');
+
     const gridSize = this.template?.gridSize || 5;
+
+    console.log('Bingo grid size:', gridSize);
 
     this.postBingo = {
       gridSize,
@@ -238,6 +325,8 @@ export class CreatePostComponent implements OnInit {
         this.postBingo.bingoCells.push(cell);
       }
     }
+
+    console.log('Bingo post initialized:', this.postBingo);
   }
 
   generateBracketStructure(rounds: number): void {
@@ -362,6 +451,8 @@ export class CreatePostComponent implements OnInit {
 
   // Submit post
   async submitPost(): Promise<void> {
+    console.log('Submitting post...');
+
     if (!this.isValidPost()) {
       this.toastr.error('Please assign teams to at least some positions');
       return;
@@ -378,6 +469,8 @@ export class CreatePostComponent implements OnInit {
         postBracket: this.predictionType === PredictionType.Bracket ? this.postBracket : null,
         postBingo: this.predictionType === PredictionType.Bingo ? this.postBingo : null
       };
+
+      console.log('Post data prepared:', postData);
 
       // Call API to create post
       const result = await this.createPost(postData);
@@ -401,6 +494,7 @@ export class CreatePostComponent implements OnInit {
 
   // Navigation
   goBack(): void {
+    console.log('Going back to select teams');
     this.router.navigate(['/select-teams', this.predictionId, this.templateId, this.predictionType]);
   }
 
@@ -449,54 +543,52 @@ export class CreatePostComponent implements OnInit {
 
     return this.postBracket?.rootBracket?.brackets?.slice(startIndex, startIndex + bracketsPerRound) || [];
   }
-  // Add these helper methods to your CreatePostComponent class
 
-/**
- * Find the first empty cell index in the bingo grid
- */
-getFirstEmptyBingoIndex(): number {
-  if (!this.postBingo?.bingoCells) return -1;
-  return this.postBingo.bingoCells.findIndex((cell: BingoCell) => !cell.team);
-}
-
-/**
- * Get a random side for bracket assignment
- */
-getRandomSide(): 'left' | 'right' {
-  return Math.random() > 0.5 ? 'left' : 'right';
-}
-
-/**
- * Quick assign team to first available bingo cell
- */
-quickAssignToBingo(team: Team): void {
-  const emptyIndex = this.getFirstEmptyBingoIndex();
-  if (emptyIndex >= 0) {
-    this.assignTeamToBingo(emptyIndex, team);
+  /**
+   * Find the first empty cell index in the bingo grid
+   */
+  getFirstEmptyBingoIndex(): number {
+    if (!this.postBingo?.bingoCells) return -1;
+    return this.postBingo.bingoCells.findIndex((cell: BingoCell) => !cell.team);
   }
-}
 
-/**
- * Quick assign team to first available bracket position
- */
-quickAssignToBracket(team: Team): void {
-  if (!this.postBracket?.rootBracket?.brackets) return;
+  /**
+   * Get a random side for bracket assignment
+   */
+  getRandomSide(): 'left' | 'right' {
+    return Math.random() > 0.5 ? 'left' : 'right';
+  }
 
-  // Find first round brackets that need teams
-  const firstRoundSize = Math.pow(2, (this.template?.numberOfRounds || 4) - 1);
-  const firstRoundBrackets = this.postBracket.rootBracket.brackets.slice(0, firstRoundSize);
-
-  // Find first bracket with an empty slot
-  for (let i = 0; i < firstRoundBrackets.length; i++) {
-    const bracket = firstRoundBrackets[i];
-    if (!bracket.leftTeam) {
-      this.assignTeamToBracket(i, 'left', team);
-      return;
-    } else if (!bracket.rightTeam) {
-      this.assignTeamToBracket(i, 'right', team);
-      return;
+  /**
+   * Quick assign team to first available bingo cell
+   */
+  quickAssignToBingo(team: Team): void {
+    const emptyIndex = this.getFirstEmptyBingoIndex();
+    if (emptyIndex >= 0) {
+      this.assignTeamToBingo(emptyIndex, team);
     }
   }
-}
 
+  /**
+   * Quick assign team to first available bracket position
+   */
+  quickAssignToBracket(team: Team): void {
+    if (!this.postBracket?.rootBracket?.brackets) return;
+
+    // Find first round brackets that need teams
+    const firstRoundSize = Math.pow(2, (this.template?.numberOfRounds || 4) - 1);
+    const firstRoundBrackets = this.postBracket.rootBracket.brackets.slice(0, firstRoundSize);
+
+    // Find first bracket with an empty slot
+    for (let i = 0; i < firstRoundBrackets.length; i++) {
+      const bracket = firstRoundBrackets[i];
+      if (!bracket.leftTeam) {
+        this.assignTeamToBracket(i, 'left', team);
+        return;
+      } else if (!bracket.rightTeam) {
+        this.assignTeamToBracket(i, 'right', team);
+        return;
+      }
+    }
+  }
 }

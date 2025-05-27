@@ -1,3 +1,4 @@
+// Fixed select-teams.component.ts
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -40,7 +41,7 @@ export class SelectTeamsComponent implements OnInit {
 
   // Flow state
   isLoading = false;
-  isCreatingTeam = false; // FIXED: Separate loading state for team creation
+  isCreatingTeam = false;
   minimumTeamsRequired = 0;
   maximumTeamsAllowed = 0;
 
@@ -56,27 +57,22 @@ export class SelectTeamsComponent implements OnInit {
         Validators.required,
         Validators.minLength(2),
         Validators.maxLength(100),
-        this.teamNameValidator.bind(this) // FIXED: Custom validator for duplicate names
+        this.teamNameValidator.bind(this)
       ]],
       description: ['', [Validators.maxLength(500)]],
-      photoUrl: ['', [this.urlValidator]] // FIXED: Custom URL validator
+      photoUrl: ['', [this.urlValidator]]
     });
   }
 
-  // FIXED: Custom validator for team names
   teamNameValidator(control: any) {
     if (!control.value) return null;
-
     const name = control.value.trim().toLowerCase();
     const exists = this.teamService.hasTeamWithName(name);
-
     return exists ? { duplicate: true } : null;
   }
 
-  // FIXED: Custom URL validator
   urlValidator(control: any) {
     if (!control.value) return null;
-
     const urlPattern = /^https?:\/\/.+\..+/;
     return urlPattern.test(control.value) ? null : { invalidUrl: true };
   }
@@ -86,6 +82,12 @@ export class SelectTeamsComponent implements OnInit {
       this.predictionId = +params['predictionId'];
       this.templateId = +params['templateId'];
       this.predictionType = params['type'] as PredictionType;
+
+      console.log('Route params loaded:', {
+        predictionId: this.predictionId,
+        templateId: this.templateId,
+        predictionType: this.predictionType
+      });
 
       // Try to get template from navigation state first
       const navigation = this.router.getCurrentNavigation();
@@ -150,6 +152,11 @@ export class SelectTeamsComponent implements OnInit {
           this.maximumTeamsAllowed = this.minimumTeamsRequired * 2;
           break;
       }
+
+      console.log('Team requirements calculated:', {
+        minimum: this.minimumTeamsRequired,
+        maximum: this.maximumTeamsAllowed
+      });
     }
   }
 
@@ -166,14 +173,9 @@ export class SelectTeamsComponent implements OnInit {
         return;
       }
 
-      // FIXED: Load user's teams and subscribe to changes
       await this.teamService.loadUserTeams();
       this.userTeams = this.teamService.teams();
-
-      // Get teams already associated with this template
       this.existingTeams = this.template?.teams || [];
-
-      // Pre-select existing teams if any
       this.selectedTeams = [...this.existingTeams];
 
       console.log('Teams loaded successfully:', {
@@ -202,6 +204,11 @@ export class SelectTeamsComponent implements OnInit {
         this.toastr.warning(`Maximum ${this.maximumTeamsAllowed} teams allowed`);
       }
     }
+
+    console.log('Team selection updated:', {
+      selectedCount: this.selectedTeams.length,
+      canProceed: this.canProceed()
+    });
   }
 
   isTeamSelected(team: Team): boolean {
@@ -209,27 +216,22 @@ export class SelectTeamsComponent implements OnInit {
   }
 
   async createTeam(): Promise<void> {
-    // FIXED: Validate form first
     if (this.teamForm.invalid) {
       this.markFormGroupTouched();
       this.toastr.error('Please fix the validation errors');
       return;
     }
 
-    // FIXED: Check authentication
     const currentUser = this.accountService.currentUser();
     if (!currentUser) {
       this.toastr.error('You must be logged in to create teams');
       return;
     }
 
-    // FIXED: Use separate loading state
     this.isCreatingTeam = true;
 
     try {
       const formValue = this.teamForm.value;
-
-      // FIXED: Prepare clean data
       const teamData = {
         name: formValue.name?.trim() || '',
         description: formValue.description?.trim() || '',
@@ -238,17 +240,12 @@ export class SelectTeamsComponent implements OnInit {
       };
 
       console.log('Creating team with data:', teamData);
-
-      // FIXED: Call service and handle response properly
       const newTeam = await this.teamService.createTeam(teamData);
-
       console.log('Team created successfully:', newTeam);
 
-      // FIXED: Update local state immediately
-      this.userTeams = this.teamService.teams(); // Get updated teams from service
-      this.selectedTeams.push(newTeam); // Add to selected teams
+      this.userTeams = this.teamService.teams();
+      this.selectedTeams.push(newTeam);
 
-      // FIXED: Reset form properly
       this.teamForm.reset();
       this.teamForm.patchValue({
         name: '',
@@ -263,8 +260,6 @@ export class SelectTeamsComponent implements OnInit {
 
     } catch (error: any) {
       console.error('Error creating team:', error);
-
-      // FIXED: Display the actual error message
       let errorMessage = 'Failed to create team';
 
       if (error?.message) {
@@ -275,7 +270,6 @@ export class SelectTeamsComponent implements OnInit {
 
       this.toastr.error(errorMessage);
 
-      // FIXED: If it's a duplicate error, reload teams to sync state
       if (errorMessage.toLowerCase().includes('already exists') ||
           errorMessage.toLowerCase().includes('duplicate')) {
         try {
@@ -290,7 +284,6 @@ export class SelectTeamsComponent implements OnInit {
     }
   }
 
-  // FIXED: Helper method to mark all form fields as touched
   private markFormGroupTouched(): void {
     Object.keys(this.teamForm.controls).forEach(key => {
       const control = this.teamForm.get(key);
@@ -300,14 +293,77 @@ export class SelectTeamsComponent implements OnInit {
   }
 
   canProceed(): boolean {
-    return this.selectedTeams.length >= this.minimumTeamsRequired;
+    const result = this.selectedTeams.length >= this.minimumTeamsRequired;
+    console.log('Can proceed check:', {
+      selectedTeams: this.selectedTeams.length,
+      minimumRequired: this.minimumTeamsRequired,
+      canProceed: result
+    });
+    return result;
   }
 
+  // FIXED: Enhanced proceedToPost method with better logging and validation
   proceedToPost(): void {
-    if (this.canProceed()) {
-      this.router.navigate(['/create-post', this.predictionId, this.templateId, this.predictionType], {
-        state: { selectedTeams: this.selectedTeams }
+    console.log('proceedToPost called');
+    console.log('Current state:', {
+      predictionId: this.predictionId,
+      templateId: this.templateId,
+      predictionType: this.predictionType,
+      selectedTeams: this.selectedTeams.length,
+      canProceed: this.canProceed(),
+      template: this.template
+    });
+
+    // Validate all required data
+    if (!this.predictionId || !this.templateId || !this.predictionType) {
+      console.error('Missing required route parameters');
+      this.toastr.error('Missing required information. Please start over.');
+      return;
+    }
+
+    if (!this.canProceed()) {
+      console.error('Cannot proceed - not enough teams selected');
+      this.toastr.error(`Please select at least ${this.minimumTeamsRequired} teams to continue`);
+      return;
+    }
+
+    if (!this.template) {
+      console.error('Template not loaded');
+      this.toastr.error('Template information is missing. Please go back and select a template.');
+      return;
+    }
+
+    // Prepare navigation
+    const navigationRoute = ['/create-post', this.predictionId, this.templateId, this.predictionType];
+    const navigationExtras = {
+      state: {
+        selectedTeams: this.selectedTeams,
+        template: this.template,
+        predictionId: this.predictionId,
+        templateId: this.templateId,
+        predictionType: this.predictionType
+      }
+    };
+
+    console.log('Navigating to:', navigationRoute);
+    console.log('With state:', navigationExtras.state);
+
+    try {
+      this.router.navigate(navigationRoute, navigationExtras).then(
+        (success) => {
+          console.log('Navigation result:', success);
+          if (!success) {
+            console.error('Navigation failed');
+            this.toastr.error('Navigation failed. Please try again.');
+          }
+        }
+      ).catch(error => {
+        console.error('Navigation error:', error);
+        this.toastr.error('Navigation error. Please try again.');
       });
+    } catch (error) {
+      console.error('Error during navigation:', error);
+      this.toastr.error('An error occurred during navigation');
     }
   }
 
@@ -321,7 +377,6 @@ export class SelectTeamsComponent implements OnInit {
     this.router.navigate(['/edit-template', this.predictionId, this.predictionType]);
   }
 
-  // FIXED: Helper methods for template access
   isFieldInvalid(fieldName: string): boolean {
     const field = this.teamForm.get(fieldName);
     return !!(field && field.invalid && (field.dirty || field.touched));
@@ -339,7 +394,6 @@ export class SelectTeamsComponent implements OnInit {
     return '';
   }
 
-  // FIXED: Method to toggle create form
   toggleCreateForm(): void {
     this.showCreateForm = !this.showCreateForm;
     if (!this.showCreateForm) {
