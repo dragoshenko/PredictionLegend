@@ -6,6 +6,8 @@ import { Team } from '../_models/team';
 import { PredictionType } from '../_models/predictionType';
 import { ToastrService } from 'ngx-toastr';
 import { CdkDragDrop, DragDropModule, transferArrayItem } from '@angular/cdk/drag-drop';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../environments/environment';
 
 // Optimized interfaces
 interface RankColumn {
@@ -32,18 +34,30 @@ interface PostRankData {
   isOfficialResult: boolean;
 }
 
+interface PublishPostRequest {
+  predictionId: number;
+  templateId: number;
+  predictionType: PredictionType;
+  notes: string;
+  isDraft: boolean;
+  postRank?: PostRankData | null;
+  postBracket?: any;
+  postBingo?: any;
+}
+
 @Component({
   selector: 'app-create-post',
   imports: [CommonModule, FormsModule, ReactiveFormsModule, DragDropModule],
   templateUrl: './create-post.component.html',
   styleUrls: ['./create-post.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush // For better performance
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CreatePostComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private toastr = inject(ToastrService);
   private fb = inject(FormBuilder);
+  private http = inject(HttpClient);
 
   // Route parameters
   predictionId: number = 0;
@@ -312,7 +326,7 @@ export class CreatePostComponent implements OnInit {
     );
   }
 
-  // Submit post
+  // Submit post - UPDATED WITH PUBLISHING LOGIC
   async submitPost(): Promise<void> {
     if (!this.isValidPost()) {
       this.toastr.error('Please assign teams to at least some positions');
@@ -322,31 +336,42 @@ export class CreatePostComponent implements OnInit {
     this.isSubmitting = true;
 
     try {
-      const postData = {
+      const publishRequest: PublishPostRequest = {
         predictionId: this.predictionId,
         templateId: this.templateId,
-        isDraft: this.postForm.get('isDraft')?.value,
-        notes: this.postForm.get('notes')?.value,
-        postRank: this.predictionType === PredictionType.Ranking ? this.postRank : null
+        predictionType: this.predictionType,
+        notes: this.postForm.get('notes')?.value || '',
+        isDraft: this.postForm.get('isDraft')?.value || false,
+        postRank: this.predictionType === PredictionType.Ranking ? this.postRank : undefined
       };
 
-      // Call API to create post (replace with actual service call)
-      await this.createPost(postData);
+      console.log('Publishing post with data:', publishRequest);
 
-      this.toastr.success('Prediction post created successfully!');
-      this.router.navigate(['/prediction', this.predictionId]);
+      // Call the new publish endpoint
+      const response = await this.http.post(
+        `${environment.apiUrl}post/rank/publish`,
+        publishRequest
+      ).toPromise();
+
+      console.log('Publish response:', response);
+
+      const isDraft = this.postForm.get('isDraft')?.value;
+
+      if (isDraft) {
+        this.toastr.success('Prediction saved as draft successfully!');
+      } else {
+        this.toastr.success('Prediction published successfully! Other users can now counter-predict.');
+      }
+
+      // Navigate to prediction details or user profile
+      this.router.navigate(['/prediction-details', this.predictionId]);
 
     } catch (error) {
-      console.error('Error creating post:', error);
-      this.toastr.error('Failed to create prediction post');
+      console.error('Error publishing post:', error);
+      this.toastr.error('Failed to publish prediction post');
     } finally {
       this.isSubmitting = false;
     }
-  }
-
-  private async createPost(postData: any): Promise<any> {
-    // Mock API call - replace with actual service
-    return new Promise(resolve => setTimeout(resolve, 1000));
   }
 
   // Navigation
