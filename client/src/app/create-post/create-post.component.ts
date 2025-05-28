@@ -492,7 +492,6 @@ export class CreatePostComponent implements OnInit {
       console.log('templateId:', this.templateId);
       console.log('predictionType:', this.predictionType);
 
-      // Validate required data
       if ((this.predictionType === PredictionType.Ranking && !this.postRank) ||
           (this.predictionType === PredictionType.Bingo && !this.postBingo) ||
           !this.template) {
@@ -501,39 +500,32 @@ export class CreatePostComponent implements OnInit {
         return;
       }
 
-      // Create the request payload
       const publishRequest: any = {
         predictionId: this.predictionId,
         templateId: this.templateId,
-        predictionType: this.predictionTypeEnumMap[this.predictionType],
+        predictionType: this.predictionType,
         notes: this.postForm.get('notes')?.value || '',
         isDraft: this.postForm.get('isDraft')?.value || false,
       };
 
       if (this.predictionType === PredictionType.Ranking && this.postRank) {
         publishRequest.postRank = {
-          id: 0,
           rankingTemplateId: this.templateId,
           predictionId: this.predictionId,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          userId: 0,
           rankTable: {
-            id: 0,
             numberOfRows: this.postRank.rankTable.numberOfRows,
             numberOfColumns: this.postRank.rankTable.numberOfColumns,
             rows: this.postRank.rankTable.rows.map((row, rowIndex) => ({
-              id: 0,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
               order: row.order,
               isWrong: false,
               columns: row.columns.map((column, colIndex) => ({
-                id: 0,
                 team: column.team ? {
                   id: column.team.id,
                   name: column.team.name,
                   description: column.team.description || '',
+                  photoUrl: column.team.photoUrl || '',
                   score: column.team.score || 0,
                   createdByUserId: column.team.createdByUserId,
                   createdAt: column.team.createdAt
@@ -547,6 +539,7 @@ export class CreatePostComponent implements OnInit {
             id: team.id,
             name: team.name,
             description: team.description || '',
+            photoUrl: team.photoUrl || '',
             score: team.score || 0,
             createdByUserId: team.createdByUserId,
             createdAt: team.createdAt
@@ -554,103 +547,59 @@ export class CreatePostComponent implements OnInit {
           isOfficialResult: false,
           totalScore: 0
         };
-      } else if (this.predictionType === PredictionType.Bingo && this.postBingo) {
-        publishRequest.postBingo = {
-          id: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          userId: 0,
-          gridSize: this.postBingo.gridSize,
-          bingoCells: this.postBingo.bingoCells.map(cell => ({
-            id: 0,
-            row: cell.row,
-            column: cell.column,
-            team: cell.team ? {
-              id: cell.team.id,
-              name: cell.team.name,
-              description: cell.team.description || '',
-              score: cell.team.score || 0,
-              createdByUserId: cell.team.createdByUserId,
-              createdAt: cell.team.createdAt
-            } : null,
-            score: 0,
-            officialScore: 0,
-            isWrong: false
-          })),
-          teams: this.selectedTeams.map(team => ({
-            id: team.id,
-            name: team.name,
-            description: team.description || '',
-            score: team.score || 0,
-            createdByUserId: team.createdByUserId,
-            createdAt: team.createdAt
-          })),
-          totalScore: 0,
-          isOfficialResult: false
-        };
       }
 
       console.log('Request payload:', JSON.stringify(publishRequest, null, 2));
 
-      // Make the API call
-      const apiEndpoint = this.predictionType === PredictionType.Ranking
-        ? `${environment.apiUrl}post/rank/publish`
-        : `${environment.apiUrl}post/bingo/publish`; // You'll need to implement this endpoint
+      const apiUrl = `${environment.apiUrl}prediction/publish`;
 
-      const response = await this.http.post(apiEndpoint, publishRequest, {
-        headers: { 'Content-Type': 'application/json' }
-      }).toPromise();
+      this.http.post(apiUrl, publishRequest).subscribe({
+        next: (res) => {
+          const isDraft = this.postForm.get('isDraft')?.value;
+          if (isDraft) {
+            this.toastr.success('Prediction saved as draft successfully!');
+          } else {
+            this.toastr.success('Prediction published successfully!');
+          }
+          this.router.navigate(['/']);
+        },
+        error: (error) => {
+          console.error('=== SUBMISSION ERROR ===');
+          console.error('Full error:', error);
 
-      console.log('Success response:', response);
+          let errorMessage = 'Failed to publish prediction';
 
-      const isDraft = this.postForm.get('isDraft')?.value;
-      if (isDraft) {
-        this.toastr.success('Prediction saved as draft successfully!');
-      } else {
-        this.toastr.success('Prediction published successfully!');
-      }
+          if (error.status === 400) {
+            if (Array.isArray(error.error)) {
+              errorMessage = `Validation errors: ${error.error.join(', ')}`;
+            } else if (typeof error.error === 'string') {
+              errorMessage = error.error;
+            } else if (typeof error.error === 'object') {
+              errorMessage = error.error.message || error.error.title || `Server error: ${JSON.stringify(error.error)}`;
+            }
+          } else if (error.status === 401) {
+            errorMessage = 'You are not authorized to perform this action. Please log in again.';
+          } else if (error.status === 404) {
+            errorMessage = 'API endpoint not found. Please check your server configuration.';
+          } else if (error.status === 500) {
+            errorMessage = 'Server error occurred. Please try again later.';
+          } else if (error.status === 0) {
+            errorMessage = 'Network error - cannot reach server. Check if the API is running.';
+          }
 
-      // Navigate to home or wherever appropriate
-      this.router.navigate(['/']);
+          console.error('Final error message:', errorMessage);
+          this.toastr.error(errorMessage);
+        }
+      });
 
     } catch (error: any) {
-      console.error('=== SUBMISSION ERROR ===');
-      console.error('Full error:', error);
-
-      let errorMessage = 'Failed to publish prediction';
-
-      if (error.status === 400) {
-        if (error.error) {
-          if (Array.isArray(error.error)) {
-            errorMessage = `Validation errors: ${error.error.join(', ')}`;
-          } else if (typeof error.error === 'string') {
-            errorMessage = error.error;
-          } else if (typeof error.error === 'object') {
-            if (error.error.message) {
-              errorMessage = error.error.message;
-            } else if (error.error.title) {
-              errorMessage = error.error.title;
-            } else {
-              errorMessage = `Server error: ${JSON.stringify(error.error)}`;
-            }
-          }
-        }
-      } else if (error.status === 401) {
-        errorMessage = 'You are not authorized to perform this action. Please log in again.';
-      } else if (error.status === 404) {
-        errorMessage = 'API endpoint not found. Please check your server configuration.';
-      } else if (error.status === 500) {
-        errorMessage = 'Server error occurred. Please try again later.';
-      } else if (error.status === 0) {
-        errorMessage = 'Network error - cannot reach server. Check if the API is running.';
-      }
-
-      console.error('Final error message:', errorMessage);
-      this.toastr.error(errorMessage);
+      console.error('Unexpected error:', error);
+      this.toastr.error('Unexpected error occurred.');
     } finally {
       this.isSubmitting = false;
     }
   }
+
 
   // Navigation
   goBack(): void {

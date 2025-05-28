@@ -264,25 +264,7 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
         #endregion
         #region PostBingo Relationships
         // PostBingo to User
-        builder.Entity<PostBingo>()
-            .HasOne(pb => pb.User)
-            .WithMany(u => u.PostBingos)
-            .HasForeignKey(pb => pb.UserId)
-            .OnDelete(DeleteBehavior.NoAction);
-
-        // PostBingo to Prediction
-        builder.Entity<PostBingo>()
-            .HasOne(pb => pb.Prediction)
-            .WithMany(p => p.PostBingos)
-            .HasForeignKey(pb => pb.PredictionId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // BingoCell to Team (Many-to-One)
-        builder.Entity<BingoCell>()
-            .HasOne(bc => bc.Team)
-            .WithMany()
-            .HasForeignKey("TeamId")
-            .OnDelete(DeleteBehavior.SetNull);
+        
         #endregion
     }
 }
