@@ -21,7 +21,7 @@ public interface IPostService
 
     // Published posts methods
     Task<ActionResult<List<PublishedPostDTO>>> GetPublishedPostsAsync(int pageNumber, int pageSize, string? predictionType, string? searchTerm);
-    Task<ActionResult<List<PostRankDTO>>> GetUserPostsAsync(int userId);
+    Task<ActionResult<List<UserPostSummaryDTO>>> GetUserPostsAsync(int userId);
     Task<ActionResult<PostDetailDTO>> GetPostDetailsAsync(int predictionId, int currentUserId);
     Task<ActionResult<PostRankDTO>> CreateCounterPredictionAsync(int originalPredictionId, CounterPredictionRequestDTO request, int userId);
 
@@ -43,4 +43,5 @@ public interface IPostService
     Task<List<PostBingoDTO>> GetPostBingosByTemplateIdAsync(int templateId);
     Task<ActionResult> PublishBingoPostAsync(PublishPostRequestDTO request, int userId);
     Task<ActionResult<PostBingoDTO>> CreatePostBingoAsync(PostBingoDTO postBingoDTO, int predictionId, int userId);
+    
 }

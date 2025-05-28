@@ -13,9 +13,10 @@ public class PostController : BaseAPIController
 {
     private IPostService _postService;
     private readonly IUnitOfWork _unitOfWork;
-    public PostController(IPostService postService)
+    public PostController(IPostService postService, IUnitOfWork unitOfWork)
     {
         _postService = postService;
+        _unitOfWork = unitOfWork;
     }
 
     [HttpPost("rank/create")]
@@ -135,7 +136,7 @@ public class PostController : BaseAPIController
     }
 
     [HttpGet("user/{userId}")]
-    public async Task<ActionResult<List<PostRankDTO>>> GetUserPosts(int userId)
+    public async Task<ActionResult<List<UserPostSummaryDTO>>> GetUserPosts(int userId)
     {
         var result = await _postService.GetUserPostsAsync(userId);
         return result;
@@ -144,9 +145,23 @@ public class PostController : BaseAPIController
     [HttpGet("{id}/details")]
     public async Task<ActionResult<PostDetailDTO>> GetPostDetails(int id)
     {
-        var userId = User.GetUserId();
-        var result = await _postService.GetPostDetailsAsync(id, userId);
-        return result;
+        try
+        {
+            var userId = User.GetUserId();
+            Console.WriteLine($"Getting post details for prediction {id}, current user: {userId}");
+            
+            var result = await _postService.GetPostDetailsAsync(id, userId);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Controller error getting post details: {ex.Message}");
+            return StatusCode(500, new
+            {
+                message = "An error occurred while fetching post details",
+                error = ex.Message
+            });
+        }
     }
 
     [HttpPost("{id}/counter-predict")]
@@ -294,6 +309,14 @@ public class PostController : BaseAPIController
         {
             var userId = User.GetUserId();
 
+            if (userId <= 0)
+            {
+                Console.WriteLine("Invalid user ID");
+                return Unauthorized(new { message = "Invalid user authentication", error = "User ID must be valid" });
+            }
+
+            Console.WriteLine($"Getting posts for user ID: {userId}");
+
             // Get all predictions by the current user
             var predictions = await _unitOfWork.PredictionRepository.GetPredictionsByUserIdAsync(
                 userId,
@@ -303,49 +326,80 @@ public class PostController : BaseAPIController
                 includePostBrackets: true
             );
 
+            Console.WriteLine($"Found {predictions?.Count ?? 0} predictions for user {userId}");
+
             var userPosts = new List<UserPostSummaryDTO>();
 
-            foreach (var prediction in predictions)
+            if (predictions != null && predictions.Any())
             {
-                var post = new UserPostSummaryDTO
+                foreach (var prediction in predictions)
                 {
-                    Id = prediction.Id,
-                    Title = prediction.Title,
-                    PredictionType = prediction.PredictionType,
-                    CreatedAt = prediction.CreatedAt,
-                    EndDate = prediction.EndDate,
-                    IsDraft = prediction.IsDraft,
-                    IsActive = prediction.IsActive,
-                    CounterPredictionsCount = GetCounterPredictionsCount(prediction),
-                    Notes = prediction.Description
-                };
+                    try
+                    {
+                        var post = new UserPostSummaryDTO
+                        {
+                            Id = prediction.Id,
+                            Title = prediction.Title ?? "Untitled Prediction",
+                            PredictionType = prediction.PredictionType,
+                            CreatedAt = prediction.CreatedAt,
+                            EndDate = prediction.EndDate,
+                            IsDraft = prediction.IsDraft,
+                            IsActive = prediction.IsActive,
+                            CounterPredictionsCount = GetCounterPredictionsCount(prediction),
+                            Notes = prediction.Description ?? ""
+                        };
 
-                userPosts.Add(post);
+                        userPosts.Add(post);
+                        Console.WriteLine($"Added post: {post.Title} (ID: {post.Id})");
+                    }
+                    catch (Exception postEx)
+                    {
+                        Console.WriteLine($"Error processing prediction {prediction?.Id}: {postEx.Message}");
+                        // Continue processing other posts
+                    }
+                }
             }
 
+            Console.WriteLine($"Returning {userPosts.Count} user posts");
             return Ok(userPosts);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error getting user posts: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            return StatusCode(500, "An error occurred while retrieving your posts");
+            return StatusCode(500, new
+            {
+                message = "An error occurred while retrieving your posts",
+                error = ex.Message,
+                details = "Please try again later or contact support if the problem persists"
+            });
         }
     }
 
     // Helper method to count counter predictions
     private int GetCounterPredictionsCount(Prediction prediction)
     {
-        switch (prediction.PredictionType)
+        try
         {
-            case PredictionType.Ranking:
-                return prediction.PostRanks.Count(pr => pr.UserId != prediction.UserId);
-            case PredictionType.Bracket:
-                return prediction.PostBrackets.Count(pb => pb.UserId != prediction.UserId);
-            case PredictionType.Bingo:
-                return prediction.PostBingos.Count(pb => pb.UserId != prediction.UserId);
-            default:
-                return 0;
+            if (prediction == null) return 0;
+
+            switch (prediction.PredictionType)
+            {
+                case PredictionType.Ranking:
+                    return prediction.PostRanks?.Count(pr => pr.UserId != prediction.UserId) ?? 0;
+                case PredictionType.Bracket:
+                    return prediction.PostBrackets?.Count(pb => pb.UserId != prediction.UserId) ?? 0;
+                case PredictionType.Bingo:
+                    return prediction.PostBingos?.Count(pb => pb.UserId != prediction.UserId) ?? 0;
+                default:
+                    return 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error counting counter predictions: {ex.Message}");
+            return 0;
         }
     }
+
 }

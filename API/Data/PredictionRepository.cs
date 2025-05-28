@@ -42,35 +42,49 @@ public class PredictionRepository : IPredictionRepository
         throw new NotImplementedException();
     }
 
-    public Task<Prediction?> GetPredictionByIdAsync(int id, bool includeUser = false, bool includePostRanks = false, bool includePostBingos = false, bool includePostBrackets = false)
+    public async Task<Prediction?> GetPredictionByIdAsync(int id, bool includeUser = false, bool includePostRanks = false, bool includePostBingos = false, bool includePostBrackets = false)
+{
+    var query = _context.Predictions.AsQueryable();
+    
+    if (includeUser)
     {
-        var query = _context.Predictions.AsQueryable();
-        if (includeUser)
-        {
-            query = query.Include(p => p.User);
-        }
-        if (includePostRanks)
-        {
-            query = query.Include(p => p.PostRanks)
-                .ThenInclude(pr => pr.RankTable)
-                .ThenInclude(rt => rt.Rows)
-                .ThenInclude(r => r.Columns)
-                .ThenInclude(c => c.Team);
-        }
-        if (includePostBingos)
-        {
-            query = query.Include(p => p.PostBingos)
-                .ThenInclude(pb => pb.BingoCells)
-                .ThenInclude(bc => bc.Team);
-        }
-        if (includePostBrackets)
-        {
-            query = query.Include(p => p.PostBrackets)
-                .ThenInclude(pb => pb.RootBracket)
-                .ThenInclude(bc => bc.Brackets);
-        }
-        return query.FirstOrDefaultAsync(p => p.Id == id);
+        query = query.Include(p => p.User);
     }
+    
+    if (includePostRanks)
+    {
+        query = query.Include(p => p.PostRanks)
+            .ThenInclude(pr => pr.User) // Include user who made the post
+            .ThenInclude(u => u.Photo) // Include user photo
+            .Include(p => p.PostRanks)
+            .ThenInclude(pr => pr.RankTable)
+            .ThenInclude(rt => rt.Rows)
+            .ThenInclude(r => r.Columns)
+            .ThenInclude(c => c.Team);
+    }
+    
+    if (includePostBingos)
+    {
+        query = query.Include(p => p.PostBingos)
+            .ThenInclude(pb => pb.User) // Include user who made the post
+            .ThenInclude(u => u.Photo) // Include user photo
+            .Include(p => p.PostBingos)
+            .ThenInclude(pb => pb.BingoCells)
+            .ThenInclude(bc => bc.Team);
+    }
+    
+    if (includePostBrackets)
+    {
+        query = query.Include(p => p.PostBrackets)
+            .ThenInclude(pb => pb.User) // Include user who made the post
+            .ThenInclude(u => u.Photo) // Include user photo
+            .Include(p => p.PostBrackets)
+            .ThenInclude(pb => pb.RootBracket)
+            .ThenInclude(rb => rb.Brackets);
+    }
+    
+    return await query.FirstOrDefaultAsync(p => p.Id == id);
+}
 
     public Task<IEnumerable<PredictionDTO>> GetPredictionsByCategoryAsync(int categoryId, PaginationParams paginationParams)
     {
