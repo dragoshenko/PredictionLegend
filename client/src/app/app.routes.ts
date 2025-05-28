@@ -1,3 +1,4 @@
+// app.routes.ts - UPDATED VERSION
 import { Routes } from '@angular/router';
 import { HomeComponent } from './home/home.component';
 import { CategoriesComponent } from './categories/categories.component';
@@ -20,6 +21,10 @@ import { DiscussionPostComponent } from './discussion/discussion-post/discussion
 import { AdminDashboardComponent } from './admin/admin-dashboard/admin-dashboard.component';
 import { UserDetailComponent } from './admin/user-detail/user-detail.component';
 import { AdminComponent } from './admin/admin.component';
+import { MyPredictionsComponent } from './my-predictions/my-predictions.component';
+import { PredictionDetailsComponent } from './prediction-details/prediction-details.component';
+import { PublishedPostsComponent } from './published-posts/published-posts.component';
+import { PostViewComponent } from './post-view/post-view.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -32,6 +37,9 @@ export const routes: Routes = [
   { path: 'categories', component: CategoriesComponent },
   { path: 'site-predictions', component: SitePredictionsComponent },
   { path: 'trending-predictions', component: TrendingPredictionsComponent },
+  { path: 'published-posts', component: PublishedPostsComponent },
+  { path: 'prediction-details/:id', component: PredictionDetailsComponent },
+  { path: 'post-view/:id', component: PostViewComponent },
 
   // Discussion routes (some public, some protected)
   { path: 'discussions', component: DiscussionListComponent },
@@ -44,9 +52,10 @@ export const routes: Routes = [
     canActivate: [AuthGuard],
     children: [
       { path: 'profile', component: ProfileComponent },
+      { path: 'my-predictions', component: MyPredictionsComponent },
       { path: 'password-change-warning', component: PasswordChangeWarningComponent },
 
-      // FIXED: Prediction creation flow with proper parameter ordering
+      // Prediction creation flow with proper parameter ordering
       { path: 'create-prediction', component: CreatePredictionComponent },
       {
         path: 'edit-template/:id/:type',
@@ -65,9 +74,9 @@ export const routes: Routes = [
       },
 
       // Discussion creation/editing (protected)
-      { path: 'discussions/create', component: DiscussionListComponent }, // Same component with create form
-      { path: 'discussions/edit/:id', component: DiscussionListComponent }, // Edit form
-      { path: 'my-discussions', component: DiscussionListComponent }, // User's own discussions
+      { path: 'discussions/create', component: DiscussionListComponent },
+      { path: 'discussions/edit/:id', component: DiscussionListComponent },
+      { path: 'my-discussions', component: DiscussionListComponent },
     ]
   },
 

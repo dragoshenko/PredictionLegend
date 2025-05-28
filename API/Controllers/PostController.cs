@@ -1,4 +1,5 @@
 using API.DTO;
+using API.Entities;
 using API.Extensions;
 using API.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -11,6 +12,7 @@ namespace API.Controllers;
 public class PostController : BaseAPIController
 {
     private IPostService _postService;
+    private readonly IUnitOfWork _unitOfWork;
     public PostController(IPostService postService)
     {
         _postService = postService;
@@ -283,6 +285,67 @@ public class PostController : BaseAPIController
                 error = "Please try again later or contact support if the problem persists",
                 details = ex.Message // Only include in development
             });
+        }
+    }
+    [HttpGet("my-posts")]
+    public async Task<ActionResult<List<UserPostSummaryDTO>>> GetMyPosts()
+    {
+        try
+        {
+            var userId = User.GetUserId();
+
+            // Get all predictions by the current user
+            var predictions = await _unitOfWork.PredictionRepository.GetPredictionsByUserIdAsync(
+                userId,
+                includeUser: true,
+                includePostRanks: true,
+                includePostBingos: true,
+                includePostBrackets: true
+            );
+
+            var userPosts = new List<UserPostSummaryDTO>();
+
+            foreach (var prediction in predictions)
+            {
+                var post = new UserPostSummaryDTO
+                {
+                    Id = prediction.Id,
+                    Title = prediction.Title,
+                    PredictionType = prediction.PredictionType,
+                    CreatedAt = prediction.CreatedAt,
+                    EndDate = prediction.EndDate,
+                    IsDraft = prediction.IsDraft,
+                    IsActive = prediction.IsActive,
+                    CounterPredictionsCount = GetCounterPredictionsCount(prediction),
+                    Notes = prediction.Description
+                };
+
+                userPosts.Add(post);
+            }
+
+            return Ok(userPosts);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting user posts: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return StatusCode(500, "An error occurred while retrieving your posts");
+        }
+    }
+
+    // Helper method to count counter predictions
+    private int GetCounterPredictionsCount(Prediction prediction)
+    {
+        switch (prediction.PredictionType)
+        {
+            case PredictionType.Ranking:
+                return prediction.PostRanks.Count(pr => pr.UserId != prediction.UserId);
+            case PredictionType.Bracket:
+                return prediction.PostBrackets.Count(pb => pb.UserId != prediction.UserId);
+            case PredictionType.Bingo:
+                return prediction.PostBingos.Count(pb => pb.UserId != prediction.UserId);
+            default:
+                return 0;
         }
     }
 }

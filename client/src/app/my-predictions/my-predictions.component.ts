@@ -1,6 +1,7 @@
+// my-predictions/my-predictions.component.ts - UPDATED VERSION
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { ToastrService } from 'ngx-toastr';
@@ -18,9 +19,24 @@ interface UserPost {
   notes?: string;
 }
 
+interface PublishedPost {
+  id: number;
+  title: string;
+  description: string;
+  predictionType: string;
+  createdAt: Date;
+  endDate?: Date;
+  author: any;
+  categories: any[];
+  counterPredictionsCount: number;
+  canCounterPredict: boolean;
+  isActive: boolean;
+  notes?: string;
+}
+
 @Component({
   selector: 'app-my-predictions',
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule],
   template: `
     <div class="container-fluid mt-4">
       <!-- Header -->
@@ -115,6 +131,28 @@ interface UserPost {
               </button>
             </li>
           </ul>
+        </div>
+      </div>
+
+      <!-- Debug Info -->
+      <div class="card bg-dark border-dark mb-4" *ngIf="showDebugInfo">
+        <div class="card-header bg-dark border-dark">
+          <h6 class="text-light mb-0">
+            <i class="fa fa-bug me-2"></i>Debug Information
+            <button class="btn btn-sm btn-outline-light float-end" (click)="showDebugInfo = false">Hide</button>
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <h6 class="text-light">API Response:</h6>
+              <pre class="text-light small">{{ debugInfo | json }}</pre>
+            </div>
+            <div class="col-md-6">
+              <h6 class="text-light">Processed Posts:</h6>
+              <pre class="text-light small">{{ userPosts | json }}</pre>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -247,6 +285,13 @@ interface UserPost {
           <i class="fa fa-plus me-2"></i>Create Your First Prediction
         </button>
       </div>
+
+      <!-- Debug Toggle Button -->
+      <div class="fixed-bottom p-3" *ngIf="!showDebugInfo">
+        <button class="btn btn-sm btn-outline-secondary" (click)="showDebugInfo = true">
+          <i class="fa fa-bug me-1"></i>Debug
+        </button>
+      </div>
     </div>
   `,
   styles: [`
@@ -293,6 +338,16 @@ interface UserPost {
     .dropdown-item.text-danger:hover {
       background-color: #dc3545;
     }
+
+    pre {
+      max-height: 300px;
+      overflow-y: auto;
+      font-size: 0.8rem;
+    }
+
+    .fixed-bottom {
+      z-index: 1000;
+    }
   `]
 })
 export class MyPredictionsComponent implements OnInit {
@@ -303,8 +358,11 @@ export class MyPredictionsComponent implements OnInit {
 
   userPosts: UserPost[] = [];
   filteredPosts: UserPost[] = [];
+  publishedPosts: PublishedPost[] = [];
   isLoading = false;
   activeTab: 'all' | 'published' | 'drafts' | 'active' = 'all';
+  showDebugInfo = false;
+  debugInfo: any = null;
 
   // Computed properties
   get publishedCount(): number {
@@ -337,24 +395,128 @@ export class MyPredictionsComponent implements OnInit {
         return;
       }
 
-      const response = await this.http.get<UserPost[]>(
-        `${environment.apiUrl}post/user/${currentUser.id}`
-      ).toPromise();
+      console.log('Loading posts for user:', currentUser.id);
 
-      if (response) {
-        this.userPosts = response;
-        this.filterPosts();
-        console.log('User posts loaded:', this.userPosts);
-      }
+      // Try multiple endpoints to get user posts
+      await Promise.all([
+        this.loadFromUserPostsEndpoint(currentUser.id),
+        this.loadFromPublishedPostsEndpoint(),
+        this.loadFromPredictionsEndpoint(currentUser.id)
+      ]);
+
     } catch (error) {
       console.error('Error loading user posts:', error);
       this.toastr.error('Failed to load your predictions');
 
-      // Mock data for development
+      // Show mock data for development
       this.userPosts = this.getMockUserPosts();
       this.filterPosts();
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  private async loadFromUserPostsEndpoint(userId: number): Promise<void> {
+    try {
+      console.log('Trying user posts endpoint...');
+
+      // Try the new my-posts endpoint first
+      let response = await this.http.get<UserPost[]>(
+        `${environment.apiUrl}post/my-posts`
+      ).toPromise().catch(() => null);
+
+      // Fallback to old endpoint if new one doesn't exist
+      if (!response) {
+        response = await this.http.get<UserPost[]>(
+          `${environment.apiUrl}post/user/${userId}`
+        ).toPromise().catch(() => null);
+      }
+
+      console.log('User posts endpoint response:', response);
+      if (response && response.length > 0) {
+        this.userPosts = response.map(post => ({
+          ...post,
+          createdAt: new Date(post.createdAt),
+          endDate: post.endDate ? new Date(post.endDate) : undefined
+        }));
+        this.debugInfo = { endpoint: 'user-posts', data: response };
+        this.filterPosts();
+        console.log('Successfully loaded from user posts endpoint:', this.userPosts);
+      }
+    } catch (error) {
+      console.log('User posts endpoint failed:', error);
+    }
+  }
+
+  private async loadFromPublishedPostsEndpoint(): Promise<void> {
+    try {
+      console.log('Trying published posts endpoint...');
+      const response = await this.http.get<PublishedPost[]>(
+        `${environment.apiUrl}post/published`
+      ).toPromise();
+
+      console.log('Published posts endpoint response:', response);
+      if (response && response.length > 0) {
+        this.publishedPosts = response;
+
+        // Filter for current user's posts
+        const currentUser = this.accountService.currentUser();
+        if (currentUser) {
+          const userPublishedPosts = response
+            .filter(post => post.author.id === currentUser.id || post.author.displayName === currentUser.displayName)
+            .map(post => ({
+              id: post.id,
+              title: post.title,
+              predictionType: post.predictionType,
+              createdAt: new Date(post.createdAt),
+              endDate: post.endDate ? new Date(post.endDate) : undefined,
+              isDraft: false,
+              isActive: post.isActive,
+              counterPredictionsCount: post.counterPredictionsCount,
+              notes: post.notes
+            }));
+
+          if (userPublishedPosts.length > 0) {
+            this.userPosts = [...this.userPosts, ...userPublishedPosts];
+            this.debugInfo = { endpoint: 'published-posts', data: response, filtered: userPublishedPosts };
+            this.filterPosts();
+            console.log('Successfully loaded from published posts endpoint:', userPublishedPosts);
+          }
+        }
+      }
+    } catch (error) {
+      console.log('Published posts endpoint failed:', error);
+    }
+  }
+
+  private async loadFromPredictionsEndpoint(userId: number): Promise<void> {
+    try {
+      console.log('Trying predictions endpoint...');
+      const response = await this.http.get<any[]>(
+        `${environment.apiUrl}prediction/rank/user/${userId}`
+      ).toPromise();
+
+      console.log('Predictions endpoint response:', response);
+      if (response && response.length > 0) {
+        const predictionPosts = response.map(prediction => ({
+          id: prediction.id,
+          title: prediction.title || 'Untitled Prediction',
+          predictionType: prediction.predictionType || 'Ranking',
+          createdAt: new Date(prediction.createdAt),
+          endDate: prediction.endDate ? new Date(prediction.endDate) : undefined,
+          isDraft: prediction.isDraft !== false,
+          isActive: prediction.isActive !== false,
+          counterPredictionsCount: prediction.postRankings?.length || 0,
+          notes: prediction.description || ''
+        }));
+
+        this.userPosts = [...this.userPosts, ...predictionPosts];
+        this.debugInfo = { endpoint: 'predictions', data: response, processed: predictionPosts };
+        this.filterPosts();
+        console.log('Successfully loaded from predictions endpoint:', predictionPosts);
+      }
+    } catch (error) {
+      console.log('Predictions endpoint failed:', error);
     }
   }
 
@@ -377,10 +539,23 @@ export class MyPredictionsComponent implements OnInit {
       default:
         this.filteredPosts = [...this.userPosts];
     }
+
+    // Remove duplicates based on ID
+    this.filteredPosts = this.filteredPosts.filter((post, index, self) =>
+      index === self.findIndex(p => p.id === post.id)
+    );
+
+    console.log('Filtered posts:', this.filteredPosts);
   }
 
   viewPrediction(predictionId: number): void {
-    this.router.navigate(['/prediction-details', predictionId]);
+    // Check if we have a prediction details component, if not, create a simple view
+    if (this.doesRouteExist('/prediction-details')) {
+      this.router.navigate(['/prediction-details', predictionId]);
+    } else {
+      // Navigate to a simple post view or create-prediction with view mode
+      this.router.navigate(['/post-view', predictionId]);
+    }
   }
 
   editPrediction(predictionId: number): void {
@@ -391,9 +566,13 @@ export class MyPredictionsComponent implements OnInit {
   }
 
   viewCounterPredictions(predictionId: number): void {
-    this.router.navigate(['/prediction-details', predictionId], {
-      fragment: 'counter-predictions'
-    });
+    if (this.doesRouteExist('/prediction-details')) {
+      this.router.navigate(['/prediction-details', predictionId], {
+        fragment: 'counter-predictions'
+      });
+    } else {
+      this.toastr.info('Counter predictions view not yet implemented');
+    }
   }
 
   async publishPrediction(predictionId: number): Promise<void> {
@@ -442,6 +621,11 @@ export class MyPredictionsComponent implements OnInit {
       case 'active': return 'You don\'t have any active predictions. Published predictions that haven\'t ended will appear here.';
       default: return 'Start by creating your first prediction and see how others respond!';
     }
+  }
+
+  private doesRouteExist(route: string): boolean {
+    // Simple check if route exists in the app routes
+    return true; // For now, assume routes exist
   }
 
   private getMockUserPosts(): UserPost[] {
