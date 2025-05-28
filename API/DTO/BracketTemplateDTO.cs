@@ -1,3 +1,5 @@
+// API/DTO/BracketTemplateDTO.cs - ENHANCED VERSION
+
 using System;
 using API.Entities;
 
@@ -14,5 +16,21 @@ public class BracketTemplateDTO
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public BracketType BracketType { get; set; } = BracketType.SingleTeam;
     public ICollection<TeamDTO> Teams { get; set; } = [];
+    public int UserId { get; set; }
+}
 
+// Additional DTOs for bracket template operations
+public class CreateBracketTemplateDTO
+{
+    public required string Name { get; set; }
+    public int NumberOfRounds { get; set; }
+    public BracketType BracketType { get; set; } = BracketType.SingleTeam;
+}
+
+public class UpdateBracketTemplateDTO
+{
+    public int Id { get; set; }
+    public string? Name { get; set; }
+    public int? NumberOfRounds { get; set; }
+    public BracketType? BracketType { get; set; }
 }

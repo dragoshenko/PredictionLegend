@@ -4,6 +4,7 @@ using API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace API.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20250528125112_FixRow")]
+    partial class FixRow
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -201,7 +204,7 @@ namespace API.Migrations
                     b.Property<float>("Score")
                         .HasColumnType("real");
 
-                    b.Property<int?>("TeamId")
+                    b.Property<int>("TeamId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -559,7 +562,7 @@ namespace API.Migrations
                     b.Property<bool>("IsOfficialResult")
                         .HasColumnType("bit");
 
-                    b.Property<int>("PredictionId")
+                    b.Property<int?>("PredictionId")
                         .HasColumnType("int");
 
                     b.Property<int>("TotalScore")
@@ -1149,7 +1152,8 @@ namespace API.Migrations
                     b.HasOne("API.Entities.Team", "Team")
                         .WithMany()
                         .HasForeignKey("TeamId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Team");
                 });
@@ -1286,19 +1290,15 @@ namespace API.Migrations
                         .WithMany("PostBingo")
                         .HasForeignKey("BingoTemplateId");
 
-                    b.HasOne("API.Entities.Prediction", "Prediction")
+                    b.HasOne("API.Entities.Prediction", null)
                         .WithMany("PostBingos")
-                        .HasForeignKey("PredictionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("PredictionId");
 
                     b.HasOne("API.Entities.AppUser", "User")
                         .WithMany("PostBingos")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Prediction");
 
                     b.Navigation("User");
                 });

@@ -102,6 +102,58 @@
             </div>
           </div>
 
+          <!-- Bingo View -->
+          <div *ngIf="predictionType === 'Bingo' && postBingo" class="card bingo-card mb-4">
+            <div class="card-header">
+              <h4 class="text-light mb-0">
+                <i class="fa fa-th me-2"></i>Bingo Grid ({{ postBingo.gridSize }}x{{ postBingo.gridSize }})
+              </h4>
+            </div>
+            <div class="card-body">
+              <div class="bingo-grid"
+                   [style.grid-template-columns]="'repeat(' + postBingo.gridSize + ', 1fr)'"
+                   [style.gap]="'8px'"
+                   [style.display]="'grid'">
+
+                <div *ngFor="let cell of postBingo.bingoCells || []; let cellIndex = index; trackBy: trackByCellIndex"
+                     class="bingo-cell"
+                     [class.occupied]="cell.team"
+                     [class.empty]="!cell.team"
+                     cdkDropList
+                     [cdkDropListData]="[cell]"
+                     (cdkDropListDropped)="dropTeamInBingo($event, cellIndex)"
+                     cdkDropListSortingDisabled>
+
+                  <!-- Occupied Cell -->
+                  <div *ngIf="cell.team" class="team-item text-center p-2">
+                    <img
+                      *ngIf="cell.team.photoUrl"
+                      [src]="cell.team.photoUrl"
+                      class="team-image rounded mb-2"
+                      width="40"
+                      height="40"
+                      alt="Team"
+                      loading="lazy">
+                    <div class="fw-bold team-name small">{{ cell.team.name }}</div>
+                    <div class="team-description very-small text-muted">{{ cell.team.description || 'No description' }}</div>
+                    <button
+                      class="btn btn-sm btn-outline-light remove-btn mt-1"
+                      (click)="removeTeamFromBingo(cellIndex)"
+                      type="button">
+                      <i class="fa fa-times"></i>
+                    </button>
+                  </div>
+
+                  <!-- Empty Cell -->
+                  <div *ngIf="!cell.team" class="empty-slot text-center text-muted p-2">
+                    <i class="fa fa-plus-circle fa-lg mb-1"></i>
+                    <div class="very-small">Drop team here</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Quick Actions -->
           <div class="card quick-actions-card mb-4">
             <div class="card-header">
@@ -112,21 +164,37 @@
             <div class="card-body">
               <div class="d-flex flex-wrap gap-2">
                 <button
+                  *ngIf="predictionType === 'Ranking'"
                   class="btn btn-outline-info btn-sm"
                   (click)="autoFillRanking()"
                   [disabled]="getAvailableTeams().length === 0">
                   <i class="fa fa-magic me-1"></i>Auto Fill
                 </button>
                 <button
+                  *ngIf="predictionType === 'Bingo'"
+                  class="btn btn-outline-info btn-sm"
+                  (click)="autoFillBingo()"
+                  [disabled]="getAvailableTeams().length === 0">
+                  <i class="fa fa-magic me-1"></i>Auto Fill Random
+                </button>
+                <button
                   class="btn btn-outline-warning btn-sm"
-                  (click)="clearAllRankings()">
+                  (click)="clearAll()">
                   <i class="fa fa-eraser me-1"></i>Clear All
                 </button>
                 <button
+                  *ngIf="predictionType === 'Ranking'"
                   class="btn btn-outline-success btn-sm"
                   (click)="shuffleTeams()"
                   [disabled]="getAvailableTeams().length === 0">
                   <i class="fa fa-random me-1"></i>Shuffle
+                </button>
+                <button
+                  *ngIf="predictionType === 'Bingo'"
+                  class="btn btn-outline-success btn-sm"
+                  (click)="shuffleBingo()"
+                  [disabled]="getAvailableTeams().length === 0">
+                  <i class="fa fa-random me-1"></i>Shuffle Bingo
                 </button>
               </div>
             </div>

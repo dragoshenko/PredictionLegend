@@ -158,17 +158,19 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
          .HasForeignKey(r => r.UserId)
          .OnDelete(DeleteBehavior.Cascade);
 
-        builder.Entity<RankTable>()
-            .HasMany(r => r.Rows)
-            .WithOne(u => u.RankTable)
-            .HasForeignKey(r => r.RankTableId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.Entity<Row>()
-            .HasOne(r => r.RankTable)
-            .WithMany(t => t.Rows)
-            .HasForeignKey(r => r.RankTableId)
-            .OnDelete(DeleteBehavior.Cascade);
+        // REMOVED: Old RankTable relationship configuration that referenced Row.RankTable
+        // The following lines were causing the error:
+        // builder.Entity<RankTable>()
+        //     .HasMany(r => r.Rows)
+        //     .WithOne(u => u.RankTable)
+        //     .HasForeignKey(r => r.RankTableId)
+        //     .OnDelete(DeleteBehavior.Cascade);
+        //
+        // builder.Entity<Row>()
+        //     .HasOne(r => r.RankTable)
+        //     .WithMany(t => t.Rows)
+        //     .HasForeignKey(r => r.RankTableId)
+        //     .OnDelete(DeleteBehavior.Cascade);
 
         #endregion
         #region DiscussionPostDbConfig
@@ -215,12 +217,14 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
         builder.Entity<Team>()
             .HasIndex(t => t.CreatedByUserId)
             .HasDatabaseName("IX_Teams_CreatedByUserId");
+
         #region PostRank Relationships - FIXED
+        // PostRank to RankTable (One-to-One)
         builder.Entity<PostRank>()
-        .HasOne(pr => pr.RankTable)
-        .WithOne(rt => rt.PostRank)
-        .HasForeignKey<RankTable>(rt => rt.PostRankId)
-        .OnDelete(DeleteBehavior.Cascade);
+            .HasOne(pr => pr.RankTable)
+            .WithOne(rt => rt.PostRank)
+            .HasForeignKey<RankTable>(rt => rt.PostRankId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // PostRank to User
         builder.Entity<PostRank>()
@@ -236,27 +240,49 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
             .HasForeignKey(pr => pr.PredictionId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // RankTable to Rows (One-to-Many)
+        // RankTable to Rows (One-to-Many) - FIXED: Only configure from RankTable side
         builder.Entity<RankTable>()
             .HasMany(rt => rt.Rows)
-            .WithOne(r => r.RankTable)
-            .HasForeignKey(r => r.RankTableId)
+            .WithOne()  // No navigation property on Row side
+            .HasForeignKey("RankTableId")  // Use shadow property
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Row to Columns (One-to-Many)
+        // Row to Columns (One-to-Many) - FIXED: Only configure from Row side
         builder.Entity<Row>()
             .HasMany(r => r.Columns)
-            .WithOne(c => c.Row)
-            .HasForeignKey(c => c.RowId)
+            .WithOne()  // No navigation property on Column side
+            .HasForeignKey("RowId")  // Use shadow property
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Column to Team (Many-to-One) - FIXED
+        // Column to Team (Many-to-One) - FIXED: Only configure from Column side
         builder.Entity<Column>()
             .HasOne(c => c.Team)
             .WithMany()
             .HasForeignKey("TeamId")
             .OnDelete(DeleteBehavior.SetNull);
 
+        #endregion
+        #region PostBingo Relationships
+        // PostBingo to User
+        builder.Entity<PostBingo>()
+            .HasOne(pb => pb.User)
+            .WithMany(u => u.PostBingos)
+            .HasForeignKey(pb => pb.UserId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        // PostBingo to Prediction
+        builder.Entity<PostBingo>()
+            .HasOne(pb => pb.Prediction)
+            .WithMany(p => p.PostBingos)
+            .HasForeignKey(pb => pb.PredictionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // BingoCell to Team (Many-to-One)
+        builder.Entity<BingoCell>()
+            .HasOne(bc => bc.Team)
+            .WithMany()
+            .HasForeignKey("TeamId")
+            .OnDelete(DeleteBehavior.SetNull);
         #endregion
     }
 }

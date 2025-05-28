@@ -3,7 +3,7 @@
   box-sizing: border-box;
 }
 
-.team-card, .team-slot, .team-item {
+.team-card, .team-slot, .team-item, .bingo-cell {
   will-change: transform;
   backface-visibility: hidden;
   transform: translateZ(0);
@@ -36,6 +36,75 @@
   background: linear-gradient(145deg, #2c3e50, #34495e);
   border: none;
   padding: 1rem 1.5rem;
+}
+
+/* Bingo card styling */
+.bingo-card {
+  background: #1a1a1a;
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.bingo-card .card-header {
+  background: linear-gradient(145deg, #6f42c1, #5a32a3);
+  border: none;
+  padding: 1rem 1.5rem;
+}
+
+/* Bingo grid */
+.bingo-grid {
+  max-width: 600px;
+  margin: 0 auto;
+  aspect-ratio: 1;
+}
+
+/* Bingo cell styling */
+.bingo-cell {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  padding: 8px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bingo-cell.empty {
+  border: 2px dashed #6c757d;
+  background: linear-gradient(145deg, #495057, #6c757d);
+}
+
+.bingo-cell.occupied {
+  border: 2px solid #6f42c1;
+  background: linear-gradient(145deg, #4c2a85, #6f42c1);
+}
+
+.bingo-cell.cdk-drop-list-receiving {
+  border-color: #17a2b8;
+  background: linear-gradient(145deg, #0c5460, #17a2b8);
+  transform: scale(1.02);
+  box-shadow: 0 8px 25px rgba(23, 162, 184, 0.4);
+}
+
+.bingo-cell::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  transition: left 0.3s ease;
+  pointer-events: none;
+}
+
+.bingo-cell:hover::before {
+  left: 100%;
 }
 
 /* Ranking table */
@@ -143,6 +212,11 @@
   font-size: 0.75rem;
   opacity: 0.8;
   line-height: 1.1;
+}
+
+.very-small {
+  font-size: 0.7rem;
+  line-height: 1;
 }
 
 .remove-btn {
@@ -392,6 +466,15 @@
     min-height: 70px;
     padding: 8px;
   }
+
+  .bingo-cell {
+    min-height: 80px;
+    padding: 6px;
+  }
+
+  .bingo-grid {
+    max-width: 400px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -408,6 +491,15 @@
     padding: 6px;
   }
 
+  .bingo-cell {
+    min-height: 70px;
+    padding: 4px;
+  }
+
+  .bingo-grid {
+    max-width: 300px;
+  }
+
   .team-item {
     padding: 6px;
   }
@@ -420,26 +512,52 @@
     font-size: 0.7rem;
   }
 
+  .very-small {
+    font-size: 0.6rem;
+  }
+
   .rank-number {
     padding: 10px 6px;
     font-size: 0.9rem;
   }
 }
 
+@media (max-width: 576px) {
+  .bingo-grid {
+    max-width: 280px;
+  }
+
+  .bingo-cell {
+    min-height: 60px;
+    padding: 2px;
+  }
+
+  .team-name {
+    font-size: 0.7rem;
+  }
+
+  .very-small {
+    font-size: 0.55rem;
+  }
+}
+
 /* Accessibility improvements */
 .team-card:focus,
-.team-slot:focus {
+.team-slot:focus,
+.bingo-cell:focus {
   outline: 2px solid #007bff;
   outline-offset: 2px;
 }
 
 /* High contrast mode */
 @media (prefers-contrast: high) {
-  .team-slot.empty {
+  .team-slot.empty,
+  .bingo-cell.empty {
     border-width: 3px;
   }
 
-  .team-slot.occupied {
+  .team-slot.occupied,
+  .bingo-cell.occupied {
     border-width: 3px;
   }
 }
@@ -448,11 +566,13 @@
 @media (prefers-reduced-motion: reduce) {
   .team-card,
   .team-slot,
+  .bingo-cell,
   .btn {
     transition: none;
   }
 
-  .team-slot::before {
+  .team-slot::before,
+  .bingo-cell::before {
     display: none;
   }
 }
@@ -482,5 +602,9 @@
 }
 
 .team-slot {
+  contain: layout style paint;
+}
+
+.bingo-cell {
   contain: layout style paint;
 }

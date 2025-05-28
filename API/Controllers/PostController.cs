@@ -32,7 +32,7 @@ public class PostController : BaseAPIController
         {
             Console.WriteLine("=== PUBLISH RANKING POST CALLED ===");
             Console.WriteLine($"Request received: {request != null}");
-            
+
             if (request == null)
             {
                 Console.WriteLine("REQUEST IS NULL");
@@ -67,7 +67,7 @@ public class PostController : BaseAPIController
 
             var userId = User.GetUserId();
             Console.WriteLine($"User ID from token: {userId}");
-            
+
             if (userId <= 0)
             {
                 Console.WriteLine("INVALID USER ID");
@@ -75,11 +75,11 @@ public class PostController : BaseAPIController
             }
 
             Console.WriteLine("All validations passed, calling service...");
-            
+
             var result = await _postService.PublishPostAsync(request, userId);
-            
+
             Console.WriteLine($"Service returned result");
-            
+
             return result;
         }
         catch (Exception ex)
@@ -88,18 +88,19 @@ public class PostController : BaseAPIController
             Console.WriteLine($"Exception type: {ex.GetType().Name}");
             Console.WriteLine($"Exception message: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            
+
             // Return proper error response
-            return BadRequest(new { 
-                message = "An error occurred while publishing the post", 
-                error = ex.Message 
+            return BadRequest(new
+            {
+                message = "An error occurred while publishing the post",
+                error = ex.Message
             });
         }
     }
 
     [HttpGet("published")]
     public async Task<ActionResult<List<PublishedPostDTO>>> GetPublishedPosts(
-        [FromQuery] int pageNumber = 1, 
+        [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
         [FromQuery] string? predictionType = null,
         [FromQuery] string? searchTerm = null)
@@ -130,4 +131,75 @@ public class PostController : BaseAPIController
         var result = await _postService.CreateCounterPredictionAsync(id, request, userId);
         return result;
     }
+    [HttpPost("bingo/publish")]
+public async Task<ActionResult> PublishBingoPost([FromBody] PublishPostRequestDTO request)
+{
+    try
+    {
+        Console.WriteLine("=== PUBLISH BINGO POST CALLED ===");
+        Console.WriteLine($"Request received: {request != null}");
+        
+        if (request == null)
+        {
+            Console.WriteLine("REQUEST IS NULL");
+            return BadRequest("Request data is required");
+        }
+
+        Console.WriteLine($"PredictionId: {request.PredictionId}");
+        Console.WriteLine($"TemplateId: {request.TemplateId}");
+        Console.WriteLine($"PredictionType: {request.PredictionType}");
+        Console.WriteLine($"IsDraft: {request.IsDraft}");
+        Console.WriteLine($"Notes: {request.Notes ?? "null"}");
+        Console.WriteLine($"PostBingo is null: {request.PostBingo == null}");
+
+        // Validate required fields
+        if (request.PredictionId <= 0)
+        {
+            Console.WriteLine("INVALID PREDICTION ID");
+            return BadRequest("Valid prediction ID is required");
+        }
+
+        if (request.TemplateId <= 0)
+        {
+            Console.WriteLine("INVALID TEMPLATE ID");
+            return BadRequest("Valid template ID is required");
+        }
+
+        if (request.PostBingo == null)
+        {
+            Console.WriteLine("POSTBINGO IS NULL");
+            return BadRequest("PostBingo data is required for bingo predictions");
+        }
+
+        var userId = User.GetUserId();
+        Console.WriteLine($"User ID from token: {userId}");
+        
+        if (userId <= 0)
+        {
+            Console.WriteLine("INVALID USER ID");
+            return Unauthorized("Invalid user ID");
+        }
+
+        Console.WriteLine("All validations passed, calling service...");
+        
+        var result = await _postService.PublishBingoPostAsync(request, userId);
+        
+        Console.WriteLine($"Service returned result");
+        
+        return result;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"=== EXCEPTION IN CONTROLLER ===");
+        Console.WriteLine($"Exception type: {ex.GetType().Name}");
+        Console.WriteLine($"Exception message: {ex.Message}");
+        Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        
+        // Return proper error response
+        return BadRequest(new { 
+            message = "An error occurred while publishing the bingo post", 
+            error = ex.Message 
+        });
+    }
+}
 }

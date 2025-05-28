@@ -10,6 +10,8 @@ public class PostBingo
     public int UserId { get; set; }
     public int GridSize { get; set; } = 0;
     public AppUser User { get; set; } = null!;
+    public int PredictionId { get; set; } // Added this property
+    public Prediction Prediction { get; set; } = null!; // Added this navigation property
     public ICollection<BingoCell> BingoCells { get; set; } = [];
     public ICollection<Team> Teams { get; set; } = [];
     public int TotalScore { get; set; }

@@ -1,4 +1,3 @@
-// Fixed select-teams.component.ts
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -47,8 +46,8 @@ export class SelectTeamsComponent implements OnInit {
 
   ngOnInit(): void {
     this.initializeForm();
-    this.loadRouteParams();
-    this.loadTeams();
+    this.loadRouteParams(); // This will now load the template
+    // Remove the separate this.loadTeams() call since loadTemplate will be called from loadRouteParams
   }
 
   initializeForm(): void {
@@ -78,7 +77,7 @@ export class SelectTeamsComponent implements OnInit {
   }
 
   loadRouteParams(): void {
-    this.route.params.subscribe(params => {
+    this.route.params.subscribe(async params => {
       this.predictionId = +params['predictionId'];
       this.templateId = +params['templateId'];
       this.predictionType = params['type'] as PredictionType;
@@ -89,51 +88,135 @@ export class SelectTeamsComponent implements OnInit {
         predictionType: this.predictionType
       });
 
-      // Try to get template from navigation state first
-      const navigation = this.router.getCurrentNavigation();
-      if (navigation?.extras.state?.['template']) {
-        this.template = navigation.extras.state['template'];
-        console.log('Template loaded from navigation state:', this.template);
-        this.calculateTeamRequirements();
-      }
+      // Load template immediately after getting route params
+      await this.loadTemplate();
     });
   }
 
   async loadTemplate(): Promise<void> {
+    console.log('Loading template with ID:', this.templateId, 'Type:', this.predictionType);
+
     if (this.template) {
       console.log('Template already loaded:', this.template);
+      this.calculateTeamRequirements();
+      await this.loadTeams();
+      return;
+    }
+
+    // Try to get template from navigation state first
+    const navigation = this.router.getCurrentNavigation();
+    if (navigation?.extras.state?.['template']) {
+      this.template = navigation.extras.state['template'];
+      console.log('Template loaded from navigation state:', this.template);
+      this.calculateTeamRequirements();
+      await this.loadTeams();
+      return;
+    }
+
+    // Fallback: try browser history state
+    const historyState = history.state;
+    if (historyState?.template) {
+      this.template = historyState.template;
+      console.log('Template loaded from history state:', this.template);
+      this.calculateTeamRequirements();
+      await this.loadTeams();
       return;
     }
 
     console.log('Loading template from service as fallback...');
 
-    switch (this.predictionType) {
-      case PredictionType.Ranking:
-        await this.templateService.getOfficialAndUserRankingTemplates();
-        this.template = this.templateService.userRankingTemplates().find(t => t.id === this.templateId) ||
-                      this.templateService.officialRankingTemplates().find(t => t.id === this.templateId);
-        break;
-      case PredictionType.Bracket:
-        await this.templateService.getOfficialAndUserBracketTemplates();
-        this.template = this.templateService.userBracketTemplates().find(t => t.id === this.templateId) ||
-                      this.templateService.officialBracketTemplates().find(t => t.id === this.templateId);
-        break;
-      case PredictionType.Bingo:
-        await this.templateService.getOfficialAndUserBingoTemplates();
-        this.template = this.templateService.userBingoTemplates().find(t => t.id === this.templateId) ||
-                      this.templateService.officialBingoTemplates().find(t => t.id === this.templateId);
-        break;
-    }
+    try {
+      // Load templates based on prediction type
+      switch (this.predictionType) {
+        case PredictionType.Ranking:
+          console.log('Loading ranking templates...');
+          await this.templateService.getOfficialAndUserRankingTemplates();
 
-    if (this.template) {
-      console.log('Template loaded from service:', this.template);
-    } else {
-      console.error('Template not found with ID:', this.templateId);
-      this.toastr.error('Template not found');
-      this.goBack();
-    }
+          // Check both user and official templates
+          const userRankingTemplates = this.templateService.userRankingTemplates();
+          const officialRankingTemplates = this.templateService.officialRankingTemplates();
 
-    this.calculateTeamRequirements();
+          console.log('Available ranking templates:', {
+            user: userRankingTemplates,
+            official: officialRankingTemplates,
+            searchingForId: this.templateId
+          });
+
+          this.template = userRankingTemplates.find(t => t.id === this.templateId) ||
+                         officialRankingTemplates.find(t => t.id === this.templateId);
+          break;
+
+        case PredictionType.Bracket:
+          console.log('Loading bracket templates...');
+          await this.templateService.getOfficialAndUserBracketTemplates();
+
+          const userBracketTemplates = this.templateService.userBracketTemplates();
+          const officialBracketTemplates = this.templateService.officialBracketTemplates();
+
+          console.log('Available bracket templates:', {
+            user: userBracketTemplates,
+            official: officialBracketTemplates,
+            searchingForId: this.templateId
+          });
+
+          this.template = userBracketTemplates.find(t => t.id === this.templateId) ||
+                         officialBracketTemplates.find(t => t.id === this.templateId);
+          break;
+
+        case PredictionType.Bingo:
+          console.log('Loading bingo templates...');
+          await this.templateService.getOfficialAndUserBingoTemplates();
+
+          const userBingoTemplates = this.templateService.userBingoTemplates();
+          const officialBingoTemplates = this.templateService.officialBingoTemplates();
+
+          console.log('Available bingo templates:', {
+            user: userBingoTemplates,
+            official: officialBingoTemplates,
+            searchingForId: this.templateId
+          });
+
+          this.template = userBingoTemplates.find(t => t.id === this.templateId) ||
+                         officialBingoTemplates.find(t => t.id === this.templateId);
+          break;
+      }
+
+      if (this.template) {
+        console.log('Template loaded from service:', this.template);
+        this.calculateTeamRequirements();
+        await this.loadTeams();
+      } else {
+        console.error('Template not found with ID:', this.templateId);
+        // Create a fallback template with the ID as name
+        this.template = {
+          id: this.templateId,
+          name: `Template ${this.templateId}`,
+          numberOfRows: this.predictionType === PredictionType.Ranking ? 5 : undefined,
+          numberOfColumns: this.predictionType === PredictionType.Ranking ? 1 : undefined,
+          numberOfRounds: this.predictionType === PredictionType.Bracket ? 3 : undefined,
+          gridSize: this.predictionType === PredictionType.Bingo ? 3 : undefined,
+          teams: []
+        };
+        this.calculateTeamRequirements();
+        this.toastr.warning('Template not found, using default settings');
+        await this.loadTeams();
+      }
+    } catch (error) {
+      console.error('Error loading template:', error);
+      // Create a fallback template
+      this.template = {
+        id: this.templateId,
+        name: `Template ${this.templateId}`,
+        numberOfRows: this.predictionType === PredictionType.Ranking ? 5 : undefined,
+        numberOfColumns: this.predictionType === PredictionType.Ranking ? 1 : undefined,
+        numberOfRounds: this.predictionType === PredictionType.Bracket ? 3 : undefined,
+        gridSize: this.predictionType === PredictionType.Bingo ? 3 : undefined,
+        teams: []
+      };
+      this.calculateTeamRequirements();
+      this.toastr.error('Failed to load template, using default settings');
+      await this.loadTeams();
+    }
   }
 
   calculateTeamRequirements(): void {
@@ -163,7 +246,9 @@ export class SelectTeamsComponent implements OnInit {
   async loadTeams(): Promise<void> {
     this.isLoading = true;
     try {
+      // Template should already be loaded by loadRouteParams
       if (!this.template) {
+        console.warn('Template not loaded, attempting to load...');
         await this.loadTemplate();
       }
 
@@ -401,5 +486,23 @@ export class SelectTeamsComponent implements OnInit {
       this.teamForm.markAsUntouched();
       this.teamForm.markAsPristine();
     }
+  }
+  getTemplateDisplayName(): string {
+    if (this.template?.name && this.template.name.trim() !== '') {
+      return this.template.name;
+    }
+
+    if (this.template) {
+      switch (this.predictionType) {
+        case PredictionType.Ranking:
+          return `${this.template.numberOfRows}x${this.template.numberOfColumns} Ranking`;
+        case PredictionType.Bracket:
+          return `${this.template.numberOfRounds} Round Bracket`;
+        case PredictionType.Bingo:
+          return `${this.template.gridSize}x${this.template.gridSize} Grid`;
+      }
+    }
+
+    return 'Custom Template';
   }
 }

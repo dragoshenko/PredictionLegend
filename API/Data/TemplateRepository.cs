@@ -65,17 +65,30 @@ public class TemplateRepository : ITemplateRepository
     }
     public async Task<BracketTemplate?> GetBracketTemplate(int id)
     {
-        var template = await _context.BracketTemplates.FindAsync(id);
+        var template = await _context.BracketTemplates
+            .Include(bt => bt.Teams)
+            .Include(bt => bt.User)
+            .FirstOrDefaultAsync(bt => bt.Id == id);
         return template;
     }
-    public Task<List<BracketTemplate>> GetOfficialBracketTemplates()
+
+    public async Task<List<BracketTemplate>> GetOfficialBracketTemplates()
     {
-        var templates = _context.BracketTemplates.Where(t => t.OfficialTemplate).ToListAsync();
+        var templates = await _context.BracketTemplates
+            .Include(bt => bt.Teams)
+            .Where(t => t.OfficialTemplate)
+            .OrderBy(t => t.Name)
+            .ToListAsync();
         return templates;
     }
-    public Task<List<BracketTemplate>> GetUserBracketTemplates(int userId)
+
+    public async Task<List<BracketTemplate>> GetUserBracketTemplates(int userId)
     {
-        var templates = _context.BracketTemplates.Where(t => t.UserId == userId).ToListAsync();
+        var templates = await _context.BracketTemplates
+            .Include(bt => bt.Teams)
+            .Where(t => t.UserId == userId)
+            .OrderBy(t => t.Name)
+            .ToListAsync();
         return templates;
     }
     public async Task<bool> UpdateBracketTemplate(BracketTemplate bracketTemplate)
@@ -84,7 +97,7 @@ public class TemplateRepository : ITemplateRepository
         entity.State = EntityState.Modified;
         var result = await _context.SaveChangesAsync();
         return result > 0;
-        
+
     }
     #endregion
     #region Bingo Templates

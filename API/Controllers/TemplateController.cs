@@ -64,9 +64,25 @@ public class TemplateController : BaseAPIController
     }
 
     [HttpGet("bracket/{id}")]
-    public ActionResult GetBracketTemplate(string id)
+    public async Task<ActionResult<BracketTemplateDTO>> GetBracketTemplate(int id)
     {
-        return Ok(new { message = "Bracket template" });
+        var wantedTemplate = await _templateService.GetBracketTemplate(id);
+        return wantedTemplate;
+    }
+
+    [HttpPut("bracket/{id}")]
+    public async Task<ActionResult> UpdateBracketTemplate(int id, [FromBody] BracketTemplateDTO bracketTemplate)
+    {
+        bracketTemplate.Id = id;
+        var result = await _templateService.UpdateBracketTemplate(bracketTemplate);
+        return result;
+    }
+
+    [HttpDelete("bracket/{id}")]
+    public async Task<ActionResult> DeleteBracketTemplate(int id)
+    {
+        var result = await _templateService.DeleteBracketTemplate(id);
+        return result;
     }
 
     [HttpGet("bracket/official")]

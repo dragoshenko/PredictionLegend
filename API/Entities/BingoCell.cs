@@ -9,7 +9,7 @@ public class BingoCell
 
     public int Row { get; set; }
     public int Column { get; set; }
-
+    public int? TeamId { get; set; }
     public Team Team { get; set; } = null!;
     public int OfficialScore { get; set; } = 0;
 

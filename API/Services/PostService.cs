@@ -64,34 +64,36 @@ public class PostService : IPostService
                 Teams = new List<Team>()
             };
 
-            // Create RankTable
+            // Create RankTable with proper relationship
             var rankTable = new RankTable
             {
                 NumberOfRows = postRank.RankTable.NumberOfRows,
                 NumberOfColumns = postRank.RankTable.NumberOfColumns,
-                PostRank = postRankEntity,
+                PostRank = postRankEntity, // Set the relationship
                 Rows = new List<Row>()
             };
 
-            // Create Rows and Columns
+            // Set the reverse relationship
+            postRankEntity.RankTable = rankTable;
+
+            // Create Rows with proper relationships
             foreach (var rowDto in postRank.RankTable.Rows)
             {
                 var row = new Row
                 {
                     Order = rowDto.Order,
-                    RankTable = rankTable,
-                    Columns = new List<Column>(),
-                    IsWrong = false
+                    IsWrong = false,
+                    Columns = new List<Column>()
                 };
 
+                // Create Columns with proper relationships
                 foreach (var columnDto in rowDto.Columns)
                 {
                     var column = new Column
                     {
-                        Row = row,
                         Order = columnDto.Order,
                         OfficialScore = columnDto.OfficialScore,
-                        Team = null
+                        Team = null // Will be set below
                     };
 
                     // Handle team assignment
@@ -114,9 +116,7 @@ public class PostService : IPostService
                 rankTable.Rows.Add(row);
             }
 
-            postRankEntity.RankTable = rankTable;
-
-            // Save to database
+            // Save to database - Let EF Core handle the relationships through navigation properties
             var createdPostRank = await _unitOfWork.PostRepository.CreatePostRank(postRankEntity);
             var saveResult = await _unitOfWork.Complete();
 
@@ -199,7 +199,7 @@ public class PostService : IPostService
 
                     Console.WriteLine("Creating PostRank...");
                     var rankResult = await CreatePostRankAsync(request.PostRank, userId);
-                    
+
                     if (rankResult.Result is BadRequestObjectResult badResult)
                     {
                         Console.WriteLine($"CreatePostRankAsync failed: {badResult.Value}");
@@ -451,29 +451,106 @@ public class PostService : IPostService
 
     public async Task<ActionResult> UpdatePostRankAsync(PostRankDTO postRank)
     {
-        var mappedPostRank = _mapper.Map<PostRank>(postRank);
-        var rankingTemplate = await _unitOfWork.TemplateRepository.GetRankingTemplate(postRank.RankingTemplateId);
-        if (rankingTemplate == null)
-            throw new Exception("Ranking template not found");
-        var rankTable = new RankTable(rankingTemplate.NumberOfRows, rankingTemplate.NumberOfColumns);
-        mappedPostRank.RankTable = rankTable;
-        await _unitOfWork.PostRepository.UpdatePostRank(mappedPostRank);
-        await _unitOfWork.Complete();
+        try
+        {
+            var existingPostRank = await _unitOfWork.PostRepository.GetPostRank(postRank.Id);
+            if (existingPostRank == null)
+                return new NotFoundObjectResult("Post rank not found");
 
-        return new OkObjectResult("Post rank updated successfully");
+            var rankingTemplate = await _unitOfWork.TemplateRepository.GetRankingTemplate(postRank.RankingTemplateId);
+            if (rankingTemplate == null)
+                return new BadRequestObjectResult("Ranking template not found");
+
+            // Update the existing post rank
+            existingPostRank.UpdatedAt = DateTime.UtcNow;
+            existingPostRank.TotalScore = postRank.TotalScore;
+            existingPostRank.IsOfficialResult = postRank.IsOfficialResult;
+
+            // Update RankTable structure
+            if (existingPostRank.RankTable != null)
+            {
+                existingPostRank.RankTable.NumberOfRows = postRank.RankTable.NumberOfRows;
+                existingPostRank.RankTable.NumberOfColumns = postRank.RankTable.NumberOfColumns;
+
+                // Clear existing rows and rebuild
+                existingPostRank.RankTable.Rows.Clear();
+
+                foreach (var rowDto in postRank.RankTable.Rows)
+                {
+                    var row = new Row
+                    {
+                        Order = rowDto.Order,
+                        IsWrong = rowDto.IsWrong,
+                        Columns = new List<Column>()
+                    };
+
+                    foreach (var columnDto in rowDto.Columns)
+                    {
+                        var column = new Column
+                        {
+                            Order = columnDto.Order,
+                            OfficialScore = columnDto.OfficialScore,
+                            Team = null
+                        };
+
+                        // Handle team assignment
+                        if (columnDto.Team != null)
+                        {
+                            var team = await _unitOfWork.TeamRepository.GetTeamAsync(columnDto.Team.Id);
+                            if (team != null)
+                            {
+                                column.Team = team;
+                            }
+                        }
+
+                        row.Columns.Add(column);
+                    }
+
+                    existingPostRank.RankTable.Rows.Add(row);
+                }
+            }
+
+            await _unitOfWork.PostRepository.UpdatePostRank(existingPostRank);
+            await _unitOfWork.Complete();
+
+            return new OkObjectResult("Post rank updated successfully");
+        }
+        catch (Exception ex)
+        {
+            return new BadRequestObjectResult($"Error updating post rank: {ex.Message}");
+        }
     }
 
     public async Task<ActionResult> DeletePostRankAsync(int postRankId)
     {
-        throw new Exception("Not implemented");
+        try
+        {
+            var result = await _unitOfWork.PostRepository.DeletePostRank(postRankId);
+            if (!result)
+                return new NotFoundObjectResult("Post rank not found");
+
+            return new OkObjectResult("Post rank deleted successfully");
+        }
+        catch (Exception ex)
+        {
+            return new BadRequestObjectResult($"Error deleting post rank: {ex.Message}");
+        }
     }
 
     public async Task<ActionResult<PostRankDTO>> GetPostRankAsync(int id)
     {
-        var postRank = await _unitOfWork.PostRepository.GetPostRank(id);
-        if (postRank == null)
-            throw new Exception("Post rank not found");
-        return _mapper.Map<PostRankDTO>(postRank);
+        try
+        {
+            var postRank = await _unitOfWork.PostRepository.GetPostRank(id);
+            if (postRank == null)
+                return new NotFoundObjectResult("Post rank not found");
+
+            return new OkObjectResult(_mapper.Map<PostRankDTO>(postRank));
+        }
+        catch (Exception ex)
+        {
+            return new BadRequestObjectResult($"Error getting post rank: {ex.Message}");
+        }
     }
 
     public async Task<List<PostRankDTO>> GetPostRanksAsync()
@@ -484,12 +561,12 @@ public class PostService : IPostService
 
     public async Task<List<PostRankDTO>> GetPostRanksByUserIdAsync(int userId)
     {
-        throw new Exception("Not implemented");
+        throw new NotImplementedException("GetPostRanksByUserIdAsync not implemented");
     }
 
     public async Task<List<PostRankDTO>> GetPostRanksByTemplateIdAsync(int templateId)
     {
-        throw new Exception("Not implemented");
+        throw new NotImplementedException("GetPostRanksByTemplateIdAsync not implemented");
     }
 
     #endregion
@@ -497,75 +574,237 @@ public class PostService : IPostService
     #region PostBracket - Stub implementations
     public async Task<ActionResult<PostBracketDTO>> CreatePostBracketAsync(PostBracketDTO userPostBracket, int userId)
     {
-        throw new Exception("Not implemented");
+        throw new NotImplementedException("CreatePostBracketAsync not implemented");
     }
 
     public async Task<bool> UpdatePostBracketAsync(PostBracketDTO userPostBracket)
     {
-        throw new Exception("Not implemented");
+        throw new NotImplementedException("UpdatePostBracketAsync not implemented");
     }
 
     public async Task<bool> DeletePostBracketAsync(int postBracketId)
     {
-        throw new Exception("Not implemented");
+        throw new NotImplementedException("DeletePostBracketAsync not implemented");
     }
 
     public async Task<ActionResult<PostBracketDTO?>> GetPostBracketAsync(int postBracketId)
     {
-        throw new Exception("Not implemented");
+        throw new NotImplementedException("GetPostBracketAsync not implemented");
     }
 
     public async Task<List<PostBracketDTO>> GetPostBracketsAsync()
     {
-        throw new Exception("Not implemented");
+        throw new NotImplementedException("GetPostBracketsAsync not implemented");
     }
 
     public async Task<List<PostBracketDTO>> GetPostBracketsByUserIdAsync(int userId)
     {
-        throw new Exception("Not implemented");
+        throw new NotImplementedException("GetPostBracketsByUserIdAsync not implemented");
     }
 
     public async Task<List<PostBracketDTO>> GetPostBracketsByTemplateIdAsync(int templateId)
     {
-        throw new Exception("Not implemented");
+        throw new NotImplementedException("GetPostBracketsByTemplateIdAsync not implemented");
     }
     #endregion
 
     #region PostBingo - Stub implementations
-    public async Task<ActionResult<PostBingoDTO>> CreatePostBingoAsync(PostBingoDTO postBingoDTO, int userId)
+    public async Task<ActionResult> PublishBingoPostAsync(PublishPostRequestDTO request, int userId)
     {
-        throw new Exception("Not implemented");
+        try
+        {
+            Console.WriteLine("=== PublishBingoPostAsync called ===");
+            Console.WriteLine($"PredictionId: {request.PredictionId}");
+            Console.WriteLine($"TemplateId: {request.TemplateId}");
+            Console.WriteLine($"PredictionType: {request.PredictionType}");
+            Console.WriteLine($"UserId: {userId}");
+
+            var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId);
+            if (user == null)
+            {
+                Console.WriteLine("User not found");
+                return new BadRequestObjectResult("User not found");
+            }
+
+            var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(request.PredictionId);
+            if (prediction == null)
+            {
+                Console.WriteLine("Prediction not found");
+                return new BadRequestObjectResult("Prediction not found");
+            }
+
+            // Validate that the user owns this prediction
+            if (prediction.UserId != userId)
+            {
+                Console.WriteLine($"User {userId} trying to publish prediction owned by {prediction.UserId}");
+                return new BadRequestObjectResult("You can only publish your own predictions");
+            }
+
+            // Validate template exists
+            var template = await _unitOfWork.TemplateRepository.GetBingoTemplate(request.TemplateId);
+            if (template == null)
+            {
+                Console.WriteLine($"Bingo template {request.TemplateId} not found");
+                return new BadRequestObjectResult("Bingo template not found");
+            }
+
+            // Ensure all required fields are set in PostBingo
+            request.PostBingo.UserId = userId;
+
+            Console.WriteLine("Creating PostBingo...");
+            var bingoResult = await CreatePostBingoAsync(request.PostBingo, request.PredictionId, userId);
+
+            if (bingoResult.Result is BadRequestObjectResult badResult)
+            {
+                Console.WriteLine($"CreatePostBingoAsync failed: {badResult.Value}");
+                return badResult;
+            }
+
+            Console.WriteLine("PostBingo created successfully");
+
+            // Update prediction status
+            prediction.IsDraft = request.IsDraft;
+            prediction.LastModified = DateTime.UtcNow;
+
+            Console.WriteLine("Updating prediction...");
+            await _unitOfWork.PredictionRepository.UpdatePredictionAsync(prediction);
+            var saveResult = await _unitOfWork.Complete();
+
+            if (!saveResult)
+            {
+                Console.WriteLine("Failed to save prediction changes");
+                return new BadRequestObjectResult("Failed to save prediction changes");
+            }
+
+            Console.WriteLine("Bingo post published successfully");
+            return new OkObjectResult(new
+            {
+                message = "Bingo post published successfully",
+                predictionId = prediction.Id,
+                isDraft = request.IsDraft
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception in PublishBingoPostAsync: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return new BadRequestObjectResult($"Error publishing bingo post: {ex.Message}");
+        }
+    }
+
+    public async Task<ActionResult<PostBingoDTO>> CreatePostBingoAsync(PostBingoDTO postBingoDTO, int predictionId, int userId)
+    {
+        try
+        {
+            Console.WriteLine("=== CreatePostBingoAsync called ===");
+            Console.WriteLine($"PostBingo ID: {postBingoDTO.Id}");
+            Console.WriteLine($"GridSize: {postBingoDTO.GridSize}");
+            Console.WriteLine($"UserId: {userId}");
+
+            var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId);
+            if (user == null)
+            {
+                Console.WriteLine("User not found");
+                return new BadRequestObjectResult("User not found");
+            }
+
+            // Create PostBingo entity
+            var postBingoEntity = new PostBingo
+            {
+                UserId = userId,
+                User = user,
+                PredictionId = predictionId,
+                GridSize = postBingoDTO.GridSize,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                TotalScore = postBingoDTO.TotalScore,
+                IsOfficialResult = postBingoDTO.IsOfficialResult,
+                Teams = new List<Team>(),
+                BingoCells = new List<BingoCell>()
+            };
+
+            // Create BingoCells
+            foreach (var cellDto in postBingoDTO.BingoCells)
+            {
+                var cell = new BingoCell
+                {
+                    Row = cellDto.Row,
+                    Column = cellDto.Column,
+                    Score = cellDto.Score,
+                    OfficialScore = cellDto.OfficialScore,
+                    IsWrong = cellDto.IsWrong,
+                    Team = null
+                };
+
+                // Handle team assignment
+                if (cellDto.Team != null)
+                {
+                    var team = await _unitOfWork.TeamRepository.GetTeamAsync(cellDto.Team.Id);
+                    if (team != null)
+                    {
+                        cell.Team = team;
+                        if (!postBingoEntity.Teams.Any(t => t.Id == team.Id))
+                        {
+                            postBingoEntity.Teams.Add(team);
+                        }
+                    }
+                }
+
+                postBingoEntity.BingoCells.Add(cell);
+            }
+
+            // Save to database
+            var createdPostBingo = await _unitOfWork.PostRepository.CreatePostBingo(postBingoEntity);
+            var saveResult = await _unitOfWork.Complete();
+
+            if (!saveResult)
+            {
+                Console.WriteLine("Failed to save to database");
+                return new BadRequestObjectResult("Failed to save post bingo to database");
+            }
+
+            Console.WriteLine("PostBingo created successfully");
+            var resultDto = _mapper.Map<PostBingoDTO>(createdPostBingo);
+            return new OkObjectResult(resultDto);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in CreatePostBingoAsync: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return new BadRequestObjectResult($"Error creating post bingo: {ex.Message}");
+        }
     }
 
     public async Task<ActionResult> UpdatePostBingoAsync(PostBingoDTO userPostBingo)
     {
-        throw new Exception("Not implemented");
+        throw new NotImplementedException("UpdatePostBingoAsync not implemented");
     }
 
     public async Task<ActionResult> DeletePostBingoAsync(int postBingoId)
     {
-        throw new Exception("Not implemented");
+        throw new NotImplementedException("DeletePostBingoAsync not implemented");
     }
 
     public async Task<ActionResult<PostBingoDTO?>> GetPostBingoAsync(int postBingoId)
     {
-        throw new Exception("Not implemented");
+        throw new NotImplementedException("GetPostBingoAsync not implemented");
     }
 
     public async Task<List<PostBingoDTO>> GetPostBingosAsync()
     {
-        throw new Exception("Not implemented");
+        throw new NotImplementedException("GetPostBingosAsync not implemented");
     }
 
     public async Task<List<PostBingoDTO>> GetPostBingosByUserIdAsync(int userId)
     {
-        throw new Exception("Not implemented");
+        throw new NotImplementedException("GetPostBingosByUserIdAsync not implemented");
     }
 
     public async Task<List<PostBingoDTO>> GetPostBingosByTemplateIdAsync(int templateId)
     {
-        throw new Exception("Not implemented");
+        throw new NotImplementedException("GetPostBingosByTemplateIdAsync not implemented");
     }
+
     #endregion
     #endregion
 }

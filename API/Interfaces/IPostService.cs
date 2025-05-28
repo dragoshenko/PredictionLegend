@@ -35,11 +35,12 @@ public interface IPostService
     Task<List<PostBracketDTO>> GetPostBracketsByTemplateIdAsync(int templateId);
 
     // PostBingo methods
-    Task<ActionResult<PostBingoDTO>> CreatePostBingoAsync(PostBingoDTO postBingoDTO, int userId);
     Task<ActionResult> UpdatePostBingoAsync(PostBingoDTO userPostBingo);
     Task<ActionResult> DeletePostBingoAsync(int postBingoId);
     Task<ActionResult<PostBingoDTO?>> GetPostBingoAsync(int postBingoId);
     Task<List<PostBingoDTO>> GetPostBingosAsync();
     Task<List<PostBingoDTO>> GetPostBingosByUserIdAsync(int userId);
     Task<List<PostBingoDTO>> GetPostBingosByTemplateIdAsync(int templateId);
+    Task<ActionResult> PublishBingoPostAsync(PublishPostRequestDTO request, int userId);
+    Task<ActionResult<PostBingoDTO>> CreatePostBingoAsync(PostBingoDTO postBingoDTO, int predictionId, int userId);
 }

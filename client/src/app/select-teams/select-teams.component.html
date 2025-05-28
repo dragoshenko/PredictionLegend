@@ -12,7 +12,8 @@
                 Select Teams for {{ predictionType }} Prediction
               </h2>
               <p class="text-light mb-0 opacity-75">
-                Choose teams for your "{{ template?.name }}" template
+                <!-- FIXED: Better fallback for template name -->
+                Choose teams for your "{{ getTemplateDisplayName() }}" template
                 ({{ selectedTeams.length }}/{{ minimumTeamsRequired }} required, max {{ maximumTeamsAllowed }})
               </p>
             </div>

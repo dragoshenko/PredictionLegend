@@ -35,15 +35,32 @@ interface PostRankData {
   isOfficialResult: boolean;
 }
 
+interface BingoCell {
+  row: number;
+  column: number;
+  team: Team | null;
+  score: number;
+  officialScore: number;
+  isWrong?: boolean;
+}
+
+interface PostBingoData {
+  gridSize: number;
+  bingoCells: BingoCell[];
+  teams: Team[];
+  totalScore: number;
+  isOfficialResult: boolean;
+}
+
 interface PublishPostRequest {
   predictionId: number;
   templateId: number;
-  predictionType: PredictionType | string; // Allow both enum and string
+  predictionType: PredictionType | string;
   notes: string;
   isDraft: boolean;
   postRank?: PostRankData | null;
   postBracket?: any;
-  postBingo?: any;
+  postBingo?: PostBingoData | null;
 }
 
 @Component({
@@ -74,6 +91,7 @@ export class CreatePostComponent implements OnInit {
 
   // Post data
   postRank: PostRankData | null = null;
+  postBingo: PostBingoData | null = null;
 
   // Forms
   postForm: FormGroup = new FormGroup({});
@@ -86,6 +104,7 @@ export class CreatePostComponent implements OnInit {
   trackByTeamId = (index: number, team: Team): number => team.id;
   trackByRowIndex = (index: number, row: RankRow): number => row.order;
   trackByIndex = (index: number): number => index;
+  trackByCellIndex = (index: number, cell: BingoCell): number => index;
 
   ngOnInit(): void {
     this.initializeForm();
@@ -140,10 +159,15 @@ export class CreatePostComponent implements OnInit {
   initializePostStructure(): void {
     if (!this.template) return;
 
-    if (this.predictionType === PredictionType.Ranking) {
-      this.initializeRankingPost();
+    switch (this.predictionType) {
+      case PredictionType.Ranking:
+        this.initializeRankingPost();
+        break;
+      case PredictionType.Bingo:
+        this.initializeBingoPost();
+        break;
+      // Add bracket case when implemented
     }
-    // Add other prediction types as needed
   }
 
   initializeRankingPost(): void {
@@ -180,6 +204,33 @@ export class CreatePostComponent implements OnInit {
     }
   }
 
+  initializeBingoPost(): void {
+    const gridSize = this.template?.gridSize || 5;
+
+    this.postBingo = {
+      gridSize,
+      bingoCells: [],
+      teams: [...this.selectedTeams],
+      totalScore: 0,
+      isOfficialResult: false
+    };
+
+    // Initialize bingo cells
+    for (let row = 0; row < gridSize; row++) {
+      for (let col = 0; col < gridSize; col++) {
+        const cell: BingoCell = {
+          row,
+          column: col,
+          team: null,
+          score: 0,
+          officialScore: 0,
+          isWrong: false
+        };
+        this.postBingo.bingoCells.push(cell);
+      }
+    }
+  }
+
   // Optimized drag & drop for Rankings
   dropTeamInRanking(event: CdkDragDrop<any>, rowIndex: number, columnIndex: number): void {
     if (!this.postRank) return;
@@ -198,23 +249,31 @@ export class CreatePostComponent implements OnInit {
       } else {
         this.toastr.warning('This position is already occupied');
       }
-    } else {
-      // Handle moving between ranking positions if needed
-      // This would require more complex logic for swapping teams
     }
   }
 
-  // Quick team assignment methods
-  assignTeamToSlot(team: Team, rowIndex: number, columnIndex: number): void {
-    if (!this.postRank) return;
+  // Drag & drop for Bingo
+  dropTeamInBingo(event: CdkDragDrop<any>, cellIndex: number): void {
+    if (!this.postBingo) return;
 
-    const slot = this.postRank.rankTable.rows[rowIndex]?.columns[columnIndex];
-    if (slot && !slot.team) {
-      slot.team = team;
-      this.toastr.success(`${team.name} assigned to rank ${rowIndex + 1}`);
+    const targetCell = this.postBingo.bingoCells[cellIndex];
+    if (!targetCell) return;
+
+    // Check if dropping from available teams list
+    if (event.previousContainer.id === 'available-teams') {
+      const draggedTeam = event.item.data as Team;
+
+      // Check if cell is empty
+      if (!targetCell.team) {
+        targetCell.team = draggedTeam;
+        this.toastr.success(`${draggedTeam.name} assigned to bingo square`);
+      } else {
+        this.toastr.warning('This bingo square is already occupied');
+      }
     }
   }
 
+  // Team removal methods
   removeTeamFromSlot(rowIndex: number, columnIndex: number): void {
     if (!this.postRank) return;
 
@@ -226,19 +285,36 @@ export class CreatePostComponent implements OnInit {
     }
   }
 
+  removeTeamFromBingo(cellIndex: number): void {
+    if (!this.postBingo) return;
+
+    const cell = this.postBingo.bingoCells[cellIndex];
+    if (cell?.team) {
+      const teamName = cell.team.name;
+      cell.team = null;
+      this.toastr.info(`${teamName} removed from bingo`);
+    }
+  }
+
   // Get available teams (not assigned to any position)
   getAvailableTeams(): Team[] {
-    if (!this.postRank) return this.selectedTeams;
-
     const usedTeamIds = new Set<number>();
 
-    this.postRank.rankTable.rows.forEach(row => {
-      row.columns.forEach(col => {
-        if (col.team) {
-          usedTeamIds.add(col.team.id);
+    if (this.predictionType === PredictionType.Ranking && this.postRank) {
+      this.postRank.rankTable.rows.forEach(row => {
+        row.columns.forEach(col => {
+          if (col.team) {
+            usedTeamIds.add(col.team.id);
+          }
+        });
+      });
+    } else if (this.predictionType === PredictionType.Bingo && this.postBingo) {
+      this.postBingo.bingoCells.forEach(cell => {
+        if (cell.team) {
+          usedTeamIds.add(cell.team.id);
         }
       });
-    });
+    }
 
     return this.selectedTeams.filter(team => !usedTeamIds.has(team.id));
   }
@@ -262,6 +338,33 @@ export class CreatePostComponent implements OnInit {
     this.toastr.success(`Auto-filled ${teamIndex} positions`);
   }
 
+  autoFillBingo(): void {
+    if (!this.postBingo) return;
+
+    const availableTeams = this.getAvailableTeams();
+    const emptyCells = this.postBingo.bingoCells.filter(cell => !cell.team);
+
+    // Randomly select cells to fill
+    const cellsToFill = Math.min(availableTeams.length, emptyCells.length);
+    const shuffledCells = [...emptyCells].sort(() => 0.5 - Math.random()).slice(0, cellsToFill);
+
+    shuffledCells.forEach((cell, index) => {
+      if (index < availableTeams.length) {
+        cell.team = availableTeams[index];
+      }
+    });
+
+    this.toastr.success(`Auto-filled ${cellsToFill} bingo squares`);
+  }
+
+  clearAll(): void {
+    if (this.predictionType === PredictionType.Ranking) {
+      this.clearAllRankings();
+    } else if (this.predictionType === PredictionType.Bingo) {
+      this.clearAllBingo();
+    }
+  }
+
   clearAllRankings(): void {
     if (!this.postRank) return;
 
@@ -272,6 +375,16 @@ export class CreatePostComponent implements OnInit {
     });
 
     this.toastr.info('All rankings cleared');
+  }
+
+  clearAllBingo(): void {
+    if (!this.postBingo) return;
+
+    this.postBingo.bingoCells.forEach(cell => {
+      cell.team = null;
+    });
+
+    this.toastr.info('All bingo squares cleared');
   }
 
   shuffleTeams(): void {
@@ -297,23 +410,53 @@ export class CreatePostComponent implements OnInit {
     this.toastr.success('Teams shuffled randomly');
   }
 
-  // Progress tracking
-  getAssignedTeamsCount(): number {
-    if (!this.postRank) return 0;
+  shuffleBingo(): void {
+    const availableTeams = this.getAvailableTeams();
+    if (availableTeams.length === 0) return;
 
-    let count = 0;
-    this.postRank.rankTable.rows.forEach(row => {
-      row.columns.forEach(col => {
-        if (col.team) count++;
-      });
+    // Clear current assignments
+    this.clearAllBingo();
+
+    if (!this.postBingo) return;
+
+    // Randomly assign teams to cells
+    const shuffledTeams = [...availableTeams].sort(() => Math.random() - 0.5);
+    const emptyCells = this.postBingo.bingoCells.filter(cell => !cell.team);
+    const cellsToFill = Math.min(shuffledTeams.length, emptyCells.length);
+    const shuffledCells = [...emptyCells].sort(() => Math.random() - 0.5).slice(0, cellsToFill);
+
+    shuffledCells.forEach((cell, index) => {
+      if (index < shuffledTeams.length) {
+        cell.team = shuffledTeams[index];
+      }
     });
 
-    return count;
+    this.toastr.success('Bingo squares shuffled randomly');
+  }
+
+  // Progress tracking
+  getAssignedTeamsCount(): number {
+    if (this.predictionType === PredictionType.Ranking && this.postRank) {
+      let count = 0;
+      this.postRank.rankTable.rows.forEach(row => {
+        row.columns.forEach(col => {
+          if (col.team) count++;
+        });
+      });
+      return count;
+    } else if (this.predictionType === PredictionType.Bingo && this.postBingo) {
+      return this.postBingo.bingoCells.filter(cell => cell.team).length;
+    }
+    return 0;
   }
 
   getTotalSlotsCount(): number {
-    if (!this.postRank) return 0;
-    return this.postRank.rankTable.numberOfRows * this.postRank.rankTable.numberOfColumns;
+    if (this.predictionType === PredictionType.Ranking && this.postRank) {
+      return this.postRank.rankTable.numberOfRows * this.postRank.rankTable.numberOfColumns;
+    } else if (this.predictionType === PredictionType.Bingo && this.postBingo) {
+      return this.postBingo.bingoCells.length;
+    }
+    return 0;
   }
 
   getProgressPercentage(): number {
@@ -324,179 +467,191 @@ export class CreatePostComponent implements OnInit {
 
   // Validation
   isValidPost(): boolean {
-    if (!this.postRank) return false;
-
-    // Check if at least some teams are assigned
-    return this.postRank.rankTable.rows.some(row =>
-      row.columns.some(col => col.team !== null)
-    );
+    if (this.predictionType === PredictionType.Ranking && this.postRank) {
+      return this.postRank.rankTable.rows.some(row =>
+        row.columns.some(col => col.team !== null)
+      );
+    } else if (this.predictionType === PredictionType.Bingo && this.postBingo) {
+      return this.postBingo.bingoCells.some(cell => cell.team !== null);
+    }
+    return false;
   }
 
-  // FINAL VERSION: Replace your submitPost method with this properly typed version
-
-async submitPost(): Promise<void> {
-  if (!this.isValidPost()) {
-    this.toastr.error('Please assign teams to at least some positions');
-    return;
-  }
-
-  this.isSubmitting = true;
-
-  try {
-    console.log('=== SUBMITTING POST ===');
-    console.log('predictionId:', this.predictionId);
-    console.log('templateId:', this.templateId);
-    console.log('predictionType:', this.predictionType);
-
-    // Validate required data
-    if (!this.postRank || !this.template) {
-      this.toastr.error('Missing required data. Please refresh and try again.');
-      this.isSubmitting = false;
+  // Submit post
+  async submitPost(): Promise<void> {
+    if (!this.isValidPost()) {
+      this.toastr.error('Please assign teams to at least some positions');
       return;
     }
 
-    // Create the request payload matching your backend DTO exactly
-    const publishRequest = {
-      predictionId: this.predictionId,
-      templateId: this.templateId,
-      predictionType: this.predictionTypeEnumMap[this.predictionType], // This should be the enum value
-      notes: this.postForm.get('notes')?.value || '',
-      isDraft: this.postForm.get('isDraft')?.value || false,
-      postRank: {
-        id: 0,
-        rankingTemplateId: this.templateId,
+    this.isSubmitting = true;
+
+    try {
+      console.log('=== SUBMITTING POST ===');
+      console.log('predictionId:', this.predictionId);
+      console.log('templateId:', this.templateId);
+      console.log('predictionType:', this.predictionType);
+
+      // Validate required data
+      if ((this.predictionType === PredictionType.Ranking && !this.postRank) ||
+          (this.predictionType === PredictionType.Bingo && !this.postBingo) ||
+          !this.template) {
+        this.toastr.error('Missing required data. Please refresh and try again.');
+        this.isSubmitting = false;
+        return;
+      }
+
+      // Create the request payload
+      const publishRequest: any = {
         predictionId: this.predictionId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        userId: 0, // Will be set by server
-        rankTable: {
+        templateId: this.templateId,
+        predictionType: this.predictionTypeEnumMap[this.predictionType],
+        notes: this.postForm.get('notes')?.value || '',
+        isDraft: this.postForm.get('isDraft')?.value || false,
+      };
+
+      if (this.predictionType === PredictionType.Ranking && this.postRank) {
+        publishRequest.postRank = {
           id: 0,
-          numberOfRows: this.postRank.rankTable.numberOfRows,
-          numberOfColumns: this.postRank.rankTable.numberOfColumns,
-          rows: this.postRank.rankTable.rows.map((row, rowIndex) => ({
+          rankingTemplateId: this.templateId,
+          predictionId: this.predictionId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          userId: 0,
+          rankTable: {
             id: 0,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            order: row.order,
-            isWrong: false,
-            columns: row.columns.map((column, colIndex) => ({
+            numberOfRows: this.postRank.rankTable.numberOfRows,
+            numberOfColumns: this.postRank.rankTable.numberOfColumns,
+            rows: this.postRank.rankTable.rows.map((row, rowIndex) => ({
               id: 0,
-              team: column.team ? {
-                id: column.team.id,
-                name: column.team.name,
-                description: column.team.description || '',
-                //photoUrl: column.team.photoUrl || '',
-                score: column.team.score || 0,
-                createdByUserId: column.team.createdByUserId,
-                createdAt: column.team.createdAt
-              } : null,
-              officialScore: 0,
-              order: colIndex
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              order: row.order,
+              isWrong: false,
+              columns: row.columns.map((column, colIndex) => ({
+                id: 0,
+                team: column.team ? {
+                  id: column.team.id,
+                  name: column.team.name,
+                  description: column.team.description || '',
+                  score: column.team.score || 0,
+                  createdByUserId: column.team.createdByUserId,
+                  createdAt: column.team.createdAt
+                } : null,
+                officialScore: 0,
+                order: colIndex
+              }))
             }))
-          }))
-        },
-        teams: this.selectedTeams.map(team => ({
-          id: team.id,
-          name: team.name,
-          description: team.description || '',
-          //photoUrl: team.photoUrl || '',
-          score: team.score || 0,
-          createdByUserId: team.createdByUserId,
-          createdAt: team.createdAt
-        })),
-        isOfficialResult: false,
-        totalScore: 0
+          },
+          teams: this.selectedTeams.map(team => ({
+            id: team.id,
+            name: team.name,
+            description: team.description || '',
+            score: team.score || 0,
+            createdByUserId: team.createdByUserId,
+            createdAt: team.createdAt
+          })),
+          isOfficialResult: false,
+          totalScore: 0
+        };
+      } else if (this.predictionType === PredictionType.Bingo && this.postBingo) {
+        publishRequest.postBingo = {
+          id: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          userId: 0,
+          gridSize: this.postBingo.gridSize,
+          bingoCells: this.postBingo.bingoCells.map(cell => ({
+            id: 0,
+            row: cell.row,
+            column: cell.column,
+            team: cell.team ? {
+              id: cell.team.id,
+              name: cell.team.name,
+              description: cell.team.description || '',
+              score: cell.team.score || 0,
+              createdByUserId: cell.team.createdByUserId,
+              createdAt: cell.team.createdAt
+            } : null,
+            score: 0,
+            officialScore: 0,
+            isWrong: false
+          })),
+          teams: this.selectedTeams.map(team => ({
+            id: team.id,
+            name: team.name,
+            description: team.description || '',
+            score: team.score || 0,
+            createdByUserId: team.createdByUserId,
+            createdAt: team.createdAt
+          })),
+          totalScore: 0,
+          isOfficialResult: false
+        };
       }
-    };
 
-    console.log('Request payload:', JSON.stringify(publishRequest, null, 2));
+      console.log('Request payload:', JSON.stringify(publishRequest, null, 2));
 
-    // Make the API call
-    const response = await this.http.post(
-      `${environment.apiUrl}post/rank/publish`,
-      publishRequest,
-      {
-        headers: {
-          'Content-Type': 'application/json'
-        }
+      // Make the API call
+      const apiEndpoint = this.predictionType === PredictionType.Ranking
+        ? `${environment.apiUrl}post/rank/publish`
+        : `${environment.apiUrl}post/bingo/publish`; // You'll need to implement this endpoint
+
+      const response = await this.http.post(apiEndpoint, publishRequest, {
+        headers: { 'Content-Type': 'application/json' }
+      }).toPromise();
+
+      console.log('Success response:', response);
+
+      const isDraft = this.postForm.get('isDraft')?.value;
+      if (isDraft) {
+        this.toastr.success('Prediction saved as draft successfully!');
+      } else {
+        this.toastr.success('Prediction published successfully!');
       }
-    ).toPromise();
 
-    console.log('Success response:', response);
+      // Navigate to home or wherever appropriate
+      this.router.navigate(['/']);
 
-    const isDraft = this.postForm.get('isDraft')?.value;
-    if (isDraft) {
-      this.toastr.success('Prediction saved as draft successfully!');
-    } else {
-      this.toastr.success('Prediction published successfully!');
-    }
+    } catch (error: any) {
+      console.error('=== SUBMISSION ERROR ===');
+      console.error('Full error:', error);
 
-    // Navigate to home or wherever appropriate
-    this.router.navigate(['/']);
+      let errorMessage = 'Failed to publish prediction';
 
-  } catch (error: any) {
-    console.error('=== SUBMISSION ERROR ===');
-    console.error('Full error:', error);
-    console.error('Status:', error.status);
-    console.error('Status Text:', error.statusText);
-    console.error('Error URL:', error.url);
-
-    // DETAILED ERROR LOGGING
-    if (error.error) {
-      console.error('Error Body Type:', typeof error.error);
-      console.error('Error Body:', error.error);
-
-      if (Array.isArray(error.error)) {
-        console.error('Error Array Length:', error.error.length);
-
-      }
-    }
-
-    // Handle the error response with better debugging
-    let errorMessage = 'Failed to publish prediction';
-
-    if (error.status === 400) {
-      console.log('400 Bad Request - analyzing error body...');
-
-      if (error.error) {
-        if (Array.isArray(error.error)) {
-          console.log('Error is array:', error.error);
-          errorMessage = `Validation errors: ${error.error.join(', ')}`;
-        } else if (typeof error.error === 'string') {
-          console.log('Error is string:', error.error);
-          errorMessage = error.error;
-        } else if (typeof error.error === 'object') {
-          console.log('Error is object:', error.error);
-          if (error.error.message) {
-            errorMessage = error.error.message;
-          } else if (error.error.title) {
-            errorMessage = error.error.title;
-          } else {
-            // Try to extract meaningful error info from object
-            const errorKeys = Object.keys(error.error);
-            console.log('Error object keys:', errorKeys);
-            errorMessage = `Server error: ${JSON.stringify(error.error)}`;
+      if (error.status === 400) {
+        if (error.error) {
+          if (Array.isArray(error.error)) {
+            errorMessage = `Validation errors: ${error.error.join(', ')}`;
+          } else if (typeof error.error === 'string') {
+            errorMessage = error.error;
+          } else if (typeof error.error === 'object') {
+            if (error.error.message) {
+              errorMessage = error.error.message;
+            } else if (error.error.title) {
+              errorMessage = error.error.title;
+            } else {
+              errorMessage = `Server error: ${JSON.stringify(error.error)}`;
+            }
           }
         }
-      } else {
-        errorMessage = 'Bad request - no error details provided';
+      } else if (error.status === 401) {
+        errorMessage = 'You are not authorized to perform this action. Please log in again.';
+      } else if (error.status === 404) {
+        errorMessage = 'API endpoint not found. Please check your server configuration.';
+      } else if (error.status === 500) {
+        errorMessage = 'Server error occurred. Please try again later.';
+      } else if (error.status === 0) {
+        errorMessage = 'Network error - cannot reach server. Check if the API is running.';
       }
-    } else if (error.status === 401) {
-      errorMessage = 'You are not authorized to perform this action. Please log in again.';
-    } else if (error.status === 404) {
-      errorMessage = 'API endpoint not found. Please check your server configuration.';
-    } else if (error.status === 500) {
-      errorMessage = 'Server error occurred. Please try again later.';
-    } else if (error.status === 0) {
-      errorMessage = 'Network error - cannot reach server. Check if the API is running.';
-    }
 
-    console.error('Final error message:', errorMessage);
-    this.toastr.error(errorMessage);
-  } finally {
-    this.isSubmitting = false;
+      console.error('Final error message:', errorMessage);
+      this.toastr.error(errorMessage);
+    } finally {
+      this.isSubmitting = false;
+    }
   }
-}
+
   // Navigation
   goBack(): void {
     this.router.navigate(['/select-teams', this.predictionId, this.templateId, this.predictionType]);

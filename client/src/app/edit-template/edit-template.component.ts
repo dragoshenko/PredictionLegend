@@ -1,3 +1,5 @@
+// client/src/app/edit-template/edit-template.component.ts - ENHANCED VERSION
+
 import { Component, computed, effect, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -7,6 +9,8 @@ import { TemplateService } from '../_services/template.service';
 import { RankingTemplate } from '../_models/rankingTemplate';
 import { BracketTemplate } from '../_models/bracketTemplate';
 import { BingoTemplate } from '../_models/bingoTemplate';
+import { BracketType } from '../_models/bracketType';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-edit-template',
@@ -28,7 +32,7 @@ export class EditTemplateComponent implements OnInit {
   userBingoTemplates = computed(() => this.templateService.userBingoTemplates());
 
   // Selected template
-  selectedTemplate : any = null;
+  selectedTemplate: any = null;
 
   // Custom template forms
   customRankingForm: FormGroup = new FormGroup({});
@@ -40,13 +44,15 @@ export class EditTemplateComponent implements OnInit {
   isLoading = false;
   isCreatingTemplate = false;
 
-  // Enum reference for template
+  // Enum references for template
   PredictionType = PredictionType;
+  BracketType = BracketType;
 
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private templateService = inject(TemplateService);
   private fb = inject(FormBuilder);
+  private toastr = inject(ToastrService);
 
   constructor() {
     // Optional: Add an effect to debug template loading
@@ -75,6 +81,7 @@ export class EditTemplateComponent implements OnInit {
       await this.loadTemplates();
     } catch (error) {
       console.error('Error loading templates:', error);
+      this.toastr.error('Failed to load templates');
     }
   }
 
@@ -91,7 +98,7 @@ export class EditTemplateComponent implements OnInit {
 
     this.customBracketForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(50)]],
-      bracketType: ['SingleTeam', Validators.required],
+      bracketType: [BracketType.SingleTeam, Validators.required],
       numberOfRounds: [4, [Validators.required, Validators.min(2), Validators.max(10)]]
     });
 
@@ -139,10 +146,13 @@ export class EditTemplateComponent implements OnInit {
         const template: RankingTemplate = {
           id: 0,
           officialTemplate: false,
+          teams: [],
           ...this.customRankingForm.value
         };
 
-        this.templateService.createRankingTemplate(template);
+        await this.templateService.createRankingTemplate(template);
+        this.toastr.success('Ranking template created successfully!');
+
         // Wait a moment for the template to be created and signals to update
         setTimeout(() => {
           this.showCustomForm = false;
@@ -150,6 +160,7 @@ export class EditTemplateComponent implements OnInit {
         }, 1000);
       } catch (error) {
         console.error('Error creating template:', error);
+        this.toastr.error('Failed to create ranking template');
         this.isCreatingTemplate = false;
       }
     }
@@ -159,19 +170,31 @@ export class EditTemplateComponent implements OnInit {
     if (this.customBracketForm.valid) {
       this.isCreatingTemplate = true;
       try {
+        const formValue = this.customBracketForm.value;
         const template: BracketTemplate = {
           id: 0,
+          name: formValue.name,
           officialTemplate: false,
-          ...this.customBracketForm.value
+          numberOfRounds: formValue.numberOfRounds,
+          numberOfBrackets: Math.pow(2, formValue.numberOfRounds),
+          bracketType: formValue.bracketType,
+          teams: [],
+          createdAt: new Date(),
+          updatedAt: new Date()
         };
 
-        this.templateService.createBracketTemplate(template);
+        console.log('Creating bracket template:', template);
+        await this.templateService.createBracketTemplate(template);
+        this.toastr.success('Bracket template created successfully!');
+
+        // Wait a moment for the template to be created and signals to update
         setTimeout(() => {
           this.showCustomForm = false;
           this.isCreatingTemplate = false;
         }, 1000);
       } catch (error) {
-        console.error('Error creating template:', error);
+        console.error('Error creating bracket template:', error);
+        this.toastr.error('Failed to create bracket template');
         this.isCreatingTemplate = false;
       }
     }
@@ -184,16 +207,20 @@ export class EditTemplateComponent implements OnInit {
         const template: BingoTemplate = {
           id: 0,
           officialTemplate: false,
+          teams: [],
           ...this.customBingoForm.value
         };
 
-        this.templateService.createBingoTemplate(template);
+        await this.templateService.createBingoTemplate(template);
+        this.toastr.success('Bingo template created successfully!');
+
         setTimeout(() => {
           this.showCustomForm = false;
           this.isCreatingTemplate = false;
         }, 1000);
       } catch (error) {
         console.error('Error creating template:', error);
+        this.toastr.error('Failed to create bingo template');
         this.isCreatingTemplate = false;
       }
     }
@@ -220,5 +247,17 @@ export class EditTemplateComponent implements OnInit {
 
   trackById(index: number, item: any): number {
     return item.id;
+  }
+
+  // Helper method to get bracket type display name
+  getBracketTypeDisplayName(bracketType: BracketType): string {
+    switch (bracketType) {
+      case BracketType.SingleTeam:
+        return 'Single Team';
+      case BracketType.Matchup:
+        return 'Matchup';
+      default:
+        return 'Unknown';
+    }
   }
 }

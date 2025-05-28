@@ -42,6 +42,10 @@ public class TemplateService : ITemplateService
 
         var rankingTemplateDTO = rankingTemplate;
         var mappedTemplate = new RankingTemplate(rankingTemplateDTO.NumberOfRows, rankingTemplateDTO.NumberOfColumns);
+
+        // FIXED: Set the name properly
+        mappedTemplate.Name = rankingTemplateDTO.Name;
+
         var isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
         if (isAdmin)
         {
@@ -63,7 +67,7 @@ public class TemplateService : ITemplateService
         }
 
         var rankingTemplateResult = _mapper.Map<RankingTemplateDTO>(createdTemplate);
-        return rankingTemplateResult; 
+        return rankingTemplateResult;
     }
     public async Task<ActionResult> UpdateRankingTemplate(RankingTemplateDTO rankingTemplate)
     {
@@ -127,35 +131,38 @@ public class TemplateService : ITemplateService
     }
     #endregion
     #region "Bracket Template"
-    public async Task<ActionResult<BracketTemplateDTO>> GetBracketTemplate(int id)
+
+    public async Task<ActionResult<BracketTemplateDTO>> CreateBracketTemplate(int userId, BracketTemplateDTO bracketTemplate)
     {
-        var template = await _unitOfWork.TemplateRepository.GetBracketTemplate(id);
-        if (template == null)
-        {
-            return new BadRequestObjectResult("Error getting bracket template");
-        }
-        var bracketTemplateDTO = _mapper.Map<BracketTemplateDTO>(template);
-        return bracketTemplateDTO;
-    }
-    public async Task<ActionResult<BracketTemplateDTO>> CreateBracketTemplate(int id, BracketTemplateDTO bracketTemplate)
-    {
-        var userId = id;
         var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId);
         if (user == null)
         {
             return new BadRequestObjectResult("User not found");
         }
 
-        var mappedTemplate = new BracketTemplate(bracketTemplate.NumberOfRounds);
-        mappedTemplate.Name = bracketTemplate.Name;
-        mappedTemplate.UserId = user.Id;
-        mappedTemplate.User = user;
+        var mappedTemplate = new BracketTemplate(bracketTemplate.NumberOfRounds)
+        {
+            Name = bracketTemplate.Name,
+            UserId = user.Id,
+            User = user,
+            BracketType = bracketTemplate.BracketType,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        // Check if user is admin to set official template
+        var isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
+        if (isAdmin)
+        {
+            mappedTemplate.OfficialTemplate = true;
+        }
 
         var createdTemplate = await _unitOfWork.TemplateRepository.CreateBracketTemplate(mappedTemplate);
         if (createdTemplate == null)
         {
             return new BadRequestObjectResult("Error creating bracket template");
         }
+
         var saveResult = await _unitOfWork.Complete();
         if (!saveResult)
         {
@@ -165,45 +172,70 @@ public class TemplateService : ITemplateService
         var bracketTemplateResult = _mapper.Map<BracketTemplateDTO>(createdTemplate);
         return bracketTemplateResult;
     }
+
+    public async Task<ActionResult<BracketTemplateDTO>> GetBracketTemplate(int id)
+    {
+        var template = await _unitOfWork.TemplateRepository.GetBracketTemplate(id);
+        if (template == null)
+        {
+            return new BadRequestObjectResult("Bracket template not found");
+        }
+        var bracketTemplateDTO = _mapper.Map<BracketTemplateDTO>(template);
+        return bracketTemplateDTO;
+    }
+
     public async Task<ActionResult> UpdateBracketTemplate(BracketTemplateDTO bracketTemplate)
     {
         var template = await _unitOfWork.TemplateRepository.GetBracketTemplate(bracketTemplate.Id);
         if (template == null)
         {
-            return new BadRequestObjectResult("Error updating bracket template");
+            return new BadRequestObjectResult("Bracket template not found");
         }
+
+        // Update properties
+        template.Name = bracketTemplate.Name;
         template.NumberOfRounds = bracketTemplate.NumberOfRounds;
+        template.BracketType = bracketTemplate.BracketType;
+        template.UpdatedAt = DateTime.UtcNow;
+
         var result = await _unitOfWork.TemplateRepository.UpdateBracketTemplate(template);
         if (!result)
         {
             return new BadRequestObjectResult("Error updating bracket template");
         }
+
         var saveResult = await _unitOfWork.Complete();
         if (!saveResult)
         {
             return new BadRequestObjectResult("Error saving changes");
         }
+
         return new OkResult();
     }
+
     public async Task<ActionResult> DeleteBracketTemplate(int id)
     {
         var template = await _unitOfWork.TemplateRepository.GetBracketTemplate(id);
         if (template == null)
         {
-            return new BadRequestObjectResult("Error deleting bracket template");
+            return new BadRequestObjectResult("Bracket template not found");
         }
+
         var result = await _unitOfWork.TemplateRepository.DeleteBracketTemplate(id);
         if (!result)
         {
             return new BadRequestObjectResult("Error deleting bracket template");
         }
+
         var saveResult = await _unitOfWork.Complete();
         if (!saveResult)
         {
             return new BadRequestObjectResult("Error saving changes");
         }
+
         return new OkResult();
     }
+
     public async Task<ActionResult<List<BracketTemplateDTO>>> GetOfficialBracketTemplates()
     {
         var templates = await _unitOfWork.TemplateRepository.GetOfficialBracketTemplates();
