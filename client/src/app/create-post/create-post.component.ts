@@ -66,6 +66,11 @@ export class CreatePostComponent implements OnInit {
   predictionType: PredictionType = PredictionType.Ranking;
   template: any = null;
   selectedTeams: Team[] = [];
+  predictionTypeEnumMap = {
+    [PredictionType.Ranking]: 0,
+    [PredictionType.Bracket]: 1,
+    [PredictionType.Bingo]: 2,
+  };
 
   // Post data
   postRank: PostRankData | null = null;
@@ -354,7 +359,7 @@ async submitPost(): Promise<void> {
     const publishRequest = {
       predictionId: this.predictionId,
       templateId: this.templateId,
-      predictionType: this.predictionType, // This should be the enum value
+      predictionType: this.predictionTypeEnumMap[this.predictionType], // This should be the enum value
       notes: this.postForm.get('notes')?.value || '',
       isDraft: this.postForm.get('isDraft')?.value || false,
       postRank: {
@@ -380,7 +385,7 @@ async submitPost(): Promise<void> {
                 id: column.team.id,
                 name: column.team.name,
                 description: column.team.description || '',
-                photoUrl: column.team.photoUrl || '',
+                //photoUrl: column.team.photoUrl || '',
                 score: column.team.score || 0,
                 createdByUserId: column.team.createdByUserId,
                 createdAt: column.team.createdAt
@@ -394,7 +399,7 @@ async submitPost(): Promise<void> {
           id: team.id,
           name: team.name,
           description: team.description || '',
-          photoUrl: team.photoUrl || '',
+          //photoUrl: team.photoUrl || '',
           score: team.score || 0,
           createdByUserId: team.createdByUserId,
           createdAt: team.createdAt

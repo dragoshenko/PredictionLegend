@@ -8,6 +8,4 @@ public class Column
     public Team? Team { get; set; }
     public int OfficialScore { get; set; } = 0;
     public int Order { get; set; } = 0;
-    public int RowId { get; set; }
-    public Row Row { get; set; } = null!;
 }
