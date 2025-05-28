@@ -262,8 +262,7 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
             .OnDelete(DeleteBehavior.SetNull);
 
         #endregion
-        #region PostBingo Relationships
-        // PostBingo to User
+        #region PostBingo Relationship
         
         #endregion
     }

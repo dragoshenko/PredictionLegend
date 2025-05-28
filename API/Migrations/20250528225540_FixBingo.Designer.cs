@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace API.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20250524170859_Laptop")]
-    partial class Laptop
+    [Migration("20250528225540_FixBingo")]
+    partial class FixBingo
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -204,7 +204,7 @@ namespace API.Migrations
                     b.Property<float>("Score")
                         .HasColumnType("real");
 
-                    b.Property<int>("TeamId")
+                    b.Property<int?>("TeamId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -338,7 +338,7 @@ namespace API.Migrations
                     b.Property<int>("Order")
                         .HasColumnType("int");
 
-                    b.Property<int>("RowId")
+                    b.Property<int?>("RowId")
                         .HasColumnType("int");
 
                     b.Property<int?>("TeamId")
@@ -404,6 +404,71 @@ namespace API.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Comments");
+                });
+
+            modelBuilder.Entity("API.Entities.CreationFlow", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AbandonReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("AbandonedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedTeamIds")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FlowToken")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<bool>("IsAbandoned")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("PredictionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PredictionType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SelectedTeamIds")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("TemplateId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FlowToken")
+                        .IsUnique();
+
+                    b.HasIndex("PredictionId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("CreationFlows");
                 });
 
             modelBuilder.Entity("API.Entities.DiscussionPost", b =>
@@ -497,7 +562,7 @@ namespace API.Migrations
                     b.Property<bool>("IsOfficialResult")
                         .HasColumnType("bit");
 
-                    b.Property<int?>("PredictionId")
+                    b.Property<int>("PredictionId")
                         .HasColumnType("int");
 
                     b.Property<int>("TotalScore")
@@ -820,7 +885,7 @@ namespace API.Migrations
                     b.Property<int>("Order")
                         .HasColumnType("int");
 
-                    b.Property<int>("RankTableId")
+                    b.Property<int?>("RankTableId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -845,20 +910,28 @@ namespace API.Migrations
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
 
                     b.Property<int>("CreatedByUserId")
                         .HasColumnType("int");
 
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasDefaultValue("");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("PhotoUrl")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<int?>("PostBingoId")
                         .HasColumnType("int");
@@ -881,7 +954,8 @@ namespace API.Migrations
 
                     b.HasIndex("BracketTemplateId");
 
-                    b.HasIndex("CreatedByUserId");
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("IX_Teams_CreatedByUserId");
 
                     b.HasIndex("PostBingoId");
 
@@ -890,6 +964,10 @@ namespace API.Migrations
                     b.HasIndex("PostRankId");
 
                     b.HasIndex("RankingTemplateId");
+
+                    b.HasIndex("CreatedByUserId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Teams_UserId_Name");
 
                     b.ToTable("Teams");
                 });
@@ -1073,9 +1151,7 @@ namespace API.Migrations
 
                     b.HasOne("API.Entities.Team", "Team")
                         .WithMany()
-                        .HasForeignKey("TeamId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("TeamId");
 
                     b.Navigation("Team");
                 });
@@ -1114,17 +1190,15 @@ namespace API.Migrations
 
             modelBuilder.Entity("API.Entities.Column", b =>
                 {
-                    b.HasOne("API.Entities.Row", "Row")
+                    b.HasOne("API.Entities.Row", null)
                         .WithMany("Columns")
                         .HasForeignKey("RowId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("API.Entities.Team", "Team")
                         .WithMany()
-                        .HasForeignKey("TeamId");
-
-                    b.Navigation("Row");
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Team");
                 });
@@ -1170,6 +1244,24 @@ namespace API.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("API.Entities.CreationFlow", b =>
+                {
+                    b.HasOne("API.Entities.Prediction", "Prediction")
+                        .WithMany()
+                        .HasForeignKey("PredictionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("API.Entities.AppUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Prediction");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("API.Entities.DiscussionPost", b =>
                 {
                     b.HasOne("API.Entities.AppUser", "User")
@@ -1196,15 +1288,19 @@ namespace API.Migrations
                         .WithMany("PostBingo")
                         .HasForeignKey("BingoTemplateId");
 
-                    b.HasOne("API.Entities.Prediction", null)
+                    b.HasOne("API.Entities.Prediction", "Prediction")
                         .WithMany("PostBingos")
-                        .HasForeignKey("PredictionId");
+                        .HasForeignKey("PredictionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("API.Entities.AppUser", "User")
                         .WithMany("PostBingos")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Prediction");
 
                     b.Navigation("User");
                 });
@@ -1255,7 +1351,7 @@ namespace API.Migrations
                     b.HasOne("API.Entities.AppUser", "User")
                         .WithMany("PostRanks")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Prediction");
@@ -1341,13 +1437,10 @@ namespace API.Migrations
 
             modelBuilder.Entity("API.Entities.Row", b =>
                 {
-                    b.HasOne("API.Entities.RankTable", "RankTable")
+                    b.HasOne("API.Entities.RankTable", null)
                         .WithMany("Rows")
                         .HasForeignKey("RankTableId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("RankTable");
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("API.Entities.Team", b =>
@@ -1363,7 +1456,7 @@ namespace API.Migrations
                     b.HasOne("API.Entities.AppUser", "CreatedByUser")
                         .WithMany("Teams")
                         .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("API.Entities.PostBingo", null)

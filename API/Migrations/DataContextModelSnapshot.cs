@@ -1148,8 +1148,7 @@ namespace API.Migrations
 
                     b.HasOne("API.Entities.Team", "Team")
                         .WithMany()
-                        .HasForeignKey("TeamId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .HasForeignKey("TeamId");
 
                     b.Navigation("Team");
                 });
@@ -1295,7 +1294,7 @@ namespace API.Migrations
                     b.HasOne("API.Entities.AppUser", "User")
                         .WithMany("PostBingos")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Prediction");

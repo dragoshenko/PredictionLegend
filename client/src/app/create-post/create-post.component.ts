@@ -77,6 +77,13 @@ export class CreatePostComponent implements OnInit {
   private fb = inject(FormBuilder);
   private http = inject(HttpClient);
 
+  // map for prediction types
+  predictionTypeMap = {
+    [PredictionType.Ranking]: 0,
+    [PredictionType.Bracket]: 1,
+    [PredictionType.Bingo]: 2
+  };
+
   // Route parameters
   predictionId: number = 0;
   templateId: number = 0;
@@ -128,6 +135,11 @@ export class CreatePostComponent implements OnInit {
       this.predictionId = +params['predictionId'];
       this.templateId = +params['templateId'];
       this.predictionType = params['type'] as PredictionType;
+      console.log('Loaded route params:', {
+        predictionId: this.predictionId,
+        templateId: this.templateId,
+        predictionType: this.predictionType
+      });
     });
 
     // Get data from navigation state
@@ -503,7 +515,7 @@ export class CreatePostComponent implements OnInit {
       const publishRequest: any = {
         predictionId: this.predictionId,
         templateId: this.templateId,
-        predictionType: this.predictionType,
+        predictionType: this.predictionTypeMap[this.predictionType],
         notes: this.postForm.get('notes')?.value || '',
         isDraft: this.postForm.get('isDraft')?.value || false,
       };
@@ -525,7 +537,6 @@ export class CreatePostComponent implements OnInit {
                   id: column.team.id,
                   name: column.team.name,
                   description: column.team.description || '',
-                  photoUrl: column.team.photoUrl || '',
                   score: column.team.score || 0,
                   createdByUserId: column.team.createdByUserId,
                   createdAt: column.team.createdAt
@@ -539,7 +550,6 @@ export class CreatePostComponent implements OnInit {
             id: team.id,
             name: team.name,
             description: team.description || '',
-            photoUrl: team.photoUrl || '',
             score: team.score || 0,
             createdByUserId: team.createdByUserId,
             createdAt: team.createdAt
@@ -551,7 +561,7 @@ export class CreatePostComponent implements OnInit {
 
       console.log('Request payload:', JSON.stringify(publishRequest, null, 2));
 
-      const apiUrl = `${environment.apiUrl}prediction/publish`;
+      const apiUrl = `${environment.apiUrl}post/rank/publish`;
 
       this.http.post(apiUrl, publishRequest).subscribe({
         next: (res) => {

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace API.Migrations
 {
     /// <inheritdoc />
-    public partial class refactor : Migration
+    public partial class FixBingo : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -200,6 +200,8 @@ namespace API.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    GridSize = table.Column<int>(type: "int", nullable: false),
                     OfficialTemplate = table.Column<bool>(type: "bit", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -222,6 +224,7 @@ namespace API.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     OfficialTemplate = table.Column<bool>(type: "bit", nullable: false),
                     NumberOfRounds = table.Column<int>(type: "int", nullable: false),
                     NumberOfBrackets = table.Column<int>(type: "int", nullable: false),
@@ -323,6 +326,7 @@ namespace API.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     OfficialTemplate = table.Column<bool>(type: "bit", nullable: false),
                     NumberOfRows = table.Column<int>(type: "int", nullable: false),
                     NumberOfColumns = table.Column<int>(type: "int", nullable: false),
@@ -364,6 +368,44 @@ namespace API.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "CreationFlows",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FlowToken = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    PredictionType = table.Column<int>(type: "int", nullable: false),
+                    TemplateId = table.Column<int>(type: "int", nullable: true),
+                    PredictionId = table.Column<int>(type: "int", nullable: true),
+                    SelectedTeamIds = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CreatedTeamIds = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    IsCompleted = table.Column<bool>(type: "bit", nullable: false),
+                    IsAbandoned = table.Column<bool>(type: "bit", nullable: false),
+                    AbandonReason = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CompletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    AbandonedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CreationFlows", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CreationFlows_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_CreationFlows_Predictions_PredictionId",
+                        column: x => x.PredictionId,
+                        principalTable: "Predictions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "PostBingos",
                 columns: table => new
                 {
@@ -373,10 +415,10 @@ namespace API.Migrations
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UserId = table.Column<int>(type: "int", nullable: false),
                     GridSize = table.Column<int>(type: "int", nullable: false),
+                    PredictionId = table.Column<int>(type: "int", nullable: false),
                     TotalScore = table.Column<int>(type: "int", nullable: false),
                     IsOfficialResult = table.Column<bool>(type: "bit", nullable: false),
-                    BingoTemplateId = table.Column<int>(type: "int", nullable: true),
-                    PredictionId = table.Column<int>(type: "int", nullable: true)
+                    BingoTemplateId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -396,7 +438,8 @@ namespace API.Migrations
                         name: "FK_PostBingos_Predictions_PredictionId",
                         column: x => x.PredictionId,
                         principalTable: "Predictions",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -446,8 +489,7 @@ namespace API.Migrations
                         name: "FK_PostRanks_AspNetUsers_UserId",
                         column: x => x.UserId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_PostRanks_Predictions_PredictionId",
                         column: x => x.PredictionId,
@@ -489,8 +531,8 @@ namespace API.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Order = table.Column<int>(type: "int", nullable: false),
-                    RankTableId = table.Column<int>(type: "int", nullable: false),
-                    IsWrong = table.Column<bool>(type: "bit", nullable: false)
+                    IsWrong = table.Column<bool>(type: "bit", nullable: false),
+                    RankTableId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -512,7 +554,7 @@ namespace API.Migrations
                     Score = table.Column<float>(type: "real", nullable: false),
                     Row = table.Column<int>(type: "int", nullable: false),
                     Column = table.Column<int>(type: "int", nullable: false),
-                    TeamId = table.Column<int>(type: "int", nullable: false),
+                    TeamId = table.Column<int>(type: "int", nullable: true),
                     OfficialScore = table.Column<int>(type: "int", nullable: false),
                     IsWrong = table.Column<bool>(type: "bit", nullable: false),
                     PostBingoId = table.Column<int>(type: "int", nullable: true)
@@ -580,7 +622,7 @@ namespace API.Migrations
                     TeamId = table.Column<int>(type: "int", nullable: true),
                     OfficialScore = table.Column<int>(type: "int", nullable: false),
                     Order = table.Column<int>(type: "int", nullable: false),
-                    RowId = table.Column<int>(type: "int", nullable: false)
+                    RowId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -682,15 +724,18 @@ namespace API.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    PhotoUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    PhotoUrl = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false, defaultValue: ""),
                     Score = table.Column<float>(type: "real", nullable: true),
                     CreatedByUserId = table.Column<int>(type: "int", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
+                    BingoTemplateId = table.Column<int>(type: "int", nullable: true),
+                    BracketTemplateId = table.Column<int>(type: "int", nullable: true),
                     PostBingoId = table.Column<int>(type: "int", nullable: true),
                     PostBracketId = table.Column<int>(type: "int", nullable: true),
-                    PostRankId = table.Column<int>(type: "int", nullable: true)
+                    PostRankId = table.Column<int>(type: "int", nullable: true),
+                    RankingTemplateId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -699,8 +744,17 @@ namespace API.Migrations
                         name: "FK_Teams_AspNetUsers_CreatedByUserId",
                         column: x => x.CreatedByUserId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Teams_BingoTemplates_BingoTemplateId",
+                        column: x => x.BingoTemplateId,
+                        principalTable: "BingoTemplates",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Teams_BracketTemplates_BracketTemplateId",
+                        column: x => x.BracketTemplateId,
+                        principalTable: "BracketTemplates",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Teams_PostBingos_PostBingoId",
                         column: x => x.PostBingoId,
@@ -715,6 +769,11 @@ namespace API.Migrations
                         name: "FK_Teams_PostRanks_PostRankId",
                         column: x => x.PostRankId,
                         principalTable: "PostRanks",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Teams_RankingTemplates_RankingTemplateId",
+                        column: x => x.RankingTemplateId,
+                        principalTable: "RankingTemplates",
                         principalColumn: "Id");
                 });
 
@@ -871,6 +930,22 @@ namespace API.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_CreationFlows_FlowToken",
+                table: "CreationFlows",
+                column: "FlowToken",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CreationFlows_PredictionId",
+                table: "CreationFlows",
+                column: "PredictionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CreationFlows_UserId",
+                table: "CreationFlows",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_DiscussionPosts_UserId",
                 table: "DiscussionPosts",
                 column: "UserId");
@@ -979,6 +1054,16 @@ namespace API.Migrations
                 column: "RankTableId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Teams_BingoTemplateId",
+                table: "Teams",
+                column: "BingoTemplateId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Teams_BracketTemplateId",
+                table: "Teams",
+                column: "BracketTemplateId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Teams_CreatedByUserId",
                 table: "Teams",
                 column: "CreatedByUserId");
@@ -998,13 +1083,23 @@ namespace API.Migrations
                 table: "Teams",
                 column: "PostRankId");
 
+            migrationBuilder.CreateIndex(
+                name: "IX_Teams_RankingTemplateId",
+                table: "Teams",
+                column: "RankingTemplateId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Teams_UserId_Name",
+                table: "Teams",
+                columns: new[] { "CreatedByUserId", "Name" },
+                unique: true);
+
             migrationBuilder.AddForeignKey(
                 name: "FK_BingoCells_Teams_TeamId",
                 table: "BingoCells",
                 column: "TeamId",
                 principalTable: "Teams",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.Cascade);
+                principalColumn: "Id");
 
             migrationBuilder.AddForeignKey(
                 name: "FK_Brackets_RootBrackets_RootBracketId",
@@ -1032,7 +1127,8 @@ namespace API.Migrations
                 table: "Columns",
                 column: "TeamId",
                 principalTable: "Teams",
-                principalColumn: "Id");
+                principalColumn: "Id",
+                onDelete: ReferentialAction.SetNull);
 
             migrationBuilder.AddForeignKey(
                 name: "FK_Comments_PostBrackets_PostBracketId",
@@ -1125,6 +1221,9 @@ namespace API.Migrations
                 name: "Comments");
 
             migrationBuilder.DropTable(
+                name: "CreationFlows");
+
+            migrationBuilder.DropTable(
                 name: "Photos");
 
             migrationBuilder.DropTable(
@@ -1158,10 +1257,10 @@ namespace API.Migrations
                 name: "PostBingos");
 
             migrationBuilder.DropTable(
-                name: "BingoTemplates");
+                name: "Teams");
 
             migrationBuilder.DropTable(
-                name: "Teams");
+                name: "BingoTemplates");
 
             migrationBuilder.DropTable(
                 name: "PostBrackets");

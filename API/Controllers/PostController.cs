@@ -25,58 +25,42 @@ public class PostController : BaseAPIController
     }
 
     // FIXED: Improved publish endpoint with comprehensive error handling and logging
+
     [HttpPost("rank/publish")]
     public async Task<ActionResult> PublishRankingPost([FromBody] PublishPostRequestDTO request)
     {
         try
         {
-            Console.WriteLine("=== PUBLISH RANKING POST CALLED ===");
-            Console.WriteLine($"Request received: {request != null}");
-
             // FIXED: Enhanced validation with detailed error messages
             if (request == null)
             {
-                Console.WriteLine("REQUEST IS NULL");
                 return BadRequest(new { message = "Request data is required", error = "The request body cannot be null or empty" });
             }
-
-            Console.WriteLine($"Request details:");
-            Console.WriteLine($"  PredictionId: {request.PredictionId}");
-            Console.WriteLine($"  TemplateId: {request.TemplateId}");
-            Console.WriteLine($"  PredictionType: {request.PredictionType}");
-            Console.WriteLine($"  IsDraft: {request.IsDraft}");
-            Console.WriteLine($"  Notes: {request.Notes ?? "null"}");
-            Console.WriteLine($"  PostRank is null: {request.PostRank == null}");
 
             // FIXED: More specific validation checks
             if (request.PredictionId <= 0)
             {
-                Console.WriteLine("INVALID PREDICTION ID");
                 return BadRequest(new { message = "Invalid prediction ID", error = $"PredictionId must be greater than 0, received: {request.PredictionId}" });
             }
 
             if (request.TemplateId <= 0)
             {
-                Console.WriteLine("INVALID TEMPLATE ID");
                 return BadRequest(new { message = "Invalid template ID", error = $"TemplateId must be greater than 0, received: {request.TemplateId}" });
             }
 
             if (request.PostRank == null)
             {
-                Console.WriteLine("POSTRANK IS NULL");
                 return BadRequest(new { message = "PostRank data is required", error = "PostRank data is required for ranking predictions" });
             }
 
             // FIXED: Validate PostRank structure
             if (request.PostRank.RankTable == null)
             {
-                Console.WriteLine("RANKTABLE IS NULL");
                 return BadRequest(new { message = "RankTable is required", error = "PostRank must contain a valid RankTable" });
             }
 
             if (request.PostRank.RankTable.Rows == null || !request.PostRank.RankTable.Rows.Any())
             {
-                Console.WriteLine("ROWS ARE NULL OR EMPTY");
                 return BadRequest(new { message = "Rows are required", error = "RankTable must contain at least one row" });
             }
 
@@ -86,36 +70,24 @@ public class PostController : BaseAPIController
 
             if (!hasAnyTeams)
             {
-                Console.WriteLine("NO TEAMS ASSIGNED");
                 return BadRequest(new { message = "No teams assigned", error = "At least one position must have a team assigned" });
             }
 
             var userId = User.GetUserId();
-            Console.WriteLine($"User ID from token: {userId}");
 
             if (userId <= 0)
             {
-                Console.WriteLine("INVALID USER ID");
                 return Unauthorized(new { message = "Invalid user authentication", error = "User ID must be valid" });
             }
 
-            Console.WriteLine("All validations passed, calling service...");
-
-            // FIXED: Set the userId in the PostRank object
             request.PostRank.UserId = userId;
 
             var result = await _postService.PublishPostAsync(request, userId);
-
-            Console.WriteLine($"Service call completed");
 
             return result;
         }
         catch (ArgumentException argEx)
         {
-            Console.WriteLine($"=== ARGUMENT EXCEPTION ===");
-            Console.WriteLine($"Exception message: {argEx.Message}");
-            Console.WriteLine($"Stack trace: {argEx.StackTrace}");
-
             return BadRequest(new
             {
                 message = "Invalid argument provided",
@@ -124,10 +96,6 @@ public class PostController : BaseAPIController
         }
         catch (InvalidOperationException opEx)
         {
-            Console.WriteLine($"=== INVALID OPERATION EXCEPTION ===");
-            Console.WriteLine($"Exception message: {opEx.Message}");
-            Console.WriteLine($"Stack trace: {opEx.StackTrace}");
-
             return BadRequest(new
             {
                 message = "Invalid operation",
@@ -136,9 +104,6 @@ public class PostController : BaseAPIController
         }
         catch (UnauthorizedAccessException unAuthEx)
         {
-            Console.WriteLine($"=== UNAUTHORIZED ACCESS EXCEPTION ===");
-            Console.WriteLine($"Exception message: {unAuthEx.Message}");
-
             return Unauthorized(new
             {
                 message = "Access denied",
@@ -147,11 +112,6 @@ public class PostController : BaseAPIController
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"=== GENERAL EXCEPTION IN CONTROLLER ===");
-            Console.WriteLine($"Exception type: {ex.GetType().Name}");
-            Console.WriteLine($"Exception message: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
-
             // FIXED: More informative error response
             return StatusCode(500, new
             {
@@ -161,7 +121,6 @@ public class PostController : BaseAPIController
             });
         }
     }
-
     [HttpGet("published")]
     public async Task<ActionResult<List<PublishedPostDTO>>> GetPublishedPosts(
         [FromQuery] int pageNumber = 1,
@@ -204,7 +163,7 @@ public class PostController : BaseAPIController
         {
             Console.WriteLine("=== PUBLISH BINGO POST CALLED ===");
             Console.WriteLine($"Request received: {request != null}");
-            
+
             // FIXED: Enhanced validation with detailed error messages
             if (request == null)
             {
@@ -257,7 +216,7 @@ public class PostController : BaseAPIController
 
             var userId = User.GetUserId();
             Console.WriteLine($"User ID from token: {userId}");
-            
+
             if (userId <= 0)
             {
                 Console.WriteLine("INVALID USER ID");
@@ -265,14 +224,14 @@ public class PostController : BaseAPIController
             }
 
             Console.WriteLine("All validations passed, calling service...");
-            
+
             // FIXED: Set the userId in the PostBingo object
             request.PostBingo.UserId = userId;
 
             var result = await _postService.PublishBingoPostAsync(request, userId);
-            
+
             Console.WriteLine($"Service call completed");
-            
+
             return result;
         }
         catch (ArgumentException argEx)
@@ -316,10 +275,11 @@ public class PostController : BaseAPIController
             Console.WriteLine($"Exception type: {ex.GetType().Name}");
             Console.WriteLine($"Exception message: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            
+
             // FIXED: More informative error response
-            return StatusCode(500, new { 
-                message = "An internal server error occurred while publishing the bingo post", 
+            return StatusCode(500, new
+            {
+                message = "An internal server error occurred while publishing the bingo post",
                 error = "Please try again later or contact support if the problem persists",
                 details = ex.Message // Only include in development
             });

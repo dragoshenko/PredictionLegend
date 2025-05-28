@@ -26,7 +26,6 @@ public class TeamService : ITeamService
             var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId);
             if (user == null) return new NotFoundResult();
             
-            // FIXED: Create team entity with proper validation and defaults
             var teamEntity = new Team
             {
                 Name = teamDTO.Name?.Trim() ?? throw new ArgumentException("Team name is required"),
@@ -34,11 +33,10 @@ public class TeamService : ITeamService
                 PhotoUrl = string.IsNullOrWhiteSpace(teamDTO.PhotoUrl) ? null : teamDTO.PhotoUrl.Trim(),
                 Score = teamDTO.Score ?? 0,
                 CreatedByUserId = userId,
-                CreatedByUser = user, // FIXED: Set the navigation property
+                CreatedByUser = user,
                 CreatedAt = DateTime.UtcNow
             };
 
-            // FIXED: Additional validation
             if (teamEntity.Name.Length < 2 || teamEntity.Name.Length > 100)
             {
                 return new BadRequestObjectResult("Team name must be between 2 and 100 characters");

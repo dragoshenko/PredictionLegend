@@ -222,13 +222,7 @@ public class PostService : IPostService
             // Update the prediction
             Console.WriteLine("Updating prediction...");
             await _unitOfWork.PredictionRepository.UpdatePredictionAsync(prediction);
-            var saveResult = await _unitOfWork.Complete();
-
-            if (!saveResult)
-            {
-                Console.WriteLine("Failed to save prediction changes");
-                return new BadRequestObjectResult("Failed to save prediction changes");
-            }
+            await _unitOfWork.Complete();
 
             Console.WriteLine("Post published successfully");
             return new OkObjectResult(new
