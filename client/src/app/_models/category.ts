@@ -6,4 +6,5 @@ export interface Category {
   colorCode?: string;
   parentCategoryId?: number;
   subCategories?: Category[];
+  expanded?: boolean;
 }

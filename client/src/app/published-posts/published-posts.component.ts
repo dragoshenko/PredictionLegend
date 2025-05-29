@@ -1,4 +1,5 @@
-// published-posts.component.ts - UPDATED VERSION
+// published-posts.component.ts - COMPLETE UPDATED VERSION
+
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -106,15 +107,16 @@ interface PublishedPost {
                 type="text"
                 class="form-control bg-dark text-light border-secondary"
                 [(ngModel)]="searchTerm"
-                (ngModelChange)="onSearchChange()"
-                placeholder="Search predictions...">
+                (input)="onSearchChange()"
+                placeholder="Search predictions, authors..."
+                [value]="searchTerm">
             </div>
             <div class="col-md-3">
               <label class="form-label text-light">Prediction Type</label>
               <select
                 class="form-select bg-dark text-light border-secondary"
                 [(ngModel)]="selectedType"
-                (ngModelChange)="onFilterChange()">
+                (change)="onFilterChange()">
                 <option value="">All Types</option>
                 <option value="Ranking">Ranking</option>
                 <option value="Bracket">Bracket</option>
@@ -126,7 +128,7 @@ interface PublishedPost {
               <select
                 class="form-select bg-dark text-light border-secondary"
                 [(ngModel)]="sortBy"
-                (ngModelChange)="onFilterChange()">
+                (change)="onFilterChange()">
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
                 <option value="mostResponses">Most Responses</option>
@@ -137,14 +139,41 @@ interface PublishedPost {
               <button
                 class="btn btn-outline-light w-100"
                 (click)="clearFilters()">
-                Clear Filters
+                <i class="fa fa-times me-1"></i>Clear Filters
               </button>
             </div>
+          </div>
+
+          <!-- Active filters indicator -->
+          <div class="mt-2" *ngIf="hasActiveFilters()">
+            <small class="text-light opacity-75">
+              Active filters:
+              <span *ngIf="searchTerm" class="badge bg-info me-1">Search: "{{ searchTerm }}"</span>
+              <span *ngIf="selectedType" class="badge bg-info me-1">Type: {{ selectedType }}</span>
+              <span *ngIf="sortBy !== 'newest'" class="badge bg-info me-1">Sort: {{ sortBy }}</span>
+            </small>
           </div>
         </div>
       </div>
 
-      <!-- Predictions List (Same style as My Predictions) -->
+      <!-- Results counter -->
+      <div class="d-flex justify-content-between align-items-center mb-3" *ngIf="!isLoading">
+        <div class="text-light">
+          <span *ngIf="!hasActiveFilters()">
+            Showing {{ filteredPosts.length }} published predictions
+          </span>
+          <span *ngIf="hasActiveFilters()">
+            Showing {{ filteredPosts.length }} of {{ publishedPosts.length }} predictions
+          </span>
+        </div>
+        <div class="text-muted small" *ngIf="hasActiveFilters()">
+          <button class="btn btn-sm btn-outline-secondary" (click)="clearFilters()">
+            <i class="fa fa-times me-1"></i>Clear all filters
+          </button>
+        </div>
+      </div>
+
+      <!-- Predictions List -->
       <div class="row" *ngIf="filteredPosts.length > 0">
         <div class="col-lg-6 mb-4" *ngFor="let post of filteredPosts">
           <div class="card bg-dark border-dark h-100">
@@ -205,6 +234,11 @@ interface PublishedPost {
               <div class="d-flex align-items-center mb-3">
                 <img *ngIf="post.author.photoUrl" [src]="post.author.photoUrl"
                      class="rounded-circle me-2" width="32" height="32" alt="Author">
+                <div class="bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center"
+                     *ngIf="!post.author.photoUrl"
+                     style="width: 32px; height: 32px;">
+                  <i class="fa fa-user text-white"></i>
+                </div>
                 <div class="me-auto">
                   <div class="fw-bold text-light small">{{ post.author.displayName }}</div>
                   <div class="text-muted very-small">{{ formatDate(post.createdAt) }}</div>
@@ -295,13 +329,19 @@ interface PublishedPost {
       <!-- Empty State -->
       <div *ngIf="filteredPosts.length === 0 && !isLoading" class="text-center py-5">
         <i class="fa fa-globe fa-3x text-muted mb-3"></i>
-        <h5 class="text-muted">No Active Predictions Found</h5>
+        <h5 class="text-muted">
+          <span *ngIf="hasActiveFilters()">No predictions match your filters</span>
+          <span *ngIf="!hasActiveFilters()">No Active Predictions Found</span>
+        </h5>
         <p class="text-muted">
           <span *ngIf="hasActiveFilters()">Try adjusting your search filters or</span>
-          Be the first to create and publish a prediction for others to counter-predict!
+          <span *ngIf="!hasActiveFilters()">Be the first to create and publish a prediction for others to counter-predict!</span>
         </p>
-        <button class="btn btn-primary" routerLink="/create-prediction">
+        <button class="btn btn-primary" routerLink="/create-prediction" *ngIf="!hasActiveFilters()">
           <i class="fa fa-plus me-2"></i>Create the First Public Prediction
+        </button>
+        <button class="btn btn-outline-secondary" (click)="clearFilters()" *ngIf="hasActiveFilters()">
+          <i class="fa fa-times me-2"></i>Clear Filters
         </button>
       </div>
 
@@ -458,66 +498,7 @@ export class PublishedPostsComponent implements OnInit {
     this.loadPublishedPosts();
   }
 
-  // FIXED: Robust date parsing function that returns Date | undefined
-  private parseDate(dateValue: any): Date | undefined {
-    if (!dateValue) return undefined;
-
-    try {
-      if (dateValue instanceof Date) {
-        return new Date(dateValue.getTime());
-      }
-
-      if (typeof dateValue === 'string') {
-        let dateString = dateValue.trim();
-
-        // Convert European format to ISO
-        if (dateString.match(/^\d{2}\.\d{2}\.\d{4}\s\d{2}:\d{2}:\d{2}$/)) {
-          const parts = dateString.split(' ');
-          const datePart = parts[0].split('.');
-          const timePart = parts[1];
-          dateString = `${datePart[2]}-${datePart[1]}-${datePart[0]}T${timePart}`;
-        }
-
-        const parsed = new Date(dateString);
-        if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 1900) {
-          return parsed;
-        }
-      }
-
-      if (typeof dateValue === 'number' && dateValue > 0) {
-        const timestamp = dateValue > 1e10 ? dateValue : dateValue * 1000;
-        const parsed = new Date(timestamp);
-        if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 1900) {
-          return parsed;
-        }
-      }
-
-      return undefined;
-    } catch (error) {
-      console.error('Error parsing date:', dateValue, error);
-      return undefined;
-    }
-  }
-
-  // FIXED: Safe date formatting
-  formatDate(date: Date | null | undefined): string {
-    if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-      return 'Invalid Date';
-    }
-
-    try {
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (error) {
-      return 'Date format error';
-    }
-  }
-
+  // MAIN DATA LOADING METHOD
   async loadPublishedPosts(): Promise<void> {
     this.isLoading = true;
     try {
@@ -546,26 +527,40 @@ export class PublishedPostsComponent implements OnInit {
 
       if (response && Array.isArray(response)) {
         // Process the response directly
-        this.publishedPosts = response.map(post => ({
-          id: post.id,
-          title: post.title || 'Untitled',
-          description: post.description || '',
-          predictionType: post.predictionType,
-          createdAt: this.parseDate(post.createdAt) || new Date(),
-          endDate: this.parseDate(post.endDate),
-          author: {
-            id: post.author?.id || 0,
-            displayName: post.author?.displayName || 'Unknown Author',
-            photoUrl: post.author?.photoUrl
-          },
-          categories: post.categories || [],
-          counterPredictionsCount: post.counterPredictionsCount || 0,
-          canCounterPredict: this.determineCanCounterPredict(post),
-          isActive: post.isActive !== false,
-          isDraft: post.isDraft === true,
-          privacyType: post.privacyType || 'Public',
-          notes: post.notes || ''
-        }));
+        this.publishedPosts = response.map(post => {
+          console.log('Processing post:', post); // Debug log
+
+          const processedPost = {
+            id: post.id,
+            title: post.title || 'Untitled',
+            description: post.description || '',
+            predictionType: this.getPredictionTypeDisplayName(post.predictionType),
+            createdAt: this.parseDate(post.createdAt) || new Date(),
+            endDate: this.parseDate(post.endDate),
+            author: {
+              id: post.author?.id || 0,
+              displayName: post.author?.displayName || 'Unknown Author',
+              photoUrl: post.author?.photoUrl
+            },
+            categories: post.categories || [],
+            counterPredictionsCount: post.counterPredictionsCount || 0,
+            canCounterPredict: this.determineCanCounterPredict(post),
+            isActive: post.isActive !== false,
+            isDraft: post.isDraft === true,
+            privacyType: post.privacyType || 'Public',
+            notes: post.notes || ''
+          };
+
+          // Debug log to check date parsing
+          console.log(`Post ${post.id} dates:`, {
+            originalCreatedAt: post.createdAt,
+            parsedCreatedAt: processedPost.createdAt,
+            originalEndDate: post.endDate,
+            parsedEndDate: processedPost.endDate
+          });
+
+          return processedPost;
+        });
 
         console.log('Processed published posts:', this.publishedPosts);
         this.applyFiltersAndSorting();
@@ -613,29 +608,149 @@ export class PublishedPostsComponent implements OnInit {
     }
   }
 
-  // Simplified applyFiltersAndSorting method
+  // HELPER METHODS
+  private getPredictionTypeDisplayName(predictionType: any): string {
+    if (typeof predictionType === 'string') {
+      return predictionType;
+    }
+
+    switch (predictionType) {
+      case 0:
+      case '0':
+        return 'Ranking';
+      case 1:
+      case '1':
+        return 'Bracket';
+      case 2:
+      case '2':
+        return 'Bingo';
+      default:
+        return 'Unknown';
+    }
+  }
+
+  private parseDate(dateValue: any): Date | undefined {
+    if (!dateValue) return undefined;
+
+    try {
+      if (dateValue instanceof Date) {
+        return new Date(dateValue.getTime());
+      }
+
+      if (typeof dateValue === 'string') {
+        let dateString = dateValue.trim();
+
+        if (dateString === '0001-01-01T00:00:00' || dateString.startsWith('0001-01-01')) {
+          return undefined;
+        }
+
+        const parsed = new Date(dateString);
+        if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 1900) {
+          return parsed;
+        }
+      }
+
+      if (typeof dateValue === 'number' && dateValue > 0) {
+        const timestamp = dateValue > 1e10 ? dateValue : dateValue * 1000;
+        const parsed = new Date(timestamp);
+        if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 1900) {
+          return parsed;
+        }
+      }
+
+      return undefined;
+    } catch (error) {
+      console.error('Error parsing date:', dateValue, error);
+      return undefined;
+    }
+  }
+
+  private determineCanCounterPredict(post: any): boolean {
+    const currentUser = this.accountService.currentUser();
+    if (!currentUser) return false;
+    if (post.author.id === currentUser.id) return false;
+    return post.isActive && !post.isDraft;
+  }
+
+  // FILTER AND SEARCH METHODS
+  onSearchChange(): void {
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+    }
+
+    this.searchTimeout = setTimeout(() => {
+      console.log('Search term changed to:', this.searchTerm);
+      this.currentPage = 1;
+      this.applyFiltersAndSorting();
+    }, 300);
+  }
+
+  onFilterChange(): void {
+    console.log('Filter changed - Type:', this.selectedType, 'Sort:', this.sortBy);
+    this.currentPage = 1;
+    this.applyFiltersAndSorting();
+  }
+
+  clearFilters(): void {
+    console.log('Clearing all filters');
+    this.searchTerm = '';
+    this.selectedType = '';
+    this.sortBy = 'newest';
+    this.currentPage = 1;
+    this.applyFiltersAndSorting();
+  }
+
   applyFiltersAndSorting(): void {
+    console.log('=== Applying Filters and Sorting ===');
+    console.log('Original posts count:', this.publishedPosts.length);
+    console.log('Search term:', this.searchTerm);
+    console.log('Selected type:', this.selectedType);
+    console.log('Sort by:', this.sortBy);
+
     let filtered = [...this.publishedPosts];
 
     // Apply search filter
-    if (this.searchTerm) {
-      const searchLower = this.searchTerm.toLowerCase();
-      filtered = filtered.filter(post =>
-        post.title.toLowerCase().includes(searchLower) ||
-        post.description.toLowerCase().includes(searchLower) ||
-        post.author.displayName.toLowerCase().includes(searchLower)
-      );
+    if (this.searchTerm && this.searchTerm.trim() !== '') {
+      const searchLower = this.searchTerm.toLowerCase().trim();
+      console.log('Applying search filter for:', searchLower);
+
+      filtered = filtered.filter(post => {
+        const titleMatch = post.title.toLowerCase().includes(searchLower);
+        const descriptionMatch = post.description.toLowerCase().includes(searchLower);
+        const authorMatch = post.author.displayName.toLowerCase().includes(searchLower);
+
+        const matches = titleMatch || descriptionMatch || authorMatch;
+
+        if (matches) {
+          console.log(`Post "${post.title}" matches search term`);
+        }
+
+        return matches;
+      });
+
+      console.log('After search filter:', filtered.length, 'posts');
     }
 
     // Apply type filter
-    if (this.selectedType) {
-      filtered = filtered.filter(post =>
-        post.predictionType.toString() === this.selectedType ||
-        post.predictionType === this.selectedType
-      );
+    if (this.selectedType && this.selectedType !== '' && this.selectedType !== 'All Types') {
+      console.log('Applying type filter for:', this.selectedType);
+
+      filtered = filtered.filter(post => {
+        const typeMatch = post.predictionType === this.selectedType ||
+                         post.predictionType.toString() === this.selectedType;
+
+        if (typeMatch) {
+          console.log(`Post "${post.title}" matches type filter`);
+        }
+
+        return typeMatch;
+      });
+
+      console.log('After type filter:', filtered.length, 'posts');
     }
 
     // Apply sorting
+    console.log('Applying sort:', this.sortBy);
     switch (this.sortBy) {
       case 'oldest':
         filtered.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
@@ -644,13 +759,17 @@ export class PublishedPostsComponent implements OnInit {
         filtered.sort((a, b) => b.counterPredictionsCount - a.counterPredictionsCount);
         break;
       case 'endingSoon':
-        filtered = filtered.filter(p => p.endDate).sort((a, b) => {
-          if (!a.endDate || !b.endDate) return 0;
-          return a.endDate.getTime() - b.endDate.getTime();
-        });
+        filtered = filtered
+          .filter(p => p.endDate)
+          .sort((a, b) => {
+            if (!a.endDate || !b.endDate) return 0;
+            return a.endDate.getTime() - b.endDate.getTime();
+          });
         break;
-      default: // newest
+      case 'newest':
+      default:
         filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        break;
     }
 
     // Remove duplicates by ID
@@ -658,75 +777,58 @@ export class PublishedPostsComponent implements OnInit {
       index === self.findIndex(p => p.id === post.id)
     );
 
+    // Update pagination
     this.totalPosts = this.filteredPosts.length;
     this.totalPages = Math.ceil(this.totalPosts / this.pageSize);
 
-    console.log(`Applied filters: ${this.publishedPosts.length} total -> ${this.filteredPosts.length} filtered`);
-  }
-  // Apply filters (same as My Predictions)
-  filterPosts(): void {
-    let filtered = [...this.publishedPosts];
-
-    // Apply search filter
-    if (this.searchTerm) {
-      const searchLower = this.searchTerm.toLowerCase();
-      filtered = filtered.filter(post =>
-        post.title.toLowerCase().includes(searchLower) ||
-        post.description.toLowerCase().includes(searchLower) ||
-        post.author.displayName.toLowerCase().includes(searchLower)
-      );
-    }
-  }
-
-  private determineCanCounterPredict(post: any): boolean {
-    const currentUser = this.accountService.currentUser();
-    if (!currentUser) return false;
-
-    // Can't counter-predict your own posts
-    if (post.author.id === currentUser.id) return false;
-
-    // Can't counter-predict if already responded (this would need API support)
-    // For now, assume they can if it's active and not theirs
-    return post.isActive && !post.isDraft;
-  }
-
-  canViewOwnResponse(post: PublishedPost): boolean {
-    const currentUser = this.accountService.currentUser();
-    if (!currentUser) return false;
-
-    // This would need API support to check if user has already responded
-    // For now, return false
-    return false;
-  }
-
-
-
-  onSearchChange(): void {
-    if (this.searchTimeout) {
-      clearTimeout(this.searchTimeout);
+    if (this.currentPage > this.totalPages && this.totalPages > 0) {
+      this.currentPage = this.totalPages;
     }
 
-    this.searchTimeout = setTimeout(() => {
-      this.currentPage = 1;
-      this.applyFiltersAndSorting();
-    }, 500);
+    console.log('=== Filter Results ===');
+    console.log('Filtered posts:', this.filteredPosts.length);
+    console.log('Total pages:', this.totalPages);
+    console.log('Current page:', this.currentPage);
+
+    this.filteredPosts.forEach(post => {
+      console.log(`- ${post.title} (${post.predictionType}) by ${post.author.displayName}`);
+    });
   }
 
-  onFilterChange(): void {
-    this.currentPage = 1;
-    this.applyFiltersAndSorting();
+  hasActiveFilters(): boolean {
+    return !!(
+      (this.searchTerm && this.searchTerm.trim() !== '') ||
+      (this.selectedType && this.selectedType !== '' && this.selectedType !== 'All Types') ||
+      (this.sortBy && this.sortBy !== 'newest')
+    );
   }
 
-  clearFilters(): void {
-    this.searchTerm = '';
-    this.selectedType = '';
-    this.sortBy = 'newest';
-    this.currentPage = 1;
-    this.applyFiltersAndSorting();
+  // STATS METHODS
+  getRankingCount(): number {
+    return this.publishedPosts.filter(p =>
+      p.predictionType === 'Ranking' ||
+      p.predictionType === '0'
+    ).length;
   }
 
+  getBingoCount(): number {
+    return this.publishedPosts.filter(p =>
+      p.predictionType === 'Bingo' ||
+      p.predictionType === '2'
+    ).length;
+  }
+
+  getBracketCount(): number {
+    return this.publishedPosts.filter(p =>
+      p.predictionType === 'Bracket' ||
+      p.predictionType === '1'
+    ).length;
+  }
+
+  // PAGINATION METHODS
   changePage(page: number): void {
-    if (page >= 1 && page <= this.totalPages) {
+    if (page >= 1 && page <= this.totalPages && page !== this.currentPage) {
+      console.log('Changing to page:', page);
       this.currentPage = page;
     }
   }
@@ -743,16 +845,23 @@ export class PublishedPostsComponent implements OnInit {
     return pages;
   }
 
-  hasActiveFilters(): boolean {
-    return !!(this.searchTerm || this.selectedType || this.sortBy !== 'newest');
-  }
+  // DATE METHODS
+  formatDate(date: Date | null | undefined): string {
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+      return 'Invalid Date';
+    }
 
-  getRankingCount(): number {
-    return this.publishedPosts.filter(p => p.predictionType === 'Ranking').length;
-  }
-
-  getBingoCount(): number {
-    return this.publishedPosts.filter(p => p.predictionType === 'Bingo').length;
+    try {
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Date format error';
+    }
   }
 
   getDaysUntilEnd(endDate: Date | undefined): string {
@@ -777,14 +886,13 @@ export class PublishedPostsComponent implements OnInit {
     }
   }
 
+  // NAVIGATION METHODS
   viewPrediction(predictionId: number): void {
     this.router.navigate(['/prediction-details', predictionId]);
   }
 
   counterPredict(predictionId: number): void {
-    // This would navigate to a counter-prediction flow
     this.toastr.info('Counter prediction feature coming soon!');
-    // For now, just view the prediction
     this.viewPrediction(predictionId);
   }
 
@@ -800,6 +908,12 @@ export class PublishedPostsComponent implements OnInit {
     });
   }
 
+  canViewOwnResponse(post: PublishedPost): boolean {
+    const currentUser = this.accountService.currentUser();
+    if (!currentUser) return false;
+    return false; // This would need API support to check if user has already responded
+  }
+
   sharePost(predictionId: number): void {
     const url = `${window.location.origin}/prediction-details/${predictionId}`;
 
@@ -809,107 +923,11 @@ export class PublishedPostsComponent implements OnInit {
         url: url
       }).catch(console.error);
     } else {
-      // Fallback to clipboard
       navigator.clipboard.writeText(url).then(() => {
         this.toastr.success('Link copied to clipboard!');
       }).catch(() => {
         this.toastr.error('Failed to copy link');
       });
     }
-  }
-
-  private getMockPosts(): PublishedPost[] {
-    return [
-      {
-        id: 1,
-        title: "Premier League 2024/25 Final Rankings",
-        description: "Predict the final table for the Premier League season. Who will win the title and who will get relegated?",
-        predictionType: "Ranking",
-        createdAt: new Date('2024-08-15'),
-        endDate: new Date('2025-05-25'),
-        author: {
-          id: 2,
-          displayName: "Football Expert",
-          photoUrl: undefined
-        },
-        categories: [
-          { id: 1, name: "Sports" },
-          { id: 2, name: "Football" }
-        ],
-        counterPredictionsCount: 23,
-        canCounterPredict: true,
-        isActive: true,
-        isDraft: false,
-        privacyType: "Public",
-        notes: "Based on summer transfers and pre-season performance"
-      },
-      {
-        id: 3,
-        title: "Oscars 2025 Bingo",
-        description: "Will there be surprise wins? Awkward speeches? Play Oscar bingo and see how many you can get!",
-        predictionType: "Bingo",
-        createdAt: new Date('2024-02-15'),
-        endDate: new Date('2025-03-10'),
-        author: {
-          id: 4,
-          displayName: "Movie Buff",
-          photoUrl: undefined
-        },
-        categories: [
-          { id: 4, name: "Entertainment" },
-          { id: 5, name: "Movies" }
-        ],
-        counterPredictionsCount: 89,
-        canCounterPredict: true,
-        isActive: true,
-        isDraft: false,
-        privacyType: "Public"
-      },
-      {
-        id: 5,
-        title: "Tech Stocks Performance 2025",
-        description: "Rank the top tech stocks by their expected performance this year. Will AI companies continue to dominate?",
-        predictionType: "Ranking",
-        createdAt: new Date('2024-01-10'),
-        endDate: new Date('2025-12-31'),
-        author: {
-          id: 6,
-          displayName: "Stock Analyst",
-          photoUrl: undefined
-        },
-        categories: [
-          { id: 6, name: "Finance" },
-          { id: 7, name: "Technology" }
-        ],
-        counterPredictionsCount: 156,
-        canCounterPredict: true,
-        isActive: true,
-        isDraft: false,
-        privacyType: "Public"
-      },
-      {
-        id: 7,
-        title: "World Cup 2026 Bingo Card",
-        description: "Create your bingo card for the 2026 World Cup! From penalty shootouts to VAR controversies.",
-        predictionType: "Bingo",
-        createdAt: new Date('2024-03-01'),
-        endDate: new Date('2026-07-19'),
-        author: {
-          id: 8,
-          displayName: "Soccer Fan 2026",
-          photoUrl: undefined
-        },
-        categories: [
-          { id: 1, name: "Sports" },
-          { id: 2, name: "Football" },
-          { id: 8, name: "World Cup" }
-        ],
-        counterPredictionsCount: 67,
-        canCounterPredict: true,
-        isActive: true,
-        isDraft: false,
-        privacyType: "Public"
-      }
-    ];
   }
 }
