@@ -405,155 +405,155 @@ public class PostController : BaseAPIController
         }
     }
     [HttpGet("prediction/{predictionId}/with-posts")]
-public async Task<ActionResult<PredictionWithPostsDTO>> GetPredictionWithPosts(int predictionId)
-{
-    try
+    public async Task<ActionResult<PredictionWithPostsDTO>> GetPredictionWithPosts(int predictionId)
     {
-        var userId = User.GetUserId();
-        Console.WriteLine($"Getting prediction {predictionId} with associated posts for user {userId}");
-
-        // Get prediction with all associated posts
-        var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(
-            predictionId,
-            includeUser: true,
-            includePostRanks: true,
-            includePostBingos: true,
-            includePostBrackets: true
-        );
-
-        if (prediction == null)
-        {
-            return NotFound(new { message = "Prediction not found" });
-        }
-
-        var response = new PredictionWithPostsDTO
-        {
-            Id = prediction.Id,
-            Title = prediction.Title,
-            Description = prediction.Description,
-            PredictionType = prediction.PredictionType,
-            CreatedAt = prediction.CreatedAt,
-            EndDate = prediction.EndDate,
-            IsActive = prediction.IsActive,
-            IsDraft = prediction.IsDraft,
-            UserId = prediction.UserId ?? 0,
-            Author = _mapper.Map<MemberDTO>(prediction.User),
-            Categories = new List<CategoryDTO>()
-        };
-
-        // Get categories
         try
         {
-            var categories = await _unitOfWork.CategoryRepository.GetPredictionCategoriesByIdsAsync(predictionId);
-            response.Categories = _mapper.Map<List<CategoryDTO>>(categories);
-        }
-        catch (Exception catEx)
-        {
-            Console.WriteLine($"Error loading categories: {catEx.Message}");
-        }
+            var userId = User.GetUserId();
+            Console.WriteLine($"Getting prediction {predictionId} with associated posts for user {userId}");
 
-        // Get the posts based on prediction type
-        switch (prediction.PredictionType)
-        {
-            case PredictionType.Ranking:
-                var postRanks = prediction.PostRanks.ToList();
-                Console.WriteLine($"Found {postRanks.Count} PostRanks for prediction {predictionId}");
-                
-                response.PostRanks = new List<PostRankDTO>();
-                foreach (var postRank in postRanks)
-                {
-                    try
+            // Get prediction with all associated posts
+            var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(
+                predictionId,
+                includeUser: true,
+                includePostRanks: true,
+                includePostBingos: true,
+                includePostBrackets: true
+            );
+
+            if (prediction == null)
+            {
+                return NotFound(new { message = "Prediction not found" });
+            }
+
+            var response = new PredictionWithPostsDTO
+            {
+                Id = prediction.Id,
+                Title = prediction.Title,
+                Description = prediction.Description,
+                PredictionType = prediction.PredictionType,
+                CreatedAt = prediction.CreatedAt,
+                EndDate = prediction.EndDate,
+                IsActive = prediction.IsActive,
+                IsDraft = prediction.IsDraft,
+                UserId = prediction.UserId ?? 0,
+                Author = _mapper.Map<MemberDTO>(prediction.User),
+                Categories = new List<CategoryDTO>()
+            };
+
+            // Get categories
+            try
+            {
+                var categories = await _unitOfWork.CategoryRepository.GetPredictionCategoriesByIdsAsync(predictionId);
+                response.Categories = _mapper.Map<List<CategoryDTO>>(categories);
+            }
+            catch (Exception catEx)
+            {
+                Console.WriteLine($"Error loading categories: {catEx.Message}");
+            }
+
+            // Get the posts based on prediction type
+            switch (prediction.PredictionType)
+            {
+                case PredictionType.Ranking:
+                    var postRanks = prediction.PostRanks.ToList();
+                    Console.WriteLine($"Found {postRanks.Count} PostRanks for prediction {predictionId}");
+
+                    response.PostRanks = new List<PostRankDTO>();
+                    foreach (var postRank in postRanks)
                     {
-                        var postRankDTO = _mapper.Map<PostRankDTO>(postRank);
-                        
-                        // Ensure we have teams data
-                        if (postRank.RankTable?.Rows != null)
+                        try
                         {
-                            Console.WriteLine($"PostRank {postRank.Id} has {postRank.RankTable.Rows.Count} rows");
-                            foreach (var row in postRank.RankTable.Rows)
+                            var postRankDTO = _mapper.Map<PostRankDTO>(postRank);
+
+                            // Ensure we have teams data
+                            if (postRank.RankTable?.Rows != null)
                             {
-                                if (row.Columns != null)
+                                Console.WriteLine($"PostRank {postRank.Id} has {postRank.RankTable.Rows.Count} rows");
+                                foreach (var row in postRank.RankTable.Rows)
                                 {
-                                    Console.WriteLine($"Row {row.Order} has {row.Columns.Count} columns");
-                                    foreach (var col in row.Columns.Where(c => c.Team != null))
+                                    if (row.Columns != null)
                                     {
-                                        Console.WriteLine($"Column has team: {col.Team.Name}");
+                                        Console.WriteLine($"Row {row.Order} has {row.Columns.Count} columns");
+                                        foreach (var col in row.Columns.Where(c => c.Team != null))
+                                        {
+                                            Console.WriteLine($"Column has team: {col.Team.Name}");
+                                        }
                                     }
                                 }
                             }
+
+                            response.PostRanks.Add(postRankDTO);
                         }
-                        
-                        response.PostRanks.Add(postRankDTO);
-                    }
-                    catch (Exception prEx)
-                    {
-                        Console.WriteLine($"Error mapping PostRank {postRank.Id}: {prEx.Message}");
-                    }
-                }
-                break;
-
-            case PredictionType.Bracket:
-                var postBrackets = prediction.PostBrackets.ToList();
-                Console.WriteLine($"Found {postBrackets.Count} PostBrackets for prediction {predictionId}");
-                
-                response.PostBrackets = new List<PostBracketDTO>();
-                foreach (var postBracket in postBrackets)
-                {
-                    try
-                    {
-                        var postBracketDTO = _mapper.Map<PostBracketDTO>(postBracket);
-                        response.PostBrackets.Add(postBracketDTO);
-                    }
-                    catch (Exception pbEx)
-                    {
-                        Console.WriteLine($"Error mapping PostBracket {postBracket.Id}: {pbEx.Message}");
-                    }
-                }
-                break;
-
-            case PredictionType.Bingo:
-                var postBingos = prediction.PostBingos.ToList();
-                Console.WriteLine($"Found {postBingos.Count} PostBingos for prediction {predictionId}");
-                
-                response.PostBingos = new List<PostBingoDTO>();
-                foreach (var postBingo in postBingos)
-                {
-                    try
-                    {
-                        var postBingoDTO = _mapper.Map<PostBingoDTO>(postBingo);
-                        
-                        // Log bingo cells info
-                        if (postBingo.BingoCells != null)
+                        catch (Exception prEx)
                         {
-                            Console.WriteLine($"PostBingo {postBingo.Id} has {postBingo.BingoCells.Count} cells");
-                            var cellsWithTeams = postBingo.BingoCells.Where(c => c.Team != null).Count();
-                            Console.WriteLine($"Cells with teams: {cellsWithTeams}");
+                            Console.WriteLine($"Error mapping PostRank {postRank.Id}: {prEx.Message}");
                         }
-                        
-                        response.PostBingos.Add(postBingoDTO);
                     }
-                    catch (Exception pbEx)
-                    {
-                        Console.WriteLine($"Error mapping PostBingo {postBingo.Id}: {pbEx.Message}");
-                    }
-                }
-                break;
-        }
+                    break;
 
-        Console.WriteLine($"Returning prediction with posts data");
-        return Ok(response);
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Error getting prediction with posts: {ex.Message}");
-        Console.WriteLine($"Stack trace: {ex.StackTrace}");
-        return StatusCode(500, new
+                case PredictionType.Bracket:
+                    var postBrackets = prediction.PostBrackets.ToList();
+                    Console.WriteLine($"Found {postBrackets.Count} PostBrackets for prediction {predictionId}");
+
+                    response.PostBrackets = new List<PostBracketDTO>();
+                    foreach (var postBracket in postBrackets)
+                    {
+                        try
+                        {
+                            var postBracketDTO = _mapper.Map<PostBracketDTO>(postBracket);
+                            response.PostBrackets.Add(postBracketDTO);
+                        }
+                        catch (Exception pbEx)
+                        {
+                            Console.WriteLine($"Error mapping PostBracket {postBracket.Id}: {pbEx.Message}");
+                        }
+                    }
+                    break;
+
+                case PredictionType.Bingo:
+                    var postBingos = prediction.PostBingos.ToList();
+                    Console.WriteLine($"Found {postBingos.Count} PostBingos for prediction {predictionId}");
+
+                    response.PostBingos = new List<PostBingoDTO>();
+                    foreach (var postBingo in postBingos)
+                    {
+                        try
+                        {
+                            var postBingoDTO = _mapper.Map<PostBingoDTO>(postBingo);
+
+                            // Log bingo cells info
+                            if (postBingo.BingoCells != null)
+                            {
+                                Console.WriteLine($"PostBingo {postBingo.Id} has {postBingo.BingoCells.Count} cells");
+                                var cellsWithTeams = postBingo.BingoCells.Where(c => c.Team != null).Count();
+                                Console.WriteLine($"Cells with teams: {cellsWithTeams}");
+                            }
+
+                            response.PostBingos.Add(postBingoDTO);
+                        }
+                        catch (Exception pbEx)
+                        {
+                            Console.WriteLine($"Error mapping PostBingo {postBingo.Id}: {pbEx.Message}");
+                        }
+                    }
+                    break;
+            }
+
+            Console.WriteLine($"Returning prediction with posts data");
+            return Ok(response);
+        }
+        catch (Exception ex)
         {
-            message = "Error fetching prediction with posts",
-            error = ex.Message
-        });
+            Console.WriteLine($"Error getting prediction with posts: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return StatusCode(500, new
+            {
+                message = "Error fetching prediction with posts",
+                error = ex.Message
+            });
+        }
     }
-}
 
 
 }

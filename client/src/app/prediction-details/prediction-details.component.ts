@@ -11,7 +11,7 @@ interface PredictionDetail {
   id: number;
   title: string;
   description: string;
-  predictionType: string;
+  predictionType: string | number; // FIXED: Allow both string and number
   createdAt: Date;
   endDate?: Date;
   isActive: boolean;
@@ -56,12 +56,26 @@ interface PredictionDetail {
         </div>
         <div class="card-body">
           <div class="row">
-            <div class="col-md-6">
-              <h6 class="text-light">Raw Prediction Data:</h6>
-              <pre class="text-light small">{{ predictionDetail | json }}</pre>
+            <div class="col-md-4">
+              <h6 class="text-light">Type Checks:</h6>
+              <pre class="text-light small">
+PredictionType: {{ predictionDetail.predictionType }}
+isRankingType(): {{ isRankingType() }}
+isBingoType(): {{ isBingoType() }}
+hasOriginalRankingData(): {{ hasOriginalRankingData() }}
+hasOriginalBingoData(): {{ hasOriginalBingoData() }}
+              </pre>
             </div>
-            <div class="col-md-6">
-              <h6 class="text-light">Original Post Data:</h6>
+            <div class="col-md-4">
+              <h6 class="text-light">Post Data Counts:</h6>
+              <pre class="text-light small">
+PostRanks: {{ predictionDetail.postRanks?.length || 0 }}
+PostBingos: {{ predictionDetail.postBingos?.length || 0 }}
+PostBrackets: {{ predictionDetail.postBrackets?.length || 0 }}
+              </pre>
+            </div>
+            <div class="col-md-4">
+              <h6 class="text-light">Original Post:</h6>
               <pre class="text-light small">{{ getOriginalPostData() | json }}</pre>
             </div>
           </div>
@@ -78,6 +92,9 @@ interface PredictionDetail {
               <h4 class="text-light mb-0">
                 <i class="fa fa-list-ol me-2"></i>Original Ranking Prediction
               </h4>
+              <div class="small text-light opacity-75">
+                Total Score: {{ getOriginalRankingData()?.totalScore || 0 }}
+              </div>
             </div>
             <div class="card-body">
               <div class="table-responsive">
@@ -91,19 +108,30 @@ interface PredictionDetail {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr *ngFor="let row of getOriginalRankingRows(); let rowIndex = index">
+                    <tr *ngFor="let row of getOriginalRankingRows(); let rowIndex = index; trackBy: trackByRowId">
                       <td class="fw-bold text-warning">#{{ row.order }}</td>
-                      <td *ngFor="let column of row.columns || []">
+                      <td *ngFor="let column of row.columns || []; trackBy: trackByColumnId">
                         <div *ngIf="column.team" class="d-flex align-items-center">
-                          <img *ngIf="column.team.photoUrl" [src]="column.team.photoUrl"
-                               class="rounded me-2" width="32" height="32" alt="Team">
+                          <img *ngIf="column.team.photoUrl && column.team.photoUrl.trim()"
+                               [src]="column.team.photoUrl"
+                               class="rounded me-2"
+                               width="32" height="32"
+                               alt="Team"
+                               (error)="onImageError($event)">
+                          <div class="bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center"
+                               *ngIf="!column.team.photoUrl || !column.team.photoUrl.trim()"
+                               style="width: 32px; height: 32px; min-width: 32px;">
+                            <i class="fa fa-users text-white small"></i>
+                          </div>
                           <div>
                             <div class="fw-bold text-light">{{ column.team.name }}</div>
-                            <div class="small text-muted">{{ column.team.description || 'No description' }}</div>
+                            <div class="small text-muted" *ngIf="column.team.description && column.team.description.trim()">
+                              {{ column.team.description }}
+                            </div>
                           </div>
                         </div>
-                        <div *ngIf="!column.team" class="text-muted small">
-                          <i class="fa fa-minus"></i> Empty
+                        <div *ngIf="!column.team" class="text-muted small text-center py-2">
+                          <i class="fa fa-minus-circle"></i> Empty Position
                         </div>
                       </td>
                     </tr>
@@ -115,20 +143,39 @@ interface PredictionDetail {
               <div class="mt-3">
                 <div class="row">
                   <div class="col-md-6">
-                    <p class="text-light mb-1">
-                      <strong>Total Rows:</strong> {{ getOriginalRankingData()?.rankTable?.numberOfRows || 0 }}
-                    </p>
-                    <p class="text-light mb-1">
-                      <strong>Total Columns:</strong> {{ getOriginalRankingData()?.rankTable?.numberOfColumns || 0 }}
-                    </p>
+                    <div class="card bg-dark border-dark">
+                      <div class="card-body py-2">
+                        <h6 class="text-light mb-2">Structure Info</h6>
+                        <p class="text-light mb-1 small">
+                          <strong>Rows:</strong> {{ getOriginalRankingData()?.rankTable?.numberOfRows || 0 }}
+                        </p>
+                        <p class="text-light mb-1 small">
+                          <strong>Columns:</strong> {{ getOriginalRankingData()?.rankTable?.numberOfColumns || 0 }}
+                        </p>
+                        <p class="text-light mb-0 small">
+                          <strong>Teams Assigned:</strong> {{ getAssignedTeamsCount() }} / {{ getTotalSlotsCount() }}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                   <div class="col-md-6">
-                    <p class="text-light mb-1">
-                      <strong>Teams Assigned:</strong> {{ getAssignedTeamsCount() }}
-                    </p>
-                    <p class="text-light mb-1">
-                      <strong>Total Score:</strong> {{ getOriginalRankingData()?.totalScore || 0 }}
-                    </p>
+                    <div class="card bg-dark border-dark">
+                      <div class="card-body py-2">
+                        <h6 class="text-light mb-2">Prediction Info</h6>
+                        <p class="text-light mb-1 small">
+                          <strong>Created:</strong> {{ formatDate(getOriginalRankingData()?.createdAt) }}
+                        </p>
+                        <p class="text-light mb-1 small">
+                          <strong>Updated:</strong> {{ formatDate(getOriginalRankingData()?.updatedAt) }}
+                        </p>
+                        <p class="text-light mb-0 small">
+                          <strong>Official Result:</strong>
+                          <span [class]="getOriginalRankingData()?.isOfficialResult ? 'text-success' : 'text-warning'">
+                            {{ getOriginalRankingData()?.isOfficialResult ? 'Yes' : 'No' }}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -142,6 +189,10 @@ interface PredictionDetail {
               <h4 class="text-light mb-0">
                 <i class="fa fa-th me-2"></i>Original Bingo Prediction
               </h4>
+              <div class="small text-light opacity-75">
+                Grid Size: {{ getOriginalBingoData()?.gridSize }}x{{ getOriginalBingoData()?.gridSize }} |
+                Total Score: {{ getOriginalBingoData()?.totalScore || 0 }}
+              </div>
             </div>
             <div class="card-body">
               <div class="bingo-grid"
@@ -149,16 +200,27 @@ interface PredictionDetail {
                    [style.gap]="'8px'"
                    [style.display]="'grid'">
 
-                <div *ngFor="let cell of getOriginalBingoCells(); let cellIndex = index"
+                <div *ngFor="let cell of getOriginalBingoCells(); let cellIndex = index; trackBy: trackByCellIndex"
                      class="bingo-cell p-2 border text-center"
                      [class.has-team]="cell.team"
                      [class.empty-cell]="!cell.team">
 
                   <div *ngIf="cell.team">
-                    <img *ngIf="cell.team.photoUrl" [src]="cell.team.photoUrl"
-                         class="rounded mb-1" width="24" height="24" alt="Team">
+                    <img *ngIf="cell.team.photoUrl && cell.team.photoUrl.trim()"
+                         [src]="cell.team.photoUrl"
+                         class="rounded mb-1"
+                         width="24" height="24"
+                         alt="Team"
+                         (error)="onImageError($event)">
+                    <div class="bg-primary rounded-circle mx-auto mb-1 d-flex align-items-center justify-content-center"
+                         *ngIf="!cell.team.photoUrl || !cell.team.photoUrl.trim()"
+                         style="width: 24px; height: 24px;">
+                      <i class="fa fa-users text-white" style="font-size: 10px;"></i>
+                    </div>
                     <div class="small text-light fw-bold">{{ cell.team.name }}</div>
-                    <div class="very-small text-muted">{{ cell.team.description || '' }}</div>
+                    <div class="very-small text-muted" *ngIf="cell.team.description && cell.team.description.trim()">
+                      {{ cell.team.description }}
+                    </div>
                   </div>
                   <div *ngIf="!cell.team" class="text-muted">
                     <i class="fa fa-square-o fa-lg"></i>
@@ -178,11 +240,14 @@ interface PredictionDetail {
                 This {{ getPredictionTypeDisplayName().toLowerCase() }} prediction doesn't have any original post data yet.
               </p>
               <div class="small text-dark">
-                <strong>Available Data:</strong>
+                <strong>Debug Info:</strong>
                 <ul class="list-unstyled mb-0">
-                  <li *ngIf="predictionDetail.postRanks">PostRanks: {{ predictionDetail.postRanks.length }}</li>
-                  <li *ngIf="predictionDetail.postBrackets">PostBrackets: {{ predictionDetail.postBrackets.length }}</li>
-                  <li *ngIf="predictionDetail.postBingos">PostBingos: {{ predictionDetail.postBingos.length }}</li>
+                  <li>Prediction Type: {{ predictionDetail.predictionType }} ({{ getPredictionTypeDisplayName() }})</li>
+                  <li>Is Ranking: {{ isRankingType() }}</li>
+                  <li>Is Bingo: {{ isBingoType() }}</li>
+                  <li>PostRanks: {{ predictionDetail.postRanks?.length || 0 }}</li>
+                  <li>PostBingos: {{ predictionDetail.postBingos?.length || 0 }}</li>
+                  <li>PostBrackets: {{ predictionDetail.postBrackets?.length || 0 }}</li>
                 </ul>
               </div>
             </div>
@@ -200,6 +265,11 @@ interface PredictionDetail {
               <div class="d-flex align-items-center mb-3" *ngIf="predictionDetail.author">
                 <img *ngIf="predictionDetail.author.photoUrl" [src]="predictionDetail.author.photoUrl"
                      class="rounded-circle me-3" width="48" height="48" alt="Author">
+                <div class="bg-primary rounded-circle me-3 d-flex align-items-center justify-content-center"
+                     *ngIf="!predictionDetail.author.photoUrl"
+                     style="width: 48px; height: 48px;">
+                  <i class="fa fa-user text-white"></i>
+                </div>
                 <div>
                   <div class="fw-bold text-light">{{ predictionDetail.author.displayName || 'Unknown Author' }}</div>
                   <div class="small text-muted">Author</div>
@@ -208,10 +278,10 @@ interface PredictionDetail {
 
               <ul class="list-group list-group-flush">
                 <li class="list-group-item bg-transparent border-secondary text-light">
-                  <strong>Type:</strong> {{ getPredictionTypeDisplayName() }} ({{ predictionDetail.predictionType }})
+                  <strong>Type:</strong> {{ getPredictionTypeDisplayName() }}
                 </li>
                 <li class="list-group-item bg-transparent border-secondary text-light">
-                  <strong>Created:</strong> {{ predictionDetail.createdAt | date:'medium' }}
+                  <strong>Created:</strong> {{ getOriginalRankingData()?.createdAt | date:'medium' }}
                 </li>
                 <li class="list-group-item bg-transparent border-secondary text-light" *ngIf="predictionDetail.endDate">
                   <strong>Ends:</strong> {{ predictionDetail.endDate | date:'medium' }}
@@ -240,7 +310,9 @@ interface PredictionDetail {
             <div class="card-body">
               <div class="d-flex flex-wrap gap-2">
                 <span *ngFor="let category of predictionDetail.categories"
-                      class="badge bg-primary">
+                      class="badge bg-primary"
+                      [style.background-color]="category.colorCode || '#0d6efd'">
+                  <i class="fa" [ngClass]="category.iconName" *ngIf="category.iconName" class="me-1"></i>
                   {{ category.name }}
                 </span>
               </div>
@@ -314,6 +386,10 @@ interface PredictionDetail {
       overflow-y: auto;
       font-size: 0.8rem;
     }
+
+    .list-group-item {
+      padding: 0.5rem 0;
+    }
   `]
 })
 export class PredictionDetailsComponent implements OnInit {
@@ -326,6 +402,11 @@ export class PredictionDetailsComponent implements OnInit {
   predictionDetail: PredictionDetail | null = null;
   isLoading = false;
   showDebugInfo = false;
+
+  // TrackBy functions for performance
+  trackByRowId = (index: number, row: any): any => row.id || index;
+  trackByColumnId = (index: number, column: any): any => column.id || index;
+  trackByCellIndex = (index: number, cell: any): any => `${cell.row}-${cell.column}` || index;
 
   ngOnInit(): void {
     this.route.params.subscribe(params => {
@@ -351,6 +432,14 @@ export class PredictionDetailsComponent implements OnInit {
         console.log('PostRanks:', this.predictionDetail.postRanks);
         console.log('PostBingos:', this.predictionDetail.postBingos);
         console.log('PostBrackets:', this.predictionDetail.postBrackets);
+
+        // FIXED: Log type checking results
+        console.log('Type checks:');
+        console.log('- predictionType:', this.predictionDetail.predictionType);
+        console.log('- isRankingType:', this.isRankingType());
+        console.log('- isBingoType:', this.isBingoType());
+        console.log('- hasOriginalRankingData:', this.hasOriginalRankingData());
+        console.log('- hasOriginalBingoData:', this.hasOriginalBingoData());
       }
     } catch (error) {
       console.error('Error loading prediction details:', error);
@@ -360,23 +449,37 @@ export class PredictionDetailsComponent implements OnInit {
     }
   }
 
-  // Helper methods for ranking data
+  // FIXED: Helper methods for ranking data
   hasOriginalRankingData(): boolean {
-    // Handle both string and numeric prediction types
-    const isRanking = this.predictionDetail?.predictionType === 'Ranking' ||
-                     this.predictionDetail?.predictionType === '0';
+    const isRanking = this.isRankingType();
+    const hasPostRanks = this.predictionDetail?.postRanks && this.predictionDetail.postRanks.length > 0;
+    const originalData = this.getOriginalRankingData();
+    const hasRankTable = originalData?.rankTable?.rows && originalData.rankTable.rows.length > 0;
 
-    return isRanking &&
-           this.predictionDetail?.postRanks &&
-           this.predictionDetail.postRanks.length > 0 &&
-           this.getOriginalRankingData()?.rankTable?.rows &&
-           this.getOriginalRankingData()?.rankTable.rows.length > 0;
+    console.log('hasOriginalRankingData check:', {
+      isRanking,
+      hasPostRanks,
+      originalData: !!originalData,
+      hasRankTable,
+      finalResult: isRanking && hasPostRanks && hasRankTable
+    });
+
+    return isRanking && hasPostRanks && hasRankTable;
   }
 
   getOriginalRankingData(): any {
-    if (!this.predictionDetail?.postRanks) return null;
-    return this.predictionDetail.postRanks.find(pr => pr.userId === this.predictionDetail?.userId) ||
-           this.predictionDetail.postRanks[0]; // Fallback to first post
+    if (!this.predictionDetail?.postRanks || this.predictionDetail.postRanks.length === 0) {
+      return null;
+    }
+
+    // Try to find the post by the prediction author first
+    const originalPost = this.predictionDetail.postRanks.find(pr => pr.userId === this.predictionDetail?.userId);
+    if (originalPost) {
+      return originalPost;
+    }
+
+    // Fallback to the first post
+    return this.predictionDetail.postRanks[0];
   }
 
   getOriginalRankingRows(): any[] {
@@ -400,19 +503,43 @@ export class PredictionDetailsComponent implements OnInit {
     return count;
   }
 
-  // Helper methods for bingo data
+  getTotalSlotsCount(): number {
+    const originalData = this.getOriginalRankingData();
+    if (!originalData?.rankTable) return 0;
+    return (originalData.rankTable.numberOfRows || 0) * (originalData.rankTable.numberOfColumns || 0);
+  }
+
+  // FIXED: Helper methods for bingo data
   hasOriginalBingoData(): boolean {
-    return this.isBingoType() &&
-           this.predictionDetail?.postBingos &&
-           this.predictionDetail.postBingos.length > 0 &&
-           this.getOriginalBingoData()?.bingoCells &&
-           this.getOriginalBingoData()?.bingoCells.length > 0;
+    const isBingo = this.isBingoType();
+    const hasPostBingos = this.predictionDetail?.postBingos && this.predictionDetail.postBingos.length > 0;
+    const originalData = this.getOriginalBingoData();
+    const hasBingoCells = originalData?.bingoCells && originalData.bingoCells.length > 0;
+
+    console.log('hasOriginalBingoData check:', {
+      isBingo,
+      hasPostBingos,
+      originalData: !!originalData,
+      hasBingoCells,
+      finalResult: isBingo && hasPostBingos && hasBingoCells
+    });
+
+    return isBingo && hasPostBingos && hasBingoCells;
   }
 
   getOriginalBingoData(): any {
-    if (!this.predictionDetail?.postBingos) return null;
-    return this.predictionDetail.postBingos.find(pb => pb.userId === this.predictionDetail?.userId) ||
-           this.predictionDetail.postBingos[0]; // Fallback to first post
+    if (!this.predictionDetail?.postBingos || this.predictionDetail.postBingos.length === 0) {
+      return null;
+    }
+
+    // Try to find the post by the prediction author first
+    const originalPost = this.predictionDetail.postBingos.find(pb => pb.userId === this.predictionDetail?.userId);
+    if (originalPost) {
+      return originalPost;
+    }
+
+    // Fallback to the first post
+    return this.predictionDetail.postBingos[0];
   }
 
   getOriginalBingoCells(): any[] {
@@ -425,27 +552,27 @@ export class PredictionDetailsComponent implements OnInit {
     return this.hasOriginalRankingData() || this.hasOriginalBingoData();
   }
 
-  // Add type checking helper methods
+  // FIXED: Type checking helper methods - Handle both string and numeric types
   isRankingType(): boolean {
-    return this.predictionDetail?.predictionType === 'Ranking' ||
-           this.predictionDetail?.predictionType === '0';
+    const type = this.predictionDetail?.predictionType;
+    return type === 'Ranking' || type === 0 || type === '0';
   }
 
   isBingoType(): boolean {
-    return this.predictionDetail?.predictionType === 'Bingo' ||
-           this.predictionDetail?.predictionType === '2';
+    const type = this.predictionDetail?.predictionType;
+    return type === 'Bingo' || type === 2 || type === '2';
   }
 
   isBracketType(): boolean {
-    return this.predictionDetail?.predictionType === 'Bracket' ||
-           this.predictionDetail?.predictionType === '1';
+    const type = this.predictionDetail?.predictionType;
+    return type === 'Bracket' || type === 1 || type === '1';
   }
 
   getPredictionTypeDisplayName(): string {
     if (this.isRankingType()) return 'Ranking';
     if (this.isBracketType()) return 'Bracket';
     if (this.isBingoType()) return 'Bingo';
-    return 'Unknown';
+    return `Unknown (${this.predictionDetail?.predictionType})`;
   }
 
   getOriginalPostData(): any {
@@ -455,6 +582,31 @@ export class PredictionDetailsComponent implements OnInit {
       return this.getOriginalBingoData();
     }
     return null;
+  }
+
+  // Format date helper - handles invalid dates
+  formatDate(dateString: string): string {
+    if (!dateString || dateString === '0001-01-01T00:00:00' || dateString.startsWith('0001-01-01')) {
+      return 'Not available';
+    }
+
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'Invalid date';
+      }
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    } catch {
+      return 'Invalid date';
+    }
+  }
+
+  // Handle image load errors
+  onImageError(event: Event): void {
+    const target = event.target as HTMLImageElement;
+    if (target) {
+      target.style.display = 'none';
+    }
   }
 
   goBack(): void {
