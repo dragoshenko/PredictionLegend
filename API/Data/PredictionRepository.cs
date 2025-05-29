@@ -43,48 +43,97 @@ public class PredictionRepository : IPredictionRepository
     }
 
     public async Task<Prediction?> GetPredictionByIdAsync(int id, bool includeUser = false, bool includePostRanks = false, bool includePostBingos = false, bool includePostBrackets = false)
-{
-    var query = _context.Predictions.AsQueryable();
-    
-    if (includeUser)
     {
-        query = query.Include(p => p.User);
+        var query = _context.Predictions.AsQueryable();
+
+        if (includeUser)
+        {
+            query = query.Include(p => p.User)
+                .ThenInclude(u => u.Photo);
+        }
+
+        if (includePostRanks)
+        {
+            query = query
+                .Include(p => p.PostRanks)
+                    .ThenInclude(pr => pr.User)
+                        .ThenInclude(u => u.Photo)
+                .Include(p => p.PostRanks)
+                    .ThenInclude(pr => pr.RankTable)
+                        .ThenInclude(rt => rt.Rows)
+                            .ThenInclude(r => r.Columns)
+                                .ThenInclude(c => c.Team)
+                .Include(p => p.PostRanks)
+                    .ThenInclude(pr => pr.Teams); // Include the teams collection on PostRank
+        }
+
+        if (includePostBingos)
+        {
+            query = query
+                .Include(p => p.PostBingos)
+                    .ThenInclude(pb => pb.User)
+                        .ThenInclude(u => u.Photo)
+                .Include(p => p.PostBingos)
+                    .ThenInclude(pb => pb.BingoCells)
+                        .ThenInclude(bc => bc.Team)
+                .Include(p => p.PostBingos)
+                    .ThenInclude(pb => pb.Teams); // Include the teams collection on PostBingo
+        }
+
+        if (includePostBrackets)
+        {
+            query = query
+                .Include(p => p.PostBrackets)
+                    .ThenInclude(pb => pb.User)
+                        .ThenInclude(u => u.Photo)
+                .Include(p => p.PostBrackets)
+                    .ThenInclude(pb => pb.RootBracket)
+                        .ThenInclude(rb => rb.Brackets)
+                            .ThenInclude(b => b.LeftTeam)
+                .Include(p => p.PostBrackets)
+                    .ThenInclude(pb => pb.RootBracket)
+                        .ThenInclude(rb => rb.Brackets)
+                            .ThenInclude(b => b.RightTeam)
+                .Include(p => p.PostBrackets)
+                    .ThenInclude(pb => pb.Teams); // Include the teams collection on PostBracket
+        }
+
+        var result = await query.FirstOrDefaultAsync(p => p.Id == id);
+
+        // Log what we found for debugging
+        if (result != null)
+        {
+            Console.WriteLine($"Loaded prediction {id}:");
+            Console.WriteLine($"  - Title: {result.Title}");
+            Console.WriteLine($"  - Type: {result.PredictionType}");
+            Console.WriteLine($"  - PostRanks count: {result.PostRanks?.Count ?? 0}");
+            Console.WriteLine($"  - PostBrackets count: {result.PostBrackets?.Count ?? 0}");
+            Console.WriteLine($"  - PostBingos count: {result.PostBingos?.Count ?? 0}");
+
+            // Log detailed info for each post type
+            foreach (var pr in result.PostRanks ?? new List<PostRank>())
+            {
+                Console.WriteLine($"  - PostRank {pr.Id}: User {pr.UserId}, Rows: {pr.RankTable?.Rows?.Count ?? 0}");
+                if (pr.RankTable?.Rows != null)
+                {
+                    foreach (var row in pr.RankTable.Rows)
+                    {
+                        var teamsInRow = row.Columns?.Where(c => c.Team != null).Count() ?? 0;
+                        Console.WriteLine($"    - Row {row.Order}: {teamsInRow} teams assigned");
+                    }
+                }
+            }
+
+            foreach (var pb in result.PostBingos ?? new List<PostBingo>())
+            {
+                Console.WriteLine($"  - PostBingo {pb.Id}: User {pb.UserId}, Cells: {pb.BingoCells?.Count ?? 0}");
+                var cellsWithTeams = pb.BingoCells?.Where(c => c.Team != null).Count() ?? 0;
+                Console.WriteLine($"    - Cells with teams: {cellsWithTeams}");
+            }
+        }
+
+        return result;
     }
-    
-    if (includePostRanks)
-    {
-        query = query.Include(p => p.PostRanks)
-            .ThenInclude(pr => pr.User) // Include user who made the post
-            .ThenInclude(u => u.Photo) // Include user photo
-            .Include(p => p.PostRanks)
-            .ThenInclude(pr => pr.RankTable)
-            .ThenInclude(rt => rt.Rows)
-            .ThenInclude(r => r.Columns)
-            .ThenInclude(c => c.Team);
-    }
-    
-    if (includePostBingos)
-    {
-        query = query.Include(p => p.PostBingos)
-            .ThenInclude(pb => pb.User) // Include user who made the post
-            .ThenInclude(u => u.Photo) // Include user photo
-            .Include(p => p.PostBingos)
-            .ThenInclude(pb => pb.BingoCells)
-            .ThenInclude(bc => bc.Team);
-    }
-    
-    if (includePostBrackets)
-    {
-        query = query.Include(p => p.PostBrackets)
-            .ThenInclude(pb => pb.User) // Include user who made the post
-            .ThenInclude(u => u.Photo) // Include user photo
-            .Include(p => p.PostBrackets)
-            .ThenInclude(pb => pb.RootBracket)
-            .ThenInclude(rb => rb.Brackets);
-    }
-    
-    return await query.FirstOrDefaultAsync(p => p.Id == id);
-}
 
     public Task<IEnumerable<PredictionDTO>> GetPredictionsByCategoryAsync(int categoryId, PaginationParams paginationParams)
     {
@@ -197,4 +246,40 @@ public class PredictionRepository : IPredictionRepository
         }
         return query.Where(p => p.UserId == userId).ToListAsync();
     }
+    public async Task<Prediction?> GetPredictionWithAllPostDataAsync(int id)
+{
+    return await _context.Predictions
+        .Include(p => p.User)
+            .ThenInclude(u => u.Photo)
+        // PostRanks with full hierarchy
+        .Include(p => p.PostRanks)
+            .ThenInclude(pr => pr.User)
+                .ThenInclude(u => u.Photo)
+        .Include(p => p.PostRanks)
+            .ThenInclude(pr => pr.RankTable)
+                .ThenInclude(rt => rt.Rows)
+                    .ThenInclude(r => r.Columns)
+                        .ThenInclude(c => c.Team)
+        .Include(p => p.PostRanks)
+            .ThenInclude(pr => pr.Teams)
+        // PostBingos with full hierarchy
+        .Include(p => p.PostBingos)
+            .ThenInclude(pb => pb.User)
+                .ThenInclude(u => u.Photo)
+        .Include(p => p.PostBingos)
+            .ThenInclude(pb => pb.BingoCells)
+                .ThenInclude(bc => bc.Team)
+        .Include(p => p.PostBingos)
+            .ThenInclude(pb => pb.Teams)
+        // PostBrackets with full hierarchy
+        .Include(p => p.PostBrackets)
+            .ThenInclude(pb => pb.User)
+                .ThenInclude(u => u.Photo)
+        .Include(p => p.PostBrackets)
+            .ThenInclude(pb => pb.RootBracket)
+                .ThenInclude(rb => rb.Brackets)
+        .Include(p => p.PostBrackets)
+            .ThenInclude(pb => pb.Teams)
+        .FirstOrDefaultAsync(p => p.Id == id);
+}
 }

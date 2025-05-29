@@ -548,21 +548,187 @@ export class MyPredictionsComponent implements OnInit {
     console.log('Filtered posts:', this.filteredPosts);
   }
 
-  viewPrediction(predictionId: number): void {
-    // Check if we have a prediction details component, if not, create a simple view
-    if (this.doesRouteExist('/prediction-details')) {
+  async viewPrediction(predictionId: number): Promise<void> {
+    try {
+      console.log('Viewing prediction:', predictionId);
+
+      // Navigate directly to prediction details - let that component handle data loading
       this.router.navigate(['/prediction-details', predictionId]);
-    } else {
-      // Navigate to a simple post view or create-prediction with view mode
-      this.router.navigate(['/post-view', predictionId]);
+
+      // Alternative: Load data first, then navigate with state
+      /*
+      const detailedPrediction = await this.http.get<any>(
+        `${environment.apiUrl}post/prediction/${predictionId}/with-posts`
+      ).toPromise();
+
+      console.log('Loaded prediction data for navigation:', detailedPrediction);
+
+      if (detailedPrediction) {
+        this.router.navigate(['/prediction-details', predictionId], {
+          state: {
+            predictionData: detailedPrediction,
+            hasDetailedData: true
+          }
+        });
+      } else {
+        this.router.navigate(['/prediction-details', predictionId]);
+      }
+      */
+    } catch (error) {
+      console.error('Error viewing prediction:', error);
+      this.toastr.error('Failed to load prediction');
     }
   }
 
-  editPrediction(predictionId: number): void {
-    // Navigate back to the creation flow for editing
-    this.router.navigate(['/create-prediction'], {
-      queryParams: { edit: predictionId }
-    });
+  // Add a debug method to test your API directly
+  async debugLoadPrediction(predictionId: number): Promise<void> {
+    try {
+      console.log('=== DEBUG: Loading prediction data ===');
+
+      const response = await this.http.get<any>(
+        `${environment.apiUrl}post/prediction/${predictionId}/with-posts`
+      ).toPromise();
+
+      console.log('=== DEBUG: Raw API Response ===');
+      console.log(response);
+
+      if (response?.postRanks) {
+        console.log('=== DEBUG: PostRanks Data ===');
+        console.log('PostRanks count:', response.postRanks.length);
+        response.postRanks.forEach((postRank: any, index: number) => {
+          console.log(`PostRank ${index}:`, postRank);
+          if (postRank.rankTable) {
+            console.log(`  - RankTable rows: ${postRank.rankTable.rows?.length || 0}`);
+            postRank.rankTable.rows?.forEach((row: any, rowIndex: number) => {
+              console.log(`    Row ${rowIndex} (order ${row.order}): ${row.columns?.length || 0} columns`);
+              row.columns?.forEach((col: any, colIndex: number) => {
+                if (col.team) {
+                  console.log(`      Column ${colIndex}: Team "${col.team.name}"`);
+                } else {
+                  console.log(`      Column ${colIndex}: Empty`);
+                }
+              });
+            });
+          }
+        });
+      }
+
+      if (response?.postBingos) {
+        console.log('=== DEBUG: PostBingos Data ===');
+        console.log('PostBingos count:', response.postBingos.length);
+        response.postBingos.forEach((postBingo: any, index: number) => {
+          console.log(`PostBingo ${index}:`, postBingo);
+          console.log(`  - Grid size: ${postBingo.gridSize}`);
+          console.log(`  - Cells count: ${postBingo.bingoCells?.length || 0}`);
+          const cellsWithTeams = postBingo.bingoCells?.filter((cell: any) => cell.team).length || 0;
+          console.log(`  - Cells with teams: ${cellsWithTeams}`);
+        });
+      }
+
+      this.toastr.success('Check console for detailed debug info');
+    } catch (error) {
+      console.error('=== DEBUG: Error loading prediction ===', error);
+      this.toastr.error('Debug load failed - check console');
+    }
+  }
+
+  // Update your template to include debug button
+  /*
+  Add this button to your my-predictions template for testing:
+
+  <button class="btn btn-sm btn-outline-info" (click)="debugLoadPrediction(post.id)">
+    <i class="fa fa-bug me-1"></i>Debug
+  </button>
+  */
+
+  // Update the editPrediction method to load post data
+  async editPrediction(predictionId: number): Promise<void> {
+    try {
+      console.log('Loading prediction for editing:', predictionId);
+
+      // Load the complete prediction with posts for editing
+      const detailedPrediction = await this.http.get<any>(
+        `${environment.apiUrl}post/prediction/${predictionId}/with-posts`
+      ).toPromise();
+
+      console.log('Prediction data for editing:', detailedPrediction);
+
+      if (detailedPrediction) {
+        // Navigate to edit with existing data
+        this.router.navigate(['/create-prediction'], {
+          queryParams: { edit: predictionId },
+          state: {
+            existingData: detailedPrediction,
+            isEdit: true
+          }
+        });
+      } else {
+        // Fallback to simple edit
+        this.router.navigate(['/create-prediction'], {
+          queryParams: { edit: predictionId }
+        });
+      }
+    } catch (error) {
+      console.error('Error loading prediction for editing:', error);
+      this.toastr.error('Failed to load prediction for editing');
+    }
+  }
+
+  // Add method to view specific post data
+  async viewPostData(predictionId: number, predictionType: string): Promise<void> {
+    try {
+      const detailedPrediction = await this.http.get<any>(
+        `${environment.apiUrl}post/prediction/${predictionId}/with-posts`
+      ).toPromise();
+
+      if (detailedPrediction) {
+        console.log(`${predictionType} post data:`, detailedPrediction);
+
+        // Log specific post data based on type
+        switch (predictionType) {
+          case 'Ranking':
+            console.log('PostRanks:', detailedPrediction.postRanks);
+            if (detailedPrediction.postRanks && detailedPrediction.postRanks.length > 0) {
+              const originalPost = detailedPrediction.postRanks.find(
+                (pr: any) => pr.userId === detailedPrediction.userId
+              );
+              console.log('Original ranking post:', originalPost);
+              if (originalPost?.rankTable?.rows) {
+                console.log('Ranking table rows:', originalPost.rankTable.rows);
+              }
+            }
+            break;
+
+          case 'Bracket':
+            console.log('PostBrackets:', detailedPrediction.postBrackets);
+            break;
+
+          case 'Bingo':
+            console.log('PostBingos:', detailedPrediction.postBingos);
+            if (detailedPrediction.postBingos && detailedPrediction.postBingos.length > 0) {
+              const originalPost = detailedPrediction.postBingos.find(
+                (pb: any) => pb.userId === detailedPrediction.userId
+              );
+              console.log('Original bingo post:', originalPost);
+              if (originalPost?.bingoCells) {
+                console.log('Bingo cells:', originalPost.bingoCells);
+              }
+            }
+            break;
+        }
+
+        // Navigate to a detailed view
+        this.router.navigate(['/post-view', predictionId], {
+          state: {
+            postData: detailedPrediction,
+            postType: predictionType.toLowerCase()
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error loading post data:', error);
+      this.toastr.error('Failed to load post data');
+    }
   }
 
   viewCounterPredictions(predictionId: number): void {
