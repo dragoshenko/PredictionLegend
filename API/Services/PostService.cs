@@ -240,20 +240,109 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<ActionResult<List<PublishedPostDTO>>> GetPublishedPostsAsync(int pageNumber, int pageSize, string? predictionType, string? searchTerm)
+// Replace GetPublishedPostsAsync method in PostService.cs
+// This copies the logic from "My Predictions" but for ALL users
+
+public async Task<ActionResult<List<PublishedPostDTO>>> GetPublishedPostsAsync(int pageNumber, int pageSize, string? predictionType, string? searchTerm)
+{
+    try
     {
-        try
+        Console.WriteLine("=== PUBLISHED POSTS: Getting all public predictions ===");
+
+        // Get ALL predictions from ALL users (not just current user)
+        var allPredictions = await _unitOfWork.PredictionRepository.GetAllPublishedPredictionsAsync(
+            includeUser: true,
+            includePostRanks: true,
+            includePostBingos: true,
+            includePostBrackets: true
+        );
+
+        Console.WriteLine($"Found {allPredictions?.Count ?? 0} total predictions from database");
+
+        var publishedPosts = new List<PublishedPostDTO>();
+
+        if (allPredictions != null && allPredictions.Any())
         {
-            // This would typically be a more complex query joining predictions with their posts
-            // For now, return a placeholder implementation
-            var publishedPosts = new List<PublishedPostDTO>();
-            return new OkObjectResult(publishedPosts);
+            foreach (var prediction in allPredictions)
+            {
+                try
+                {
+                    // Only include predictions that are published (not drafts) and public
+                    if (prediction.IsDraft)
+                    {
+                        Console.WriteLine($"Skipping draft prediction: {prediction.Title} (ID: {prediction.Id})");
+                        continue;
+                    }
+
+                    if (prediction.PrivacyType != PrivacyType.Public)
+                    {
+                        Console.WriteLine($"Skipping non-public prediction: {prediction.Title} (ID: {prediction.Id})");
+                        continue;
+                    }
+
+                    // Get categories
+                    var categories = await _unitOfWork.CategoryRepository.GetPredictionCategoriesByIdsAsync(prediction.Id);
+
+                    var post = new PublishedPostDTO
+                    {
+                        Id = prediction.Id,
+                        Title = prediction.Title ?? "Untitled Prediction",
+                        Description = prediction.Description ?? "",
+                        PredictionType = prediction.PredictionType,
+                        CreatedAt = prediction.CreatedAt,
+                        EndDate = prediction.EndDate,
+                        IsActive = prediction.IsActive,
+                        Author = _mapper.Map<MemberDTO>(prediction.User),
+                        Categories = _mapper.Map<List<CategoryDTO>>(categories),
+                        CounterPredictionsCount = GetCounterPredictionsCount(prediction),
+                        CanCounterPredict = true, // Will be determined on frontend
+                        Notes = prediction.Description ?? ""
+                    };
+
+                    publishedPosts.Add(post);
+                    Console.WriteLine($"Added published post: {post.Title} (ID: {post.Id}) by {post.Author?.DisplayName}");
+                }
+                catch (Exception postEx)
+                {
+                    Console.WriteLine($"Error processing prediction {prediction?.Id}: {postEx.Message}");
+                    continue;
+                }
+            }
         }
-        catch (Exception ex)
+
+        // Apply filters if provided
+        if (!string.IsNullOrEmpty(predictionType))
         {
-            return new BadRequestObjectResult($"Error fetching published posts: {ex.Message}");
+            publishedPosts = publishedPosts.Where(p => p.PredictionType.ToString().Equals(predictionType, StringComparison.OrdinalIgnoreCase)).ToList();
         }
+
+        if (!string.IsNullOrEmpty(searchTerm))
+        {
+            var searchLower = searchTerm.ToLower();
+            publishedPosts = publishedPosts.Where(p => 
+                p.Title.ToLower().Contains(searchLower) ||
+                p.Description.ToLower().Contains(searchLower) ||
+                (p.Author?.DisplayName?.ToLower().Contains(searchLower) ?? false)
+            ).ToList();
+        }
+
+        // Apply pagination
+        var pagedPosts = publishedPosts
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        Console.WriteLine($"Returning {pagedPosts.Count} published posts (filtered from {publishedPosts.Count} total)");
+        return new OkObjectResult(pagedPosts);
     }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in GetPublishedPostsAsync: {ex.Message}");
+        Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        return new BadRequestObjectResult($"Error fetching published posts: {ex.Message}");
+    
+    }
+}
 
     public async Task<ActionResult<List<UserPostSummaryDTO>>> GetUserPostsAsync(int userId)
     {

@@ -70,6 +70,8 @@ export class MyPredictionsComponent implements OnInit {
     return this.userPosts.reduce((sum, p) => sum + p.counterPredictionsCount, 0);
   }
 
+
+
   ngOnInit(): void {
     this.loadUserPosts();
   }

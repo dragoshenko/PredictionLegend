@@ -521,6 +521,8 @@ export class PublishedPostsComponent implements OnInit {
   async loadPublishedPosts(): Promise<void> {
     this.isLoading = true;
     try {
+      console.log('=== Loading Published Posts (Simplified Direct API Call) ===');
+
       const params = new URLSearchParams({
         pageNumber: this.currentPage.toString(),
         pageSize: this.pageSize.toString()
@@ -533,40 +535,146 @@ export class PublishedPostsComponent implements OnInit {
         params.append('predictionType', this.selectedType);
       }
 
-      const response = await this.http.get<PublishedPost[]>(
-        `${environment.apiUrl}post/published?${params.toString()}`
-      ).toPromise();
+      const apiUrl = `${environment.apiUrl}post/published?${params.toString()}`;
+      console.log('Calling API:', apiUrl);
 
-      console.log('Raw published posts response:', response);
+      // Direct API call - don't use fallbacks, just get the real data
+      const response = await this.http.get<PublishedPost[]>(apiUrl).toPromise();
+
+      console.log('Raw API response:', response);
       this.debugRawData = response;
 
-      if (response) {
-        // FIXED: Filter to only show active, non-draft, public posts
-        const filteredResponse = response.filter(post =>
-          post.isActive &&
-          !post.isDraft &&
-          (post.privacyType === 'Public' || post.privacyType === 'public' || !post.privacyType)
-        );
-
-        this.publishedPosts = filteredResponse.map(post => ({
-          ...post,
+      if (response && Array.isArray(response)) {
+        // Process the response directly
+        this.publishedPosts = response.map(post => ({
+          id: post.id,
+          title: post.title || 'Untitled',
+          description: post.description || '',
+          predictionType: post.predictionType,
           createdAt: this.parseDate(post.createdAt) || new Date(),
           endDate: this.parseDate(post.endDate),
-          canCounterPredict: this.determineCanCounterPredict(post)
+          author: {
+            id: post.author?.id || 0,
+            displayName: post.author?.displayName || 'Unknown Author',
+            photoUrl: post.author?.photoUrl
+          },
+          categories: post.categories || [],
+          counterPredictionsCount: post.counterPredictionsCount || 0,
+          canCounterPredict: this.determineCanCounterPredict(post),
+          isActive: post.isActive !== false,
+          isDraft: post.isDraft === true,
+          privacyType: post.privacyType || 'Public',
+          notes: post.notes || ''
         }));
 
         console.log('Processed published posts:', this.publishedPosts);
         this.applyFiltersAndSorting();
+
+        if (this.publishedPosts.length > 0) {
+          this.toastr.success(`Loaded ${this.publishedPosts.length} published predictions`);
+        } else {
+          console.log('API returned empty array');
+          this.toastr.info('No published predictions found');
+        }
+      } else {
+        console.log('API response is not an array:', response);
+        this.publishedPosts = [];
+        this.applyFiltersAndSorting();
+        this.toastr.warning('No published predictions available');
       }
+
     } catch (error) {
       console.error('Error loading published posts:', error);
-      this.toastr.error('Failed to load published predictions');
 
-      // Mock data for development/testing
-      this.publishedPosts = this.getMockPosts();
+      // Log the full error details
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
+
+      // Show specific error message
+      let errorMessage = 'Failed to load published predictions';
+      if (error && typeof error === 'object') {
+        const errorObj = error as any;
+        if (errorObj.status === 0) {
+          errorMessage = 'Cannot connect to server. Is the API running?';
+        } else if (errorObj.status >= 400 && errorObj.status < 500) {
+          errorMessage = `Client error (${errorObj.status}): ${errorObj.message || 'Bad request'}`;
+        } else if (errorObj.status >= 500) {
+          errorMessage = `Server error (${errorObj.status}): ${errorObj.message || 'Internal server error'}`;
+        }
+      }
+
+      this.toastr.error(errorMessage);
+      this.publishedPosts = [];
       this.applyFiltersAndSorting();
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  // Simplified applyFiltersAndSorting method
+  applyFiltersAndSorting(): void {
+    let filtered = [...this.publishedPosts];
+
+    // Apply search filter
+    if (this.searchTerm) {
+      const searchLower = this.searchTerm.toLowerCase();
+      filtered = filtered.filter(post =>
+        post.title.toLowerCase().includes(searchLower) ||
+        post.description.toLowerCase().includes(searchLower) ||
+        post.author.displayName.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Apply type filter
+    if (this.selectedType) {
+      filtered = filtered.filter(post =>
+        post.predictionType.toString() === this.selectedType ||
+        post.predictionType === this.selectedType
+      );
+    }
+
+    // Apply sorting
+    switch (this.sortBy) {
+      case 'oldest':
+        filtered.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+        break;
+      case 'mostResponses':
+        filtered.sort((a, b) => b.counterPredictionsCount - a.counterPredictionsCount);
+        break;
+      case 'endingSoon':
+        filtered = filtered.filter(p => p.endDate).sort((a, b) => {
+          if (!a.endDate || !b.endDate) return 0;
+          return a.endDate.getTime() - b.endDate.getTime();
+        });
+        break;
+      default: // newest
+        filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    }
+
+    // Remove duplicates by ID
+    this.filteredPosts = filtered.filter((post, index, self) =>
+      index === self.findIndex(p => p.id === post.id)
+    );
+
+    this.totalPosts = this.filteredPosts.length;
+    this.totalPages = Math.ceil(this.totalPosts / this.pageSize);
+
+    console.log(`Applied filters: ${this.publishedPosts.length} total -> ${this.filteredPosts.length} filtered`);
+  }
+  // Apply filters (same as My Predictions)
+  filterPosts(): void {
+    let filtered = [...this.publishedPosts];
+
+    // Apply search filter
+    if (this.searchTerm) {
+      const searchLower = this.searchTerm.toLowerCase();
+      filtered = filtered.filter(post =>
+        post.title.toLowerCase().includes(searchLower) ||
+        post.description.toLowerCase().includes(searchLower) ||
+        post.author.displayName.toLowerCase().includes(searchLower)
+      );
     }
   }
 
@@ -591,46 +699,7 @@ export class PublishedPostsComponent implements OnInit {
     return false;
   }
 
-  applyFiltersAndSorting(): void {
-    let filtered = [...this.publishedPosts];
 
-    // Apply search filter
-    if (this.searchTerm) {
-      const searchLower = this.searchTerm.toLowerCase();
-      filtered = filtered.filter(post =>
-        post.title.toLowerCase().includes(searchLower) ||
-        post.description.toLowerCase().includes(searchLower) ||
-        post.author.displayName.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Apply type filter
-    if (this.selectedType) {
-      filtered = filtered.filter(post => post.predictionType === this.selectedType);
-    }
-
-    // Apply sorting
-    switch (this.sortBy) {
-      case 'oldest':
-        filtered.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-        break;
-      case 'mostResponses':
-        filtered.sort((a, b) => b.counterPredictionsCount - a.counterPredictionsCount);
-        break;
-      case 'endingSoon':
-        filtered = filtered.filter(p => p.endDate).sort((a, b) => {
-          if (!a.endDate || !b.endDate) return 0;
-          return a.endDate.getTime() - b.endDate.getTime();
-        });
-        break;
-      default: // newest
-        filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    }
-
-    this.filteredPosts = filtered;
-    this.totalPosts = filtered.length;
-    this.totalPages = Math.ceil(this.totalPosts / this.pageSize);
-  }
 
   onSearchChange(): void {
     if (this.searchTimeout) {

@@ -247,39 +247,130 @@ public class PredictionRepository : IPredictionRepository
         return query.Where(p => p.UserId == userId).ToListAsync();
     }
     public async Task<Prediction?> GetPredictionWithAllPostDataAsync(int id)
+    {
+        return await _context.Predictions
+            .Include(p => p.User)
+                .ThenInclude(u => u.Photo)
+            // PostRanks with full hierarchy
+            .Include(p => p.PostRanks)
+                .ThenInclude(pr => pr.User)
+                    .ThenInclude(u => u.Photo)
+            .Include(p => p.PostRanks)
+                .ThenInclude(pr => pr.RankTable)
+                    .ThenInclude(rt => rt.Rows)
+                        .ThenInclude(r => r.Columns)
+                            .ThenInclude(c => c.Team)
+            .Include(p => p.PostRanks)
+                .ThenInclude(pr => pr.Teams)
+            // PostBingos with full hierarchy
+            .Include(p => p.PostBingos)
+                .ThenInclude(pb => pb.User)
+                    .ThenInclude(u => u.Photo)
+            .Include(p => p.PostBingos)
+                .ThenInclude(pb => pb.BingoCells)
+                    .ThenInclude(bc => bc.Team)
+            .Include(p => p.PostBingos)
+                .ThenInclude(pb => pb.Teams)
+            // PostBrackets with full hierarchy
+            .Include(p => p.PostBrackets)
+                .ThenInclude(pb => pb.User)
+                    .ThenInclude(u => u.Photo)
+            .Include(p => p.PostBrackets)
+                .ThenInclude(pb => pb.RootBracket)
+                    .ThenInclude(rb => rb.Brackets)
+            .Include(p => p.PostBrackets)
+                .ThenInclude(pb => pb.Teams)
+            .FirstOrDefaultAsync(p => p.Id == id);
+    }
+
+    public async Task<List<Prediction>> GetAllPublishedPredictionsAsync(bool includeUser = false, bool includePostRanks = false, bool includePostBingos = false, bool includePostBrackets = false)
 {
-    return await _context.Predictions
-        .Include(p => p.User)
-            .ThenInclude(u => u.Photo)
-        // PostRanks with full hierarchy
-        .Include(p => p.PostRanks)
-            .ThenInclude(pr => pr.User)
-                .ThenInclude(u => u.Photo)
-        .Include(p => p.PostRanks)
-            .ThenInclude(pr => pr.RankTable)
-                .ThenInclude(rt => rt.Rows)
-                    .ThenInclude(r => r.Columns)
-                        .ThenInclude(c => c.Team)
-        .Include(p => p.PostRanks)
-            .ThenInclude(pr => pr.Teams)
-        // PostBingos with full hierarchy
-        .Include(p => p.PostBingos)
-            .ThenInclude(pb => pb.User)
-                .ThenInclude(u => u.Photo)
-        .Include(p => p.PostBingos)
-            .ThenInclude(pb => pb.BingoCells)
-                .ThenInclude(bc => bc.Team)
-        .Include(p => p.PostBingos)
-            .ThenInclude(pb => pb.Teams)
-        // PostBrackets with full hierarchy
-        .Include(p => p.PostBrackets)
-            .ThenInclude(pb => pb.User)
-                .ThenInclude(u => u.Photo)
-        .Include(p => p.PostBrackets)
-            .ThenInclude(pb => pb.RootBracket)
-                .ThenInclude(rb => rb.Brackets)
-        .Include(p => p.PostBrackets)
-            .ThenInclude(pb => pb.Teams)
-        .FirstOrDefaultAsync(p => p.Id == id);
+    try
+    {
+        Console.WriteLine("=== GetAllPublishedPredictionsAsync: Getting ALL users' predictions ===");
+        
+        var query = _context.Predictions.AsQueryable();
+
+        // DON'T filter by draft/active here - let the service decide
+        // We want to get ALL predictions and filter in the service layer
+        
+        if (includeUser)
+        {
+            query = query.Include(p => p.User)
+                .ThenInclude(u => u.Photo);
+        }
+
+        if (includePostRanks)
+        {
+            query = query
+                .Include(p => p.PostRanks)
+                    .ThenInclude(pr => pr.User)
+                        .ThenInclude(u => u.Photo)
+                .Include(p => p.PostRanks)
+                    .ThenInclude(pr => pr.RankTable)
+                        .ThenInclude(rt => rt.Rows)
+                            .ThenInclude(r => r.Columns)
+                                .ThenInclude(c => c.Team)
+                .Include(p => p.PostRanks)
+                    .ThenInclude(pr => pr.Teams);
+        }
+
+        if (includePostBingos)
+        {
+            query = query
+                .Include(p => p.PostBingos)
+                    .ThenInclude(pb => pb.User)
+                        .ThenInclude(u => u.Photo)
+                .Include(p => p.PostBingos)
+                    .ThenInclude(pb => pb.BingoCells)
+                        .ThenInclude(bc => bc.Team)
+                .Include(p => p.PostBingos)
+                    .ThenInclude(pb => pb.Teams);
+        }
+
+        if (includePostBrackets)
+        {
+            query = query
+                .Include(p => p.PostBrackets)
+                    .ThenInclude(pb => pb.User)
+                        .ThenInclude(u => u.Photo)
+                .Include(p => p.PostBrackets)
+                    .ThenInclude(pb => pb.RootBracket)
+                        .ThenInclude(rb => rb.Brackets)
+                            .ThenInclude(b => b.LeftTeam)
+                .Include(p => p.PostBrackets)
+                    .ThenInclude(pb => pb.RootBracket)
+                        .ThenInclude(rb => rb.Brackets)
+                            .ThenInclude(b => b.RightTeam)
+                .Include(p => p.PostBrackets)
+                    .ThenInclude(pb => pb.Teams);
+        }
+
+        var result = await query
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+
+        Console.WriteLine($"GetAllPublishedPredictionsAsync found {result.Count} total predictions from ALL users");
+        
+        foreach (var prediction in result)
+        {
+            Console.WriteLine($"Prediction {prediction.Id}: '{prediction.Title}' by User {prediction.UserId}");
+            Console.WriteLine($"  - IsDraft: {prediction.IsDraft}");
+            Console.WriteLine($"  - IsActive: {prediction.IsActive}");
+            Console.WriteLine($"  - PrivacyType: {prediction.PrivacyType}");
+            Console.WriteLine($"  - PostRanks: {prediction.PostRanks?.Count ?? 0}");
+            Console.WriteLine($"  - PostBingos: {prediction.PostBingos?.Count ?? 0}");
+            Console.WriteLine($"  - PostBrackets: {prediction.PostBrackets?.Count ?? 0}");
+            Console.WriteLine($"  - User: {prediction.User?.DisplayName ?? "Unknown"}");
+        }
+
+        return result;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in GetAllPublishedPredictionsAsync: {ex.Message}");
+        Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        throw;
+    }
 }
 }
