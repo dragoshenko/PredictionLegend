@@ -1,1 +1,255 @@
-<p>my-predictions works!</p>
+<div class="container-fluid mt-4">
+  <!-- Header -->
+  <div class="card bg-primary border-primary mb-4">
+    <div class="card-header bg-primary border-primary">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h2 class="text-light mb-1">
+            <i class="fa fa-user me-2"></i>My Predictions
+          </h2>
+          <p class="text-light mb-0 opacity-75">
+            Manage your predictions and see how others are counter-predicting
+          </p>
+        </div>
+        <button class="btn btn-outline-light" routerLink="/create-prediction">
+          <i class="fa fa-plus me-2"></i>Create New Prediction
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="row mb-4">
+    <div class="col-md-3 mb-3">
+      <div class="card bg-success border-success">
+        <div class="card-body text-center">
+          <i class="fa fa-check-circle fa-2x text-light mb-2"></i>
+          <h4 class="text-light">{{ publishedCount }}</h4>
+          <p class="text-light mb-0">Published</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3">
+      <div class="card bg-warning border-warning">
+        <div class="card-body text-center">
+          <i class="fa fa-edit fa-2x text-dark mb-2"></i>
+          <h4 class="text-dark">{{ draftCount }}</h4>
+          <p class="text-dark mb-0">Drafts</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3">
+      <div class="card bg-info border-info">
+        <div class="card-body text-center">
+          <i class="fa fa-users fa-2x text-light mb-2"></i>
+          <h4 class="text-light">{{ totalCounterPredictions }}</h4>
+          <p class="text-light mb-0">Total Counter Predictions</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3">
+      <div class="card bg-secondary border-secondary">
+        <div class="card-body text-center">
+          <i class="fa fa-clock-o fa-2x text-light mb-2"></i>
+          <h4 class="text-light">{{ activeCount }}</h4>
+          <p class="text-light mb-0">Active</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Tabs -->
+  <div class="card bg-secondary border-secondary mb-4">
+    <div class="card-body">
+      <ul class="nav nav-pills">
+        <li class="nav-item">
+          <button class="nav-link"
+                  [class.active]="activeTab === 'all'"
+                  (click)="setActiveTab('all')">
+            All ({{ userPosts.length }})
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link"
+                  [class.active]="activeTab === 'published'"
+                  (click)="setActiveTab('published')">
+            Published ({{ publishedCount }})
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link"
+                  [class.active]="activeTab === 'drafts'"
+                  (click)="setActiveTab('drafts')">
+            Drafts ({{ draftCount }})
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link"
+                  [class.active]="activeTab === 'active'"
+                  (click)="setActiveTab('active')">
+            Active ({{ activeCount }})
+          </button>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Debug Info -->
+  <div class="card bg-dark border-dark mb-4" *ngIf="showDebugInfo">
+    <div class="card-header bg-dark border-dark">
+      <h6 class="text-light mb-0">
+        <i class="fa fa-bug me-2"></i>Debug Information
+        <button class="btn btn-sm btn-outline-light float-end" (click)="showDebugInfo = false">Hide</button>
+      </h6>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <h6 class="text-light">API Response:</h6>
+          <pre class="text-light small">{{ debugInfo | json }}</pre>
+        </div>
+        <div class="col-md-6">
+          <h6 class="text-light">Processed Posts:</h6>
+          <pre class="text-light small">{{ userPosts | json }}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Predictions List -->
+  <div class="row" *ngIf="filteredPosts.length > 0">
+    <div class="col-lg-6 mb-4" *ngFor="let post of filteredPosts">
+      <div class="card bg-dark border-dark h-100">
+        <div class="card-header bg-dark border-dark">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h6 class="card-title text-light mb-1">{{ post.title }}</h6>
+              <div class="d-flex align-items-center gap-2">
+                <i class="fa"
+                   [ngClass]="{
+                     'fa-list-ol': post.predictionType === 'Ranking',
+                     'fa-sitemap': post.predictionType === 'Bracket',
+                     'fa-th': post.predictionType === 'Bingo'
+                   }" class="text-primary me-1"></i>
+                <span class="badge bg-primary">{{ post.predictionType }}</span>
+                <span class="badge"
+                      [class.bg-success]="!post.isDraft && post.isActive"
+                      [class.bg-warning]="post.isDraft"
+                      [class.bg-secondary]="!post.isDraft && !post.isActive">
+                  {{ post.isDraft ? 'Draft' : (post.isActive ? 'Active' : 'Ended') }}
+                </span>
+              </div>
+            </div>
+            <div class="dropdown">
+              <button class="btn btn-sm btn-outline-light dropdown-toggle"
+                      type="button"
+                      [id]="'dropdown-' + post.id"
+                      data-bs-toggle="dropdown">
+                <i class="fa fa-ellipsis-v"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                  <button class="dropdown-item" (click)="viewPrediction(post.id)">
+                    <i class="fa fa-eye me-2"></i>View Details
+                  </button>
+                </li>
+                <li *ngIf="post.isDraft">
+                  <button class="dropdown-item" (click)="editPrediction(post.id)">
+                    <i class="fa fa-edit me-2"></i>Edit
+                  </button>
+                </li>
+                <li *ngIf="post.isDraft">
+                  <button class="dropdown-item" (click)="publishPrediction(post.id)">
+                    <i class="fa fa-globe me-2"></i>Publish
+                  </button>
+                </li>
+                <li>
+                  <hr class="dropdown-divider">
+                </li>
+                <li>
+                  <button class="dropdown-item text-danger" (click)="deletePrediction(post.id)">
+                    <i class="fa fa-trash me-2"></i>Delete
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="row">
+            <div class="col-8">
+              <div class="small text-muted mb-2">
+                Created: {{ post.createdAt | date:'short' }}
+              </div>
+              <div *ngIf="post.endDate" class="small text-muted mb-2">
+                Ends: {{ post.endDate | date:'short' }}
+              </div>
+              <div *ngIf="post.notes" class="small text-light">
+                <strong>Notes:</strong> {{ post.notes | slice:0:100 }}{{ post.notes.length > 100 ? '...' : '' }}
+              </div>
+            </div>
+            <div class="col-4 text-end">
+              <div class="d-flex flex-column align-items-end">
+                <div class="badge bg-info mb-2">
+                  <i class="fa fa-users me-1"></i>
+                  {{ post.counterPredictionsCount }}
+                </div>
+                <div class="small text-muted">
+                  Counter Predictions
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-footer bg-transparent border-dark">
+          <div class="d-flex justify-content-between align-items-center">
+            <button class="btn btn-outline-primary btn-sm" (click)="viewPrediction(post.id)">
+              <i class="fa fa-eye me-1"></i>
+              {{ post.isDraft ? 'Preview' : 'View' }}
+            </button>
+
+            <div class="btn-group">
+              <button *ngIf="post.isDraft"
+                      class="btn btn-success btn-sm"
+                      (click)="editPrediction(post.id)">
+                <i class="fa fa-edit me-1"></i>Continue Editing
+              </button>
+              <button *ngIf="!post.isDraft && post.counterPredictionsCount > 0"
+                      class="btn btn-info btn-sm"
+                      (click)="viewCounterPredictions(post.id)">
+                <i class="fa fa-users me-1"></i>View Responses
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-3 text-muted">Loading your predictions...</p>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="filteredPosts.length === 0 && !isLoading" class="text-center py-5">
+    <i class="fa fa-lightbulb-o fa-3x text-muted mb-3"></i>
+    <h5 class="text-muted">{{ getEmptyStateTitle() }}</h5>
+    <p class="text-muted">{{ getEmptyStateMessage() }}</p>
+    <button class="btn btn-primary" routerLink="/create-prediction">
+      <i class="fa fa-plus me-2"></i>Create Your First Prediction
+    </button>
+  </div>
+
+  <!-- Debug Toggle Button -->
+  <div class="fixed-bottom p-3" *ngIf="!showDebugInfo">
+    <button class="btn btn-sm btn-outline-secondary" (click)="showDebugInfo = true">
+      <i class="fa fa-bug me-1"></i>Debug
+    </button>
+  </div>
+</div>
