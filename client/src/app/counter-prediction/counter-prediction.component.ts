@@ -1,4 +1,4 @@
-// Enhanced counter-prediction.component.ts with fixed team ordering
+// Enhanced counter-prediction.component.ts with fixed team ordering and null safety
 import { Component, inject, Input, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -735,5 +735,23 @@ export class CounterPredictionComponent implements OnInit {
   getProgressPercentage(): number {
     if (this.selectedTeams.length === 0) return 0;
     return Math.round((this.getAssignedTeams().length / this.selectedTeams.length) * 100);
+  }
+
+  // Safe getter methods for template usage
+  getPostRankRows(): RankRow[] {
+    return this.postRank?.rankTable?.rows || [];
+  }
+
+  getFirstRowColumns(): RankColumn[] {
+    const rows = this.getPostRankRows();
+    return rows.length > 0 ? (rows[0].columns || []) : [];
+  }
+
+  getBingoCells(): BingoCell[] {
+    return this.postBingo?.bingoCells || [];
+  }
+
+  getGridSize(): number {
+    return this.postBingo?.gridSize || 5;
   }
 }
