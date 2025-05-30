@@ -1,4 +1,3 @@
-// client/src/app/counter-prediction/counter-prediction.component.ts
 import { Component, inject, Input, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -79,6 +78,10 @@ export class CounterPredictionComponent implements OnInit {
   postRank: PostRankData | null = null;
   postBingo: PostBingoData | null = null;
 
+  // Team selection state
+  selectedSlot: { rowIndex: number; colIndex: number } | null = null;
+  selectedBingoCell: number | null = null;
+
   isSubmitting = false;
 
   ngOnInit(): void {
@@ -87,6 +90,15 @@ export class CounterPredictionComponent implements OnInit {
 
     if (this.template && this.availableTeams.length > 0) {
       this.initializeCounterPrediction();
+    }
+
+    // Check if we should auto-show the form (from URL params)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('action') === 'counter-predict') {
+      setTimeout(() => {
+        this.showForm.set(true);
+        this.toastr.info('Create your counter prediction below!');
+      }, 500);
     }
   }
 
@@ -101,11 +113,14 @@ export class CounterPredictionComponent implements OnInit {
 
     this.isCheckingEligibility.set(true);
     try {
+      console.log('Checking counter prediction eligibility for prediction:', this.originalPrediction.id);
+
       const canCounterPredict = await this.counterPredictionService
         .canUserCounterPredict(this.originalPrediction.id)
         .toPromise();
 
       this.canCounterPredict.set(canCounterPredict || false);
+      console.log('Can counter predict result:', canCounterPredict);
 
       if (!canCounterPredict) {
         // Check if user already has a counter prediction
@@ -122,7 +137,22 @@ export class CounterPredictionComponent implements OnInit {
       }
     } catch (error) {
       console.error('Error checking counter prediction eligibility:', error);
-      this.canCounterPredict.set(false);
+
+      // If the API call fails, let's try to determine eligibility on the frontend
+      const currentUser = this.accountService.currentUser();
+      if (currentUser && this.originalPrediction) {
+        const canCounterPredict =
+          this.originalPrediction.userId !== currentUser.id && // Not own prediction
+          !this.originalPrediction.isDraft && // Not draft
+          this.originalPrediction.isActive && // Is active
+          this.availableTeams.length > 0; // Has teams
+
+        console.log('Fallback eligibility check:', canCounterPredict);
+        this.canCounterPredict.set(canCounterPredict);
+        this.hasExistingCounterPrediction.set(false);
+      } else {
+        this.canCounterPredict.set(false);
+      }
     } finally {
       this.isCheckingEligibility.set(false);
     }
@@ -138,10 +168,14 @@ export class CounterPredictionComponent implements OnInit {
     switch (this.originalPrediction.predictionType) {
       case 'Ranking':
       case PredictionType.Ranking:
+      case 0:
+      case '0':
         this.initializeCounterRanking();
         break;
       case 'Bingo':
       case PredictionType.Bingo:
+      case 2:
+      case '2':
         this.initializeCounterBingo();
         break;
       default:
@@ -214,55 +248,283 @@ export class CounterPredictionComponent implements OnInit {
     }
   }
 
+  // TEAM SELECTION METHODS
+  openTeamPicker(rowIndex: number, colIndex: number): void {
+    if (!this.postRank?.rankTable?.rows[rowIndex]?.columns[colIndex]) return;
+
+    this.selectedSlot = { rowIndex, colIndex };
+    this.selectedBingoCell = null;
+
+    // If there's already a team in this slot, offer to remove it
+    const currentTeam = this.postRank.rankTable.rows[rowIndex].columns[colIndex].team;
+    if (currentTeam) {
+      if (confirm(`Replace ${currentTeam.name} with a different team?`)) {
+        this.removeTeamFromRanking(rowIndex, colIndex);
+      }
+    }
+
+    console.log('Selected slot for team assignment:', this.selectedSlot);
+  }
+
+  openBingoCellPicker(cellIndex: number): void {
+    if (!this.postBingo?.bingoCells[cellIndex]) return;
+
+    this.selectedBingoCell = cellIndex;
+    this.selectedSlot = null;
+
+    // If there's already a team in this cell, offer to remove it
+    const currentTeam = this.postBingo.bingoCells[cellIndex].team;
+    if (currentTeam) {
+      if (confirm(`Replace ${currentTeam.name} with a different team?`)) {
+        this.removeTeamFromBingo(cellIndex);
+      }
+    }
+
+    console.log('Selected bingo cell for team assignment:', this.selectedBingoCell);
+  }
+
+  assignTeamToSelectedSlot(team: Team): void {
+    if (!this.selectedSlot) {
+      this.toastr.warning('Please select a ranking position first');
+      return;
+    }
+
+    const { rowIndex, colIndex } = this.selectedSlot;
+    this.assignTeamToRanking(rowIndex, colIndex, team);
+    this.selectedSlot = null; // Clear selection after assignment
+  }
+
+  assignTeamToSelectedBingoCell(team: Team): void {
+    if (this.selectedBingoCell === null) {
+      this.toastr.warning('Please select a bingo cell first');
+      return;
+    }
+
+    this.assignTeamToBingo(this.selectedBingoCell, team);
+    this.selectedBingoCell = null; // Clear selection after assignment
+  }
+
   // Team assignment methods
   assignTeamToRanking(rowIndex: number, columnIndex: number, team: Team): void {
     if (!this.postRank?.rankTable?.rows[rowIndex]?.columns[columnIndex]) return;
+
+    // Check if team is already assigned elsewhere
+    const alreadyAssigned = this.isTeamAssignedInRanking(team);
+    if (alreadyAssigned) {
+      this.toastr.warning(`${team.name} is already assigned to another position`);
+      return;
+    }
+
     this.postRank.rankTable.rows[rowIndex].columns[columnIndex].team = team;
+    this.toastr.success(`${team.name} assigned to rank ${rowIndex + 1}`);
   }
 
   assignTeamToBingo(cellIndex: number, team: Team): void {
     if (!this.postBingo?.bingoCells[cellIndex]) return;
+
+    // Check if team is already assigned elsewhere
+    const alreadyAssigned = this.isTeamAssignedInBingo(team);
+    if (alreadyAssigned) {
+      this.toastr.warning(`${team.name} is already assigned to another cell`);
+      return;
+    }
+
     this.postBingo.bingoCells[cellIndex].team = team;
+    this.toastr.success(`${team.name} assigned to bingo cell`);
+  }
+
+  // Helper methods to check if team is already assigned
+  isTeamAssignedInRanking(team: Team): boolean {
+    if (!this.postRank?.rankTable?.rows) return false;
+
+    return this.postRank.rankTable.rows.some(row =>
+      row.columns.some(col => col.team?.id === team.id)
+    );
+  }
+
+  isTeamAssignedInBingo(team: Team): boolean {
+    if (!this.postBingo?.bingoCells) return false;
+
+    return this.postBingo.bingoCells.some(cell => cell.team?.id === team.id);
   }
 
   // Remove team assignments
   removeTeamFromRanking(rowIndex: number, columnIndex: number): void {
     if (this.postRank?.rankTable?.rows[rowIndex]?.columns[columnIndex]) {
+      const teamName = this.postRank.rankTable.rows[rowIndex].columns[columnIndex].team?.name;
       this.postRank.rankTable.rows[rowIndex].columns[columnIndex].team = null;
+      if (teamName) {
+        this.toastr.info(`${teamName} removed from ranking`);
+      }
     }
   }
 
   removeTeamFromBingo(cellIndex: number): void {
     if (this.postBingo?.bingoCells[cellIndex]) {
+      const teamName = this.postBingo.bingoCells[cellIndex].team?.name;
       this.postBingo.bingoCells[cellIndex].team = null;
+      if (teamName) {
+        this.toastr.info(`${teamName} removed from bingo`);
+      }
     }
   }
 
-  // Validation
+  // Get available teams (not assigned to any position)
+  getAvailableTeams(): Team[] {
+    const usedTeamIds = new Set<number>();
+
+    if (this.originalPrediction?.predictionType === 'Ranking' && this.postRank) {
+      this.postRank.rankTable.rows.forEach(row => {
+        row.columns.forEach(col => {
+          if (col.team) {
+            usedTeamIds.add(col.team.id);
+          }
+        });
+      });
+    } else if (this.originalPrediction?.predictionType === 'Bingo' && this.postBingo) {
+      this.postBingo.bingoCells.forEach(cell => {
+        if (cell.team) {
+          usedTeamIds.add(cell.team.id);
+        }
+      });
+    }
+
+    return this.selectedTeams.filter(team => !usedTeamIds.has(team.id));
+  }
+
+  // QUICK ACTION METHODS
+  autoFillRanking(): void {
+    if (!this.postRank) return;
+
+    const availableTeams = this.getAvailableTeams();
+    let teamIndex = 0;
+
+    for (let rowIndex = 0; rowIndex < this.postRank.rankTable.rows.length && teamIndex < availableTeams.length; rowIndex++) {
+      for (let colIndex = 0; colIndex < this.postRank.rankTable.rows[rowIndex].columns.length && teamIndex < availableTeams.length; colIndex++) {
+        const slot = this.postRank.rankTable.rows[rowIndex].columns[colIndex];
+        if (!slot.team) {
+          slot.team = availableTeams[teamIndex++];
+        }
+      }
+    }
+
+    this.toastr.success(`Auto-filled ${teamIndex} positions`);
+  }
+
+  autoFillBingo(): void {
+    if (!this.postBingo) return;
+
+    const availableTeams = this.getAvailableTeams();
+    const emptyCells = this.postBingo.bingoCells.filter(cell => !cell.team);
+
+    // Randomly select cells to fill
+    const cellsToFill = Math.min(availableTeams.length, emptyCells.length);
+    const shuffledCells = [...emptyCells].sort(() => 0.5 - Math.random()).slice(0, cellsToFill);
+
+    shuffledCells.forEach((cell, index) => {
+      if (index < availableTeams.length) {
+        cell.team = availableTeams[index];
+      }
+    });
+
+    this.toastr.success(`Auto-filled ${cellsToFill} bingo squares`);
+  }
+
+  clearAll(): void {
+    if (this.originalPrediction?.predictionType === 'Ranking') {
+      this.clearAllRankings();
+    } else if (this.originalPrediction?.predictionType === 'Bingo') {
+      this.clearAllBingo();
+    }
+  }
+
+  clearAllRankings(): void {
+    if (!this.postRank) return;
+
+    this.postRank.rankTable.rows.forEach(row => {
+      row.columns.forEach(col => {
+        col.team = null;
+      });
+    });
+
+    this.toastr.info('All rankings cleared');
+  }
+
+  clearAllBingo(): void {
+    if (!this.postBingo) return;
+
+    this.postBingo.bingoCells.forEach(cell => {
+      cell.team = null;
+    });
+
+    this.toastr.info('All bingo squares cleared');
+  }
+
+  shuffleTeams(): void {
+    const availableTeams = this.getAvailableTeams();
+    if (availableTeams.length === 0) return;
+
+    if (this.originalPrediction?.predictionType === 'Ranking') {
+      this.shuffleRankingTeams(availableTeams);
+    } else if (this.originalPrediction?.predictionType === 'Bingo') {
+      this.shuffleBingoTeams(availableTeams);
+    }
+  }
+
+  private shuffleRankingTeams(availableTeams: Team[]): void {
+    if (!this.postRank) return;
+
+    // Shuffle the available teams array
+    const shuffled = [...availableTeams].sort(() => Math.random() - 0.5);
+
+    // Clear current assignments
+    this.clearAllRankings();
+
+    // Assign shuffled teams
+    let teamIndex = 0;
+    for (let rowIndex = 0; rowIndex < this.postRank.rankTable.rows.length && teamIndex < shuffled.length; rowIndex++) {
+      for (let colIndex = 0; colIndex < this.postRank.rankTable.rows[rowIndex].columns.length && teamIndex < shuffled.length; colIndex++) {
+        this.postRank.rankTable.rows[rowIndex].columns[colIndex].team = shuffled[teamIndex++];
+      }
+    }
+
+    this.toastr.success('Teams shuffled randomly');
+  }
+
+  private shuffleBingoTeams(availableTeams: Team[]): void {
+    if (!this.postBingo) return;
+
+    // Clear current assignments
+    this.clearAllBingo();
+
+    // Randomly assign teams to cells
+    const shuffledTeams = [...availableTeams].sort(() => Math.random() - 0.5);
+    const emptyCells = this.postBingo.bingoCells.filter(cell => !cell.team);
+    const cellsToFill = Math.min(shuffledTeams.length, emptyCells.length);
+    const shuffledCells = [...emptyCells].sort(() => Math.random() - 0.5).slice(0, cellsToFill);
+
+    shuffledCells.forEach((cell, index) => {
+      if (index < shuffledTeams.length) {
+        cell.team = shuffledTeams[index];
+      }
+    });
+
+    this.toastr.success('Bingo squares shuffled randomly');
+  }
+
+  // VALIDATION
   isValidCounterPrediction(): boolean {
-    switch (this.originalPrediction?.predictionType) {
-      case 'Ranking':
-      case PredictionType.Ranking:
-        return this.isValidRanking();
-      case 'Bingo':
-      case PredictionType.Bingo:
-        return this.isValidBingo();
-      default:
-        return false;
+    if (this.originalPrediction?.predictionType === 'Ranking' && this.postRank) {
+      return this.postRank.rankTable.rows.some(row =>
+        row.columns.some(col => col.team !== null)
+      );
+    } else if (this.originalPrediction?.predictionType === 'Bingo' && this.postBingo) {
+      return this.postBingo.bingoCells.some(cell => cell.team !== null);
     }
+    return false;
   }
 
-  private isValidRanking(): boolean {
-    if (!this.postRank?.rankTable?.rows?.[0]?.columns) return false;
-    return this.postRank.rankTable.rows[0].columns.some((col: RankColumn) => col.team !== null);
-  }
-
-  private isValidBingo(): boolean {
-    if (!this.postBingo?.bingoCells) return false;
-    return this.postBingo.bingoCells.some((cell: BingoCell) => cell.team !== null);
-  }
-
-  // Submit counter prediction
+  // SUBMIT COUNTER PREDICTION
   async submitCounterPrediction(): Promise<void> {
     if (!this.isValidCounterPrediction()) {
       this.toastr.error('Please make at least some predictions to submit');
@@ -316,7 +578,7 @@ export class CounterPredictionComponent implements OnInit {
     }
   }
 
-  // UI helpers
+  // UI HELPERS
   toggleForm(): void {
     this.showForm.update(current => !current);
     if (!this.showForm()) {
@@ -326,53 +588,9 @@ export class CounterPredictionComponent implements OnInit {
 
   resetForm(): void {
     this.counterPredictionForm.reset();
+    this.selectedSlot = null;
+    this.selectedBingoCell = null;
     this.initializeCounterPrediction();
-  }
-
-  getAvailableTeams(): Team[] {
-    const usedTeams = new Set<number>();
-
-    // Collect used teams based on prediction type
-    switch (this.originalPrediction?.predictionType) {
-      case 'Ranking':
-      case PredictionType.Ranking:
-        this.postRank?.rankTable?.rows?.forEach((row: RankRow) => {
-          row.columns?.forEach((col: RankColumn) => {
-            if (col.team) usedTeams.add(col.team.id);
-          });
-        });
-        break;
-      case 'Bingo':
-      case PredictionType.Bingo:
-        this.postBingo?.bingoCells?.forEach((cell: BingoCell) => {
-          if (cell.team) usedTeams.add(cell.team.id);
-        });
-        break;
-    }
-
-    return this.selectedTeams.filter(team => !usedTeams.has(team.id));
-  }
-
-  showTeamAssignmentOptions(position: any): void {
-    const availableTeams = this.getAvailableTeams();
-
-    if (availableTeams.length === 0) {
-      this.toastr.warning('No available teams to assign');
-      return;
-    }
-
-    // For now, assign the first available team
-    const teamToAssign = availableTeams[0];
-
-    if (position?.rowIndex !== undefined && position?.colIndex !== undefined) {
-      // Ranking assignment
-      this.assignTeamToRanking(position.rowIndex, position.colIndex, teamToAssign);
-    } else if (position?.cellIndex !== undefined) {
-      // Bingo assignment
-      this.assignTeamToBingo(position.cellIndex, teamToAssign);
-    }
-
-    this.toastr.success(`${teamToAssign.name} assigned successfully`);
   }
 
   // Helper method to get user's current status
@@ -404,5 +622,13 @@ export class CounterPredictionComponent implements OnInit {
 
   canShowCounterPredictButton(): boolean {
     return this.canCounterPredict() && !this.isCheckingEligibility();
+  }
+
+  // Handle hover effects with proper typing
+  onTeamHover(event: Event, isEntering: boolean): void {
+    const target = event.target as HTMLElement;
+    if (target) {
+      target.style.backgroundColor = isEntering ? '#495057' : 'transparent';
+    }
   }
 }

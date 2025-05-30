@@ -1,4 +1,4 @@
-// prediction-details.component.ts - FIXED VERSION
+// prediction-details.component.ts - ENHANCED WITH COUNTER-PREDICTION
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -6,12 +6,13 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { ToastrService } from 'ngx-toastr';
 import { AccountService } from '../_services/account.service';
+import { CounterPredictionComponent } from '../counter-prediction/counter-prediction.component';
 
 interface PredictionDetail {
   id: number;
   title: string;
   description: string;
-  predictionType: string | number; // FIXED: Allow both string and number
+  predictionType: string | number;
   createdAt: Date;
   endDate?: Date;
   isActive: boolean;
@@ -24,9 +25,19 @@ interface PredictionDetail {
   postBingos?: any[];
 }
 
+interface TeamData {
+  id: number;
+  name: string;
+  description?: string;
+  photoUrl?: string;
+  score?: number;
+  createdByUserId: number;
+  createdAt: Date;
+}
+
 @Component({
   selector: 'app-prediction-details',
-  imports: [CommonModule],
+  imports: [CommonModule, CounterPredictionComponent],
   template: `
     <div class="container-fluid mt-4" *ngIf="predictionDetail">
       <!-- Header -->
@@ -49,6 +60,69 @@ interface PredictionDetail {
         </div>
       </div>
 
+      <!-- Counter Prediction Section -->
+      <div class="mb-4">
+        <!-- Debug info for counter prediction -->
+        <div class="card bg-warning border-warning mb-3" *ngIf="showDebugInfo">
+          <div class="card-body">
+            <h6 class="text-dark mb-2">Counter Prediction Debug</h6>
+            <div class="row">
+              <div class="col-md-6">
+                <ul class="list-unstyled text-dark small mb-0">
+                  <li><strong>Can show counter prediction:</strong> {{ canShowCounterPrediction() }}</li>
+                  <li><strong>Current user ID:</strong> {{ getCurrentUserId() }}</li>
+                  <li><strong>Prediction author ID:</strong> {{ predictionDetail.userId }}</li>
+                  <li><strong>Is draft:</strong> {{ predictionDetail.isDraft }}</li>
+                  <li><strong>Is active:</strong> {{ predictionDetail.isActive }}</li>
+                  <li><strong>Has original post data:</strong> {{ hasOriginalPostData() }}</li>
+                  <li><strong>Available teams count:</strong> {{ getAvailableTeams().length }}</li>
+                  <li><strong>Template data:</strong> {{ getTemplateData() ? 'Available' : 'Missing' }}</li>
+                </ul>
+              </div>
+              <div class="col-md-6">
+                <h6 class="text-dark">Raw Data Structure:</h6>
+                <pre class="text-dark small" style="max-height: 200px; overflow-y: auto;">
+PostRanks: {{ predictionDetail.postRanks?.length || 0 }}
+PostBingos: {{ predictionDetail.postBingos?.length || 0 }}
+First PostRank Structure:
+{{ getDebugRankingStructure() }}
+                </pre>
+              </div>
+            </div>
+            <div class="mt-2">
+              <h6 class="text-dark">Available Teams:</h6>
+              <div class="d-flex flex-wrap gap-1">
+                <span *ngFor="let team of getAvailableTeams()" class="badge bg-primary small">
+                  {{ team.name }}
+                </span>
+                <span *ngIf="getAvailableTeams().length === 0" class="text-danger">
+                  No teams found - this is the problem!
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <app-counter-prediction
+          *ngIf="canShowCounterPrediction()"
+          [originalPrediction]="predictionDetail"
+          [template]="getTemplateData()"
+          [availableTeams]="getAvailableTeams()">
+        </app-counter-prediction>
+
+        <!-- Message when counter prediction is not available -->
+        <div class="card bg-secondary border-secondary" *ngIf="!canShowCounterPrediction() && predictionDetail">
+          <div class="card-body text-center">
+            <i class="fa fa-info-circle fa-2x text-light mb-3"></i>
+            <h5 class="text-light">Counter Prediction Not Available</h5>
+            <p class="text-light mb-2">{{ getCounterPredictionUnavailableReason() }}</p>
+            <button class="btn btn-outline-light btn-sm" (click)="showDebugInfo = true" *ngIf="!showDebugInfo">
+              Show Debug Info
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Debug Info -->
       <div class="card bg-dark border-dark mb-4" *ngIf="showDebugInfo">
         <div class="card-header bg-dark border-dark">
@@ -64,6 +138,7 @@ isRankingType(): {{ isRankingType() }}
 isBingoType(): {{ isBingoType() }}
 hasOriginalRankingData(): {{ hasOriginalRankingData() }}
 hasOriginalBingoData(): {{ hasOriginalBingoData() }}
+Available Teams: {{ getAvailableTeams().length }}
               </pre>
             </div>
             <div class="col-md-4">
@@ -75,8 +150,14 @@ PostBrackets: {{ predictionDetail.postBrackets?.length || 0 }}
               </pre>
             </div>
             <div class="col-md-4">
-              <h6 class="text-light">Original Post:</h6>
-              <pre class="text-light small">{{ getOriginalPostData() | json }}</pre>
+              <h6 class="text-light">Template Data:</h6>
+              <pre class="text-light small">{{ getTemplateData() | json }}</pre>
+            </div>
+          </div>
+          <div class="row mt-3">
+            <div class="col-12">
+              <h6 class="text-light">Available Teams:</h6>
+              <pre class="text-light small">{{ getAvailableTeams() | json }}</pre>
             </div>
           </div>
         </div>
@@ -302,6 +383,40 @@ PostBrackets: {{ predictionDetail.postBrackets?.length || 0 }}
             </div>
           </div>
 
+          <!-- Teams List -->
+          <div class="card bg-dark border-dark mb-3" *ngIf="getAvailableTeams().length > 0">
+            <div class="card-header bg-dark border-dark">
+              <h5 class="text-light mb-0">Available Teams ({{ getAvailableTeams().length }})</h5>
+            </div>
+            <div class="card-body">
+              <div class="list-group list-group-flush">
+                <div *ngFor="let team of getAvailableTeams().slice(0, 5)"
+                     class="list-group-item bg-transparent border-secondary text-light p-2">
+                  <div class="d-flex align-items-center">
+                    <img *ngIf="team.photoUrl && team.photoUrl.trim()"
+                         [src]="team.photoUrl"
+                         class="rounded me-2"
+                         width="24" height="24"
+                         alt="Team">
+                    <div class="bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center"
+                         *ngIf="!team.photoUrl || !team.photoUrl.trim()"
+                         style="width: 24px; height: 24px;">
+                      <i class="fa fa-users text-white" style="font-size: 10px;"></i>
+                    </div>
+                    <div>
+                      <div class="fw-bold small">{{ team.name }}</div>
+                      <div class="very-small text-muted" *ngIf="team.description">{{ team.description }}</div>
+                    </div>
+                  </div>
+                </div>
+                <div *ngIf="getAvailableTeams().length > 5"
+                     class="list-group-item bg-transparent border-secondary text-center">
+                  <small class="text-muted">+{{ getAvailableTeams().length - 5 }} more teams</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Categories -->
           <div class="card bg-dark border-dark" *ngIf="predictionDetail.categories && predictionDetail.categories.length > 0">
             <div class="card-header bg-dark border-dark">
@@ -415,6 +530,16 @@ export class PredictionDetailsComponent implements OnInit {
         this.loadPredictionDetails(predictionId);
       }
     });
+
+    // Check for action parameter to auto-show counter prediction
+    this.route.queryParams.subscribe(params => {
+      if (params['action'] === 'counter-predict') {
+        // Wait for prediction to load, then show counter prediction
+        setTimeout(() => {
+          this.autoShowCounterPrediction();
+        }, 1000);
+      }
+    });
   }
 
   async loadPredictionDetails(predictionId: number): Promise<void> {
@@ -433,13 +558,14 @@ export class PredictionDetailsComponent implements OnInit {
         console.log('PostBingos:', this.predictionDetail.postBingos);
         console.log('PostBrackets:', this.predictionDetail.postBrackets);
 
-        // FIXED: Log type checking results
+        // Log type checking results
         console.log('Type checks:');
         console.log('- predictionType:', this.predictionDetail.predictionType);
         console.log('- isRankingType:', this.isRankingType());
         console.log('- isBingoType:', this.isBingoType());
         console.log('- hasOriginalRankingData:', this.hasOriginalRankingData());
         console.log('- hasOriginalBingoData:', this.hasOriginalBingoData());
+        console.log('- availableTeams:', this.getAvailableTeams().length);
       }
     } catch (error) {
       console.error('Error loading prediction details:', error);
@@ -449,7 +575,163 @@ export class PredictionDetailsComponent implements OnInit {
     }
   }
 
-  // FIXED: Helper methods for ranking data
+  // COUNTER PREDICTION METHODS
+  canShowCounterPrediction(): boolean {
+    const currentUser = this.accountService.currentUser();
+    if (!currentUser || !this.predictionDetail) {
+      console.log('No user or prediction detail');
+      return false;
+    }
+
+    // Don't show for own predictions
+    if (this.predictionDetail.userId === currentUser.id) {
+      console.log('Own prediction - cannot counter predict');
+      return false;
+    }
+
+    // Don't show for draft predictions
+    if (this.predictionDetail.isDraft) {
+      console.log('Draft prediction - cannot counter predict');
+      return false;
+    }
+
+    // Only show for active predictions
+    if (!this.predictionDetail.isActive) {
+      console.log('Inactive prediction - cannot counter predict');
+      return false;
+    }
+
+    // Only show if we have original post data and teams
+    const hasPostData = this.hasOriginalPostData();
+    const availableTeams = this.getAvailableTeams();
+    const hasTeams = availableTeams.length > 0;
+
+    console.log('Counter prediction eligibility check:', {
+      hasPostData,
+      hasTeams,
+      teamsCount: availableTeams.length,
+      canShow: hasPostData && hasTeams
+    });
+
+    return hasPostData && hasTeams;
+  }
+
+  getTemplateData(): any {
+    const originalData = this.getOriginalPostData();
+    if (!originalData) return null;
+
+    if (this.isRankingType()) {
+      const rankingData = this.getOriginalRankingData();
+      return {
+        id: rankingData?.rankingTemplateId || 1,
+        numberOfRows: rankingData?.rankTable?.numberOfRows || 5,
+        numberOfColumns: rankingData?.rankTable?.numberOfColumns || 1,
+        name: 'Ranking Template'
+      };
+    } else if (this.isBingoType()) {
+      const bingoData = this.getOriginalBingoData();
+      return {
+        id: bingoData?.bingoTemplateId || 1,
+        gridSize: bingoData?.gridSize || 5,
+        name: 'Bingo Template'
+      };
+    }
+
+    return null;
+  }
+
+  getAvailableTeams(): TeamData[] {
+    console.log('=== Getting Available Teams ===');
+
+    // For ranking predictions, extract teams from the rank table
+    if (this.isRankingType() && this.hasOriginalRankingData()) {
+      const originalRankingData = this.getOriginalRankingData();
+      console.log('Original ranking data:', originalRankingData);
+
+      const teams: TeamData[] = [];
+      const seenTeamIds = new Set<number>();
+
+      // Extract teams from all rows and columns in the ranking table
+      if (originalRankingData?.rankTable?.rows) {
+        originalRankingData.rankTable.rows.forEach((row: any) => {
+          if (row.columns) {
+            row.columns.forEach((column: any) => {
+              if (column.team && !seenTeamIds.has(column.team.id)) {
+                seenTeamIds.add(column.team.id);
+                teams.push({
+                  id: column.team.id,
+                  name: column.team.name || 'Unnamed Team',
+                  description: column.team.description || '',
+                  photoUrl: column.team.photoUrl || '',
+                  score: column.team.score || 0,
+                  createdByUserId: column.team.createdByUserId || 0,
+                  createdAt: column.team.createdAt ? new Date(column.team.createdAt) : new Date()
+                });
+              }
+            });
+          }
+        });
+      }
+
+      console.log('Teams extracted from ranking table:', teams);
+      return teams;
+    }
+
+    // For bingo predictions, extract teams from bingo cells
+    if (this.isBingoType() && this.hasOriginalBingoData()) {
+      const originalBingoData = this.getOriginalBingoData();
+      console.log('Original bingo data:', originalBingoData);
+
+      const teams: TeamData[] = [];
+      const seenTeamIds = new Set<number>();
+
+      // Extract teams from bingo cells
+      if (originalBingoData?.bingoCells) {
+        originalBingoData.bingoCells.forEach((cell: any) => {
+          if (cell.team && !seenTeamIds.has(cell.team.id)) {
+            seenTeamIds.add(cell.team.id);
+            teams.push({
+              id: cell.team.id,
+              name: cell.team.name || 'Unnamed Team',
+              description: cell.team.description || '',
+              photoUrl: cell.team.photoUrl || '',
+              score: cell.team.score || 0,
+              createdByUserId: cell.team.createdByUserId || 0,
+              createdAt: cell.team.createdAt ? new Date(cell.team.createdAt) : new Date()
+            });
+          }
+        });
+      }
+
+      console.log('Teams extracted from bingo cells:', teams);
+      return teams;
+    }
+
+    // Fallback: Try to get teams from the teams array if it exists
+    const originalPostData = this.getOriginalPostData();
+    if (originalPostData?.teams && Array.isArray(originalPostData.teams)) {
+      const teams = originalPostData.teams.map((team: any) => ({
+        id: team.id,
+        name: team.name || 'Unnamed Team',
+        description: team.description || '',
+        photoUrl: team.photoUrl || '',
+        score: team.score || 0,
+        createdByUserId: team.createdByUserId || 0,
+        createdAt: team.createdAt ? new Date(team.createdAt) : new Date()
+      }));
+
+      console.log('Teams extracted from teams array:', teams);
+      return teams;
+    }
+
+    console.warn('No teams found in prediction data');
+    console.log('Prediction detail:', this.predictionDetail);
+    console.log('Original post data:', this.getOriginalPostData());
+
+    return [];
+  }
+
+  // HELPER METHODS FOR RANKING DATA
   hasOriginalRankingData(): boolean {
     const isRanking = this.isRankingType();
     const hasPostRanks = this.predictionDetail?.postRanks && this.predictionDetail.postRanks.length > 0;
@@ -509,7 +791,7 @@ export class PredictionDetailsComponent implements OnInit {
     return (originalData.rankTable.numberOfRows || 0) * (originalData.rankTable.numberOfColumns || 0);
   }
 
-  // FIXED: Helper methods for bingo data
+  // HELPER METHODS FOR BINGO DATA
   hasOriginalBingoData(): boolean {
     const isBingo = this.isBingoType();
     const hasPostBingos = this.predictionDetail?.postBingos && this.predictionDetail.postBingos.length > 0;
@@ -552,7 +834,7 @@ export class PredictionDetailsComponent implements OnInit {
     return this.hasOriginalRankingData() || this.hasOriginalBingoData();
   }
 
-  // FIXED: Type checking helper methods - Handle both string and numeric types
+  // TYPE CHECKING HELPER METHODS - Handle both string and numeric types
   isRankingType(): boolean {
     const type = this.predictionDetail?.predictionType;
     return type === 'Ranking' || type === 0 || type === '0';
@@ -609,7 +891,84 @@ export class PredictionDetailsComponent implements OnInit {
     }
   }
 
+  // Auto-show counter prediction when coming from "counter predict" button
+  autoShowCounterPrediction(): void {
+    console.log('Auto-showing counter prediction...');
+    console.log('Can show counter prediction:', this.canShowCounterPrediction());
+    console.log('Available teams:', this.getAvailableTeams().length);
+
+    if (this.canShowCounterPrediction()) {
+      // Force the counter prediction component to show its form
+      const counterPredictionElement = document.querySelector('app-counter-prediction');
+      if (counterPredictionElement) {
+        // Scroll to the counter prediction section
+        counterPredictionElement.scrollIntoView({ behavior: 'smooth' });
+        this.toastr.info('Create your counter prediction below!', 'Counter Prediction');
+      }
+    } else {
+      this.toastr.warning('Counter prediction is not available for this post');
+    }
+  }
+
+  getCurrentUserId(): number {
+    return this.accountService.currentUser()?.id || 0;
+  }
+
+  getCounterPredictionUnavailableReason(): string {
+    const currentUser = this.accountService.currentUser();
+
+    if (!currentUser) {
+      return 'You must be logged in to create counter predictions.';
+    }
+
+    if (!this.predictionDetail) {
+      return 'Prediction data is still loading...';
+    }
+
+    if (this.predictionDetail.userId === currentUser.id) {
+      return 'You cannot counter-predict your own prediction.';
+    }
+
+    if (this.predictionDetail.isDraft) {
+      return 'Counter predictions are not available for draft predictions.';
+    }
+
+    if (!this.predictionDetail.isActive) {
+      return 'This prediction is no longer active.';
+    }
+
+    if (!this.hasOriginalPostData()) {
+      return 'This prediction doesn\'t have any post data yet.';
+    }
+
+    if (this.getAvailableTeams().length === 0) {
+      return 'No teams are available for counter prediction.';
+    }
+
+    return 'Counter prediction is not available for this post.';
+  }
+
+  getDebugRankingStructure(): string {
+    const originalData = this.getOriginalRankingData();
+    if (!originalData) return 'No ranking data';
+
+    const structure = {
+      id: originalData.id,
+      userId: originalData.userId,
+      rankTable: {
+        numberOfRows: originalData.rankTable?.numberOfRows,
+        numberOfColumns: originalData.rankTable?.numberOfColumns,
+        rowsCount: originalData.rankTable?.rows?.length,
+        firstRowColumnsCount: originalData.rankTable?.rows?.[0]?.columns?.length,
+        firstColumnTeam: originalData.rankTable?.rows?.[0]?.columns?.[0]?.team?.name || 'No team'
+      },
+      teamsArrayLength: originalData.teams?.length || 0
+    };
+
+    return JSON.stringify(structure, null, 2);
+  }
+
   goBack(): void {
-    this.router.navigate(['/my-predictions']);
+    this.router.navigate(['/published-posts']);
   }
 }
