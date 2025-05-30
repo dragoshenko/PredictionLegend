@@ -1,3 +1,4 @@
+// Enhanced counter-prediction.component.ts with fixed team ordering
 import { Component, inject, Input, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -78,9 +79,13 @@ export class CounterPredictionComponent implements OnInit {
   postRank: PostRankData | null = null;
   postBingo: PostBingoData | null = null;
 
-  // Team selection state
+  // Team selection state - ENHANCED
   selectedSlot: { rowIndex: number; colIndex: number } | null = null;
   selectedBingoCell: number | null = null;
+
+  // UI state for team selection
+  isSelectingTeam = false;
+  showTeamPicker = false;
 
   isSubmitting = false;
 
@@ -159,7 +164,17 @@ export class CounterPredictionComponent implements OnInit {
   }
 
   initializeCounterPrediction(): void {
-    if (!this.originalPrediction || !this.template) return;
+    if (!this.originalPrediction || !this.template) {
+      console.warn('Cannot initialize - missing originalPrediction or template');
+      this.toastr.warning('Missing prediction or template data');
+      return;
+    }
+
+    console.log('Initializing counter prediction:', {
+      predictionType: this.originalPrediction.predictionType,
+      template: this.template,
+      availableTeams: this.availableTeams.length
+    });
 
     // Use the same teams as the original prediction
     this.selectedTeams = [...this.availableTeams];
@@ -180,16 +195,28 @@ export class CounterPredictionComponent implements OnInit {
         break;
       default:
         console.warn('Unsupported prediction type:', this.originalPrediction.predictionType);
+        this.toastr.warning(`Unsupported prediction type: ${this.originalPrediction.predictionType}`);
     }
+
+    console.log('Counter prediction initialized:', {
+      postRank: this.postRank,
+      postBingo: this.postBingo
+    });
   }
 
   initializeCounterRanking(): void {
-    const numberOfRows = this.template.numberOfRows || 5;
-    const numberOfColumns = this.template.numberOfColumns || 1;
+    const numberOfRows = this.template?.numberOfRows || 5;
+    const numberOfColumns = this.template?.numberOfColumns || 1;
+
+    console.log('Initializing counter ranking:', {
+      numberOfRows,
+      numberOfColumns,
+      templateId: this.template?.id
+    });
 
     this.postRank = {
-      rankingTemplateId: this.template.id,
-      predictionId: this.originalPrediction.id,
+      rankingTemplateId: this.template?.id || 0,
+      predictionId: this.originalPrediction?.id || 0,
       rankTable: {
         numberOfRows,
         numberOfColumns,
@@ -219,6 +246,9 @@ export class CounterPredictionComponent implements OnInit {
 
       this.postRank.rankTable.rows.push(row);
     }
+
+    console.log('Counter ranking initialized:', this.postRank);
+    this.toastr.success(`Initialized ${numberOfRows}x${numberOfColumns} ranking table`);
   }
 
   initializeCounterBingo(): void {
@@ -248,113 +278,124 @@ export class CounterPredictionComponent implements OnInit {
     }
   }
 
-  // TEAM SELECTION METHODS
+  // ENHANCED TEAM SELECTION METHODS
   openTeamPicker(rowIndex: number, colIndex: number): void {
-    if (!this.postRank?.rankTable?.rows[rowIndex]?.columns[colIndex]) return;
+    if (!this.postRank?.rankTable?.rows[rowIndex]?.columns[colIndex]) {
+      this.toastr.warning('Invalid slot selected');
+      return;
+    }
 
     this.selectedSlot = { rowIndex, colIndex };
     this.selectedBingoCell = null;
-
-    // If there's already a team in this slot, offer to remove it
-    const currentTeam = this.postRank.rankTable.rows[rowIndex].columns[colIndex].team;
-    if (currentTeam) {
-      if (confirm(`Replace ${currentTeam.name} with a different team?`)) {
-        this.removeTeamFromRanking(rowIndex, colIndex);
-      }
-    }
+    this.showTeamPicker = true;
+    this.isSelectingTeam = true;
 
     console.log('Selected slot for team assignment:', this.selectedSlot);
+    this.toastr.info(`Select a team for Rank ${rowIndex + 1}`);
   }
 
   openBingoCellPicker(cellIndex: number): void {
-    if (!this.postBingo?.bingoCells[cellIndex]) return;
+    if (!this.postBingo?.bingoCells[cellIndex]) {
+      this.toastr.warning('Invalid cell selected');
+      return;
+    }
 
     this.selectedBingoCell = cellIndex;
     this.selectedSlot = null;
+    this.showTeamPicker = true;
+    this.isSelectingTeam = true;
 
-    // If there's already a team in this cell, offer to remove it
-    const currentTeam = this.postBingo.bingoCells[cellIndex].team;
-    if (currentTeam) {
-      if (confirm(`Replace ${currentTeam.name} with a different team?`)) {
-        this.removeTeamFromBingo(cellIndex);
+    console.log('Selected bingo cell for team assignment:', this.selectedBingoCell);
+    this.toastr.info('Select a team for this bingo square');
+  }
+
+  // ENHANCED TEAM ASSIGNMENT METHODS
+  selectTeamForSlot(team: Team): void {
+    if (this.selectedSlot) {
+      this.assignTeamToRanking(this.selectedSlot.rowIndex, this.selectedSlot.colIndex, team);
+    } else if (this.selectedBingoCell !== null) {
+      this.assignTeamToBingo(this.selectedBingoCell, team);
+    } else {
+      this.toastr.warning('Please select a position first');
+      return;
+    }
+
+    // Clear selection and hide picker
+    this.clearSelection();
+  }
+
+  assignTeamToRanking(rowIndex: number, columnIndex: number, team: Team): void {
+    if (!this.postRank?.rankTable?.rows[rowIndex]?.columns[columnIndex]) {
+      this.toastr.error('Invalid ranking position');
+      return;
+    }
+
+    // Check if team is already assigned elsewhere
+    const existingPosition = this.findTeamInRanking(team);
+    if (existingPosition) {
+      if (confirm(`${team.name} is already assigned to Rank ${existingPosition.rowIndex + 1}. Move it to Rank ${rowIndex + 1}?`)) {
+        // Remove from old position
+        this.removeTeamFromRanking(existingPosition.rowIndex, existingPosition.columnIndex);
+      } else {
+        return;
       }
     }
 
-    console.log('Selected bingo cell for team assignment:', this.selectedBingoCell);
-  }
-
-  assignTeamToSelectedSlot(team: Team): void {
-    if (!this.selectedSlot) {
-      this.toastr.warning('Please select a ranking position first');
-      return;
-    }
-
-    const { rowIndex, colIndex } = this.selectedSlot;
-    this.assignTeamToRanking(rowIndex, colIndex, team);
-    this.selectedSlot = null; // Clear selection after assignment
-  }
-
-  assignTeamToSelectedBingoCell(team: Team): void {
-    if (this.selectedBingoCell === null) {
-      this.toastr.warning('Please select a bingo cell first');
-      return;
-    }
-
-    this.assignTeamToBingo(this.selectedBingoCell, team);
-    this.selectedBingoCell = null; // Clear selection after assignment
-  }
-
-  // Team assignment methods
-  assignTeamToRanking(rowIndex: number, columnIndex: number, team: Team): void {
-    if (!this.postRank?.rankTable?.rows[rowIndex]?.columns[columnIndex]) return;
-
-    // Check if team is already assigned elsewhere
-    const alreadyAssigned = this.isTeamAssignedInRanking(team);
-    if (alreadyAssigned) {
-      this.toastr.warning(`${team.name} is already assigned to another position`);
-      return;
-    }
-
+    // Assign team to new position
     this.postRank.rankTable.rows[rowIndex].columns[columnIndex].team = team;
-    this.toastr.success(`${team.name} assigned to rank ${rowIndex + 1}`);
+    this.toastr.success(`${team.name} assigned to Rank ${rowIndex + 1}`);
   }
 
   assignTeamToBingo(cellIndex: number, team: Team): void {
-    if (!this.postBingo?.bingoCells[cellIndex]) return;
-
-    // Check if team is already assigned elsewhere
-    const alreadyAssigned = this.isTeamAssignedInBingo(team);
-    if (alreadyAssigned) {
-      this.toastr.warning(`${team.name} is already assigned to another cell`);
+    if (!this.postBingo?.bingoCells[cellIndex]) {
+      this.toastr.error('Invalid bingo cell');
       return;
     }
 
+    // Check if team is already assigned elsewhere
+    const existingCellIndex = this.findTeamInBingo(team);
+    if (existingCellIndex !== -1) {
+      if (confirm(`${team.name} is already assigned to another cell. Move it to this cell?`)) {
+        // Remove from old cell
+        this.removeTeamFromBingo(existingCellIndex);
+      } else {
+        return;
+      }
+    }
+
+    // Assign team to new cell
     this.postBingo.bingoCells[cellIndex].team = team;
     this.toastr.success(`${team.name} assigned to bingo cell`);
   }
 
-  // Helper methods to check if team is already assigned
-  isTeamAssignedInRanking(team: Team): boolean {
-    if (!this.postRank?.rankTable?.rows) return false;
+  // HELPER METHODS TO FIND TEAMS
+  findTeamInRanking(team: Team): { rowIndex: number; columnIndex: number } | null {
+    if (!this.postRank?.rankTable?.rows) return null;
 
-    return this.postRank.rankTable.rows.some(row =>
-      row.columns.some(col => col.team?.id === team.id)
-    );
+    for (let rowIndex = 0; rowIndex < this.postRank.rankTable.rows.length; rowIndex++) {
+      for (let colIndex = 0; colIndex < this.postRank.rankTable.rows[rowIndex].columns.length; colIndex++) {
+        if (this.postRank.rankTable.rows[rowIndex].columns[colIndex].team?.id === team.id) {
+          return { rowIndex, columnIndex: colIndex };
+        }
+      }
+    }
+
+    return null;
   }
 
-  isTeamAssignedInBingo(team: Team): boolean {
-    if (!this.postBingo?.bingoCells) return false;
+  findTeamInBingo(team: Team): number {
+    if (!this.postBingo?.bingoCells) return -1;
 
-    return this.postBingo.bingoCells.some(cell => cell.team?.id === team.id);
+    return this.postBingo.bingoCells.findIndex(cell => cell.team?.id === team.id);
   }
 
-  // Remove team assignments
+  // REMOVE TEAM ASSIGNMENTS
   removeTeamFromRanking(rowIndex: number, columnIndex: number): void {
     if (this.postRank?.rankTable?.rows[rowIndex]?.columns[columnIndex]) {
       const teamName = this.postRank.rankTable.rows[rowIndex].columns[columnIndex].team?.name;
       this.postRank.rankTable.rows[rowIndex].columns[columnIndex].team = null;
       if (teamName) {
-        this.toastr.info(`${teamName} removed from ranking`);
+        this.toastr.info(`${teamName} removed from Rank ${rowIndex + 1}`);
       }
     }
   }
@@ -364,12 +405,20 @@ export class CounterPredictionComponent implements OnInit {
       const teamName = this.postBingo.bingoCells[cellIndex].team?.name;
       this.postBingo.bingoCells[cellIndex].team = null;
       if (teamName) {
-        this.toastr.info(`${teamName} removed from bingo`);
+        this.toastr.info(`${teamName} removed from bingo cell`);
       }
     }
   }
 
-  // Get available teams (not assigned to any position)
+  // CLEAR SELECTION
+  clearSelection(): void {
+    this.selectedSlot = null;
+    this.selectedBingoCell = null;
+    this.showTeamPicker = false;
+    this.isSelectingTeam = false;
+  }
+
+  // GET AVAILABLE TEAMS (not assigned to any position)
   getAvailableTeams(): Team[] {
     const usedTeamIds = new Set<number>();
 
@@ -392,7 +441,30 @@ export class CounterPredictionComponent implements OnInit {
     return this.selectedTeams.filter(team => !usedTeamIds.has(team.id));
   }
 
-  // QUICK ACTION METHODS
+  // GET ASSIGNED TEAMS (for display purposes)
+  getAssignedTeams(): Team[] {
+    const assignedTeamIds = new Set<number>();
+
+    if (this.originalPrediction?.predictionType === 'Ranking' && this.postRank) {
+      this.postRank.rankTable.rows.forEach(row => {
+        row.columns.forEach(col => {
+          if (col.team) {
+            assignedTeamIds.add(col.team.id);
+          }
+        });
+      });
+    } else if (this.originalPrediction?.predictionType === 'Bingo' && this.postBingo) {
+      this.postBingo.bingoCells.forEach(cell => {
+        if (cell.team) {
+          assignedTeamIds.add(cell.team.id);
+        }
+      });
+    }
+
+    return this.selectedTeams.filter(team => assignedTeamIds.has(team.id));
+  }
+
+  // QUICK ACTION METHODS - ENHANCED
   autoFillRanking(): void {
     if (!this.postRank) return;
 
@@ -436,6 +508,7 @@ export class CounterPredictionComponent implements OnInit {
     } else if (this.originalPrediction?.predictionType === 'Bingo') {
       this.clearAllBingo();
     }
+    this.clearSelection();
   }
 
   clearAllRankings(): void {
@@ -514,11 +587,11 @@ export class CounterPredictionComponent implements OnInit {
 
   // VALIDATION
   isValidCounterPrediction(): boolean {
-    if (this.originalPrediction?.predictionType === 'Ranking' && this.postRank) {
+    if (this.originalPrediction?.predictionType === 'Ranking' && this.postRank?.rankTable?.rows) {
       return this.postRank.rankTable.rows.some(row =>
-        row.columns.some(col => col.team !== null)
+        row.columns && row.columns.some(col => col.team !== null)
       );
-    } else if (this.originalPrediction?.predictionType === 'Bingo' && this.postBingo) {
+    } else if (this.originalPrediction?.predictionType === 'Bingo' && this.postBingo?.bingoCells) {
       return this.postBingo.bingoCells.some(cell => cell.team !== null);
     }
     return false;
@@ -588,8 +661,7 @@ export class CounterPredictionComponent implements OnInit {
 
   resetForm(): void {
     this.counterPredictionForm.reset();
-    this.selectedSlot = null;
-    this.selectedBingoCell = null;
+    this.clearSelection();
     this.initializeCounterPrediction();
   }
 
@@ -630,5 +702,38 @@ export class CounterPredictionComponent implements OnInit {
     if (target) {
       target.style.backgroundColor = isEntering ? '#495057' : 'transparent';
     }
+  }
+
+  // Check if a team is currently selected in the UI
+  isTeamSelected(team: Team): boolean {
+    if (this.originalPrediction?.predictionType === 'Ranking' && this.postRank) {
+      return this.findTeamInRanking(team) !== null;
+    } else if (this.originalPrediction?.predictionType === 'Bingo' && this.postBingo) {
+      return this.findTeamInBingo(team) !== -1;
+    }
+    return false;
+  }
+
+  // Get the position where a team is assigned (for display purposes)
+  getTeamPosition(team: Team): string {
+    if (this.originalPrediction?.predictionType === 'Ranking' && this.postRank) {
+      const position = this.findTeamInRanking(team);
+      if (position) {
+        return `Rank ${position.rowIndex + 1}`;
+      }
+    } else if (this.originalPrediction?.predictionType === 'Bingo' && this.postBingo) {
+      const cellIndex = this.findTeamInBingo(team);
+      if (cellIndex !== -1) {
+        const cell = this.postBingo.bingoCells[cellIndex];
+        return `Cell (${cell.row + 1}, ${cell.column + 1})`;
+      }
+    }
+    return '';
+  }
+
+  // Get progress percentage
+  getProgressPercentage(): number {
+    if (this.selectedTeams.length === 0) return 0;
+    return Math.round((this.getAssignedTeams().length / this.selectedTeams.length) * 100);
   }
 }
