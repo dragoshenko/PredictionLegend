@@ -1,5 +1,9 @@
+// client/src/app/app.routes.ts - UPDATED VERSION with Counter Prediction Support
 import { Routes } from '@angular/router';
 import { HomeComponent } from './home/home.component';
+import { CategoriesComponent } from './categories/categories.component';
+import { SitePredictionsComponent } from './site-predictions/site-predictions.component';
+import { TrendingPredictionsComponent } from './trending-predictions/trending-predictions.component';
 import { AuthComponent } from './auth/auth.component';
 import { ProfileComponent } from './profile/profile.component';
 import { AuthGuard } from './_guards/auth.guard';
@@ -23,33 +27,88 @@ import { PublishedPostsComponent } from './published-posts/published-posts.compo
 import { PostViewComponent } from './post-view/post-view.component';
 
 export const routes: Routes = [
+  // Public routes (no authentication required)
   { path: '', component: HomeComponent },
   { path: 'auth', component: AuthComponent },
   { path: 'verify-email', component: VerificationComponent },
   { path: 'forgot-password', component: ForgotPasswordComponent },
   { path: 'reset-password', component: ResetPasswordComponent },
 
-  // Public routes
-  { path: 'published-posts', component: PublishedPostsComponent },
-  { path: 'prediction-details/:id', component: PredictionDetailsComponent },
-  { path: 'post-view/:id', component: PostViewComponent },
+  // Public content routes
+  {
+    path: 'categories',
+    component: CategoriesComponent,
+    data: { title: 'Categories' }
+  },
+  {
+    path: 'site-predictions',
+    component: SitePredictionsComponent,
+    data: { title: 'Site Predictions' }
+  },
+  {
+    path: 'trending-predictions',
+    component: TrendingPredictionsComponent,
+    data: { title: 'Trending Predictions' }
+  },
+  {
+    path: 'published-posts',
+    component: PublishedPostsComponent,
+    data: { title: 'Published Predictions' }
+  },
+
+  // Prediction detail routes (public - anyone can view)
+  {
+    path: 'prediction-details/:id',
+    component: PredictionDetailsComponent,
+    data: { title: 'Prediction Details' }
+  },
+  {
+    path: 'post-view/:id',
+    component: PostViewComponent,
+    data: { title: 'Post View' }
+  },
 
   // Discussion routes (some public, some protected)
-  { path: 'discussions', component: DiscussionListComponent },
-  { path: 'discussions/:id', component: DiscussionPostComponent },
+  {
+    path: 'discussions',
+    component: DiscussionListComponent,
+    data: { title: 'Discussions' }
+  },
+  {
+    path: 'discussions/:id',
+    component: DiscussionPostComponent,
+    data: { title: 'Discussion Post' }
+  },
 
-  // Protected routes
+  // Protected routes (require authentication)
   {
     path: '',
     runGuardsAndResolvers: 'always',
     canActivate: [AuthGuard],
     children: [
-      { path: 'profile', component: ProfileComponent },
-      { path: 'my-predictions', component: MyPredictionsComponent },
-      { path: 'password-change-warning', component: PasswordChangeWarningComponent },
+      // User profile and settings
+      {
+        path: 'profile',
+        component: ProfileComponent,
+        data: { title: 'Profile' }
+      },
+      {
+        path: 'my-predictions',
+        component: MyPredictionsComponent,
+        data: { title: 'My Predictions' }
+      },
+      {
+        path: 'password-change-warning',
+        component: PasswordChangeWarningComponent,
+        data: { title: 'Password Change Warning' }
+      },
 
-      // Prediction creation flow with proper parameter ordering
-      { path: 'create-prediction', component: CreatePredictionComponent },
+      // Prediction creation flow (step-by-step process)
+      {
+        path: 'create-prediction',
+        component: CreatePredictionComponent,
+        data: { title: 'Create Prediction' }
+      },
       {
         path: 'edit-template/:id/:type',
         component: EditTemplateComponent,
@@ -66,24 +125,101 @@ export const routes: Routes = [
         data: { title: 'Create Post' }
       },
 
-      // Discussion creation/editing (protected)
-      { path: 'discussions/create', component: DiscussionListComponent },
-      { path: 'discussions/edit/:id', component: DiscussionListComponent },
-      { path: 'my-discussions', component: DiscussionListComponent },
+      // Discussion creation/editing (protected routes)
+      {
+        path: 'discussions/create',
+        component: DiscussionListComponent,
+        data: { title: 'Create Discussion' }
+      },
+      {
+        path: 'discussions/edit/:id',
+        component: DiscussionListComponent,
+        data: { title: 'Edit Discussion' }
+      },
+      {
+        path: 'my-discussions',
+        component: DiscussionListComponent,
+        data: { title: 'My Discussions' }
+      },
+
+      // Counter prediction routes (protected - require login to create)
+      // Note: Viewing counter predictions is handled in prediction-details (public)
+      // Creating counter predictions requires authentication
     ]
   },
 
-  // Admin routes
+  // Admin routes (require admin role)
   {
     path: 'admin',
     component: AdminComponent,
     canActivate: [adminGuard],
     children: [
-      { path: '', component: AdminDashboardComponent },
-      { path: 'users/:id', component: UserDetailComponent },
+      {
+        path: '',
+        component: AdminDashboardComponent,
+        data: { title: 'Admin Dashboard' }
+      },
+      {
+        path: 'users/:id',
+        component: UserDetailComponent,
+        data: { title: 'User Details' }
+      },
     ]
   },
 
-  // Catch all route
+  // Redirect routes for common mistakes/old URLs
+  { path: 'prediction/:id', redirectTo: '/prediction-details/:id', pathMatch: 'full' },
+  { path: 'post/:id', redirectTo: '/post-view/:id', pathMatch: 'full' },
+  { path: 'predictions', redirectTo: '/published-posts', pathMatch: 'full' },
+
+  // Catch all route - must be last
   { path: '**', redirectTo: '', pathMatch: 'full' }
 ];
+
+/*
+Route Structure Explanation:
+
+PUBLIC ROUTES (No Auth Required):
+- / - Home page
+- /auth - Login/Register
+- /verify-email - Email verification
+- /forgot-password - Password reset request
+- /reset-password - Password reset with code
+- /categories - Browse categories
+- /site-predictions - Browse site predictions
+- /trending-predictions - Trending content
+- /published-posts - All published predictions (main discovery page)
+- /prediction-details/:id - View prediction details + counter predictions
+- /post-view/:id - Alternative post view
+- /discussions - Public discussions
+- /discussions/:id - View specific discussions
+
+PROTECTED ROUTES (Auth Required):
+- /profile - User profile management
+- /my-predictions - User's own predictions
+- /password-change-warning - Security notifications
+- /create-prediction - Start prediction creation flow
+- /edit-template/:id/:type - Step 2: Template editing
+- /select-teams/:predictionId/:templateId/:type - Step 3: Team selection
+- /create-post/:predictionId/:templateId/:type - Step 4: Post creation
+- /discussions/create - Create new discussions
+- /discussions/edit/:id - Edit discussions
+- /my-discussions - User's discussions
+
+ADMIN ROUTES (Admin Role Required):
+- /admin - Admin dashboard
+- /admin/users/:id - User management
+
+COUNTER PREDICTION FLOW:
+1. User visits /published-posts (public)
+2. Clicks "Counter Predict" on a post
+3. Navigates to /prediction-details/:id?action=counter-predict
+4. If not logged in, redirected to /auth with return URL
+5. If logged in, can create counter prediction on details page
+6. Counter predictions are submitted via API from PredictionDetailsComponent
+7. Results are displayed on the same page
+
+The counter prediction functionality is integrated into the existing
+prediction-details page rather than having separate routes, making
+the user experience smoother and keeping related content together.
+*/

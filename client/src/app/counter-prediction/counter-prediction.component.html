@@ -1,148 +1,172 @@
-<!-- Ranking View - Fixed with proper null checks -->
-<div *ngIf="originalPrediction?.predictionType === 'Ranking' && postRank && postRank.rankTable && postRank.rankTable.rows.length > 0"
-  class="card bg-secondary border-secondary mb-4">
-<div class="card-header bg-secondary border-secondary">
- <h4 class="text-light mb-0">
-   <i class="fa fa-list-ol me-2"></i>Your Ranking
- </h4>
-</div>
-<div class="card-body">
- <div class="table-responsive">
-   <table class="table table-dark table-striped">
-     <thead>
-       <tr>
-         <th width="80">Rank</th>
-         <th *ngFor="let col of (postRank.rankTable.rows[0]?.columns || []); let i = index">
-           Position {{ i + 1 }}
-         </th>
-       </tr>
-     </thead>
-     <tbody>
-       <tr *ngFor="let row of (postRank.rankTable.rows || []); let rowIndex = index">
-         <td class="fw-bold">{{ row.order }}</td>
-         <td *ngFor="let column of (row.columns || []); let colIndex = index">
-           <div class="team-slot"
-                [class.occupied]="column.team"
-                style="min-height: 60px; border: 2px dashed #6c757d; border-radius: 4px; padding: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;"
-                (click)="showTeamAssignmentOptions(column.team ? null : { rowIndex, colIndex })">
-             <div *ngIf="column.team" class="d-flex align-items-center w-100">
-               <img *ngIf="column.team.photoUrl" [src]="column.team.photoUrl"
-                    class="rounded me-2" width="32" height="32" alt="Team">
-               <div class="me-auto">
-                 <div class="fw-bold text-light">{{ column.team.name }}</div>
-               </div>
-               <button class="btn btn-sm btn-outline-danger"
-                       (click)="removeTeamFromRanking(rowIndex, colIndex); $event.stopPropagation()">
-                 <i class="fa fa-times"></i>
-               </button>
-             </div>
-             <div *ngIf="!column.team" class="text-center text-muted">
-               <i class="fa fa-plus-circle fa-2x"></i>
-               <div class="small">Click to add team</div>
-             </div>
-           </div>
-         </td>
-       </tr>
-     </tbody>
-   </table>
- </div>
-</div>
+<!-- client/src/app/counter-prediction/counter-prediction.component.html -->
+
+<!-- Status Card -->
+<div class="card bg-info border-info mb-3">
+  <div class="card-body">
+    <div class="d-flex align-items-center">
+      <i class="fa fa-info-circle fa-2x me-3 text-white"></i>
+      <div class="flex-grow-1">
+        <h6 class="text-white mb-1">Counter Prediction Status</h6>
+        <p class="text-white mb-0">{{ getCounterPredictionStatus() }}</p>
+      </div>
+      <div *ngIf="canShowCounterPredictButton()">
+        <button class="btn btn-light" (click)="toggleForm()">
+          <i class="fa fa-plus me-2"></i>
+          {{ showForm() ? 'Cancel' : 'Create Counter Prediction' }}
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- Bracket View - Fixed with proper null checks -->
-<div *ngIf="originalPrediction?.predictionType === 'Bracket' && postBracket && postBracket.rootBracket"
-  class="card bg-secondary border-secondary mb-4">
-<div class="card-header bg-secondary border-secondary">
- <h4 class="text-light mb-0">
-   <i class="fa fa-sitemap me-2"></i>Your Tournament Bracket
- </h4>
-</div>
-<div class="card-body">
- <div class="bracket-container">
-   <div *ngFor="let round of [].constructor(template?.numberOfRounds || 0); let roundIndex = index"
-        class="bracket-round">
-     <h6 class="text-light mb-3">Round {{ roundIndex + 1 }}</h6>
-     <div *ngFor="let bracket of getBracketByRound(roundIndex + 1); let bracketIndex = index"
-          class="bracket-match mb-3">
-       <div class="card bg-dark border-dark">
-         <div class="card-body p-2">
-           <!-- Left Team -->
-           <div class="team-slot mb-2"
-                [class.occupied]="bracket.leftTeam"
-                style="min-height: 40px; border: 1px dashed #6c757d; border-radius: 4px; padding: 8px; cursor: pointer;"
-                (click)="!bracket.leftTeam && showTeamAssignmentOptions({ bracketIndex, position: 'left' })">
-             <div *ngIf="bracket.leftTeam" class="d-flex align-items-center">
-               <img *ngIf="bracket.leftTeam.photoUrl" [src]="bracket.leftTeam.photoUrl"
-                    class="rounded me-2" width="24" height="24" alt="Team">
-               <div class="me-auto text-light">{{ bracket.leftTeam.name }}</div>
-               <button class="btn btn-sm btn-outline-danger"
-                       (click)="removeTeamFromBracket(bracketIndex, 'left'); $event.stopPropagation()">
-                 <i class="fa fa-times"></i>
-               </button>
-             </div>
-             <div *ngIf="!bracket.leftTeam" class="text-center text-muted small">
-               Click to add Team 1
-             </div>
-           </div>
+<!-- Counter Prediction Form -->
+<div *ngIf="showForm()" class="card bg-secondary border-secondary mb-4">
+  <div class="card-header bg-secondary border-secondary">
+    <h4 class="text-light mb-0">
+      <i class="fa fa-plus-circle me-2"></i>Create Your Counter Prediction
+    </h4>
+  </div>
+  <div class="card-body">
+    <!-- Form -->
+    <form [formGroup]="counterPredictionForm" class="mb-4">
+      <div class="mb-3">
+        <label class="form-label text-light">Notes (Optional)</label>
+        <textarea
+          class="form-control bg-dark text-light border-secondary"
+          formControlName="notes"
+          rows="3"
+          placeholder="Add any notes about your counter prediction..."></textarea>
+        <div class="form-text text-light opacity-75">
+          Explain your reasoning or strategy
+        </div>
+      </div>
+    </form>
 
-           <div class="text-center text-muted small">VS</div>
+    <!-- Ranking View -->
+    <div *ngIf="originalPrediction?.predictionType === 'Ranking' && postRank && postRank.rankTable && postRank.rankTable.rows.length > 0"
+         class="mb-4">
+      <h5 class="text-light mb-3">
+        <i class="fa fa-list-ol me-2"></i>Your Ranking
+      </h5>
+      <div class="table-responsive">
+        <table class="table table-dark table-striped">
+          <thead>
+            <tr>
+              <th width="80">Rank</th>
+              <th *ngFor="let col of (postRank.rankTable.rows[0]?.columns || []); let i = index">
+                Position {{ i + 1 }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of (postRank.rankTable.rows || []); let rowIndex = index">
+              <td class="fw-bold">#{{ row.order }}</td>
+              <td *ngFor="let column of (row.columns || []); let colIndex = index">
+                <div class="team-slot"
+                     [class.occupied]="column.team"
+                     style="min-height: 60px; border: 2px dashed #6c757d; border-radius: 4px; padding: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;"
+                     (click)="showTeamAssignmentOptions(column.team ? null : { rowIndex, colIndex })">
+                  <div *ngIf="column.team" class="d-flex align-items-center w-100">
+                    <img *ngIf="column.team.photoUrl" [src]="column.team.photoUrl"
+                         class="rounded me-2" width="32" height="32" alt="Team">
+                    <div class="me-auto">
+                      <div class="fw-bold text-light">{{ column.team.name }}</div>
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger"
+                            (click)="removeTeamFromRanking(rowIndex, colIndex); $event.stopPropagation()">
+                      <i class="fa fa-times"></i>
+                    </button>
+                  </div>
+                  <div *ngIf="!column.team" class="text-center text-muted">
+                    <i class="fa fa-plus-circle fa-2x"></i>
+                    <div class="small">Click to add team</div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-           <!-- Right Team -->
-           <div class="team-slot"
-                [class.occupied]="bracket.rightTeam"
-                style="min-height: 40px; border: 1px dashed #6c757d; border-radius: 4px; padding: 8px; cursor: pointer;"
-                (click)="!bracket.rightTeam && showTeamAssignmentOptions({ bracketIndex, position: 'right' })">
-             <div *ngIf="bracket.rightTeam" class="d-flex align-items-center">
-               <img *ngIf="bracket.rightTeam.photoUrl" [src]="bracket.rightTeam.photoUrl"
-                    class="rounded me-2" width="24" height="24" alt="Team">
-               <div class="me-auto text-light">{{ bracket.rightTeam.name }}</div>
-               <button class="btn btn-sm btn-outline-danger"
-                       (click)="removeTeamFromBracket(bracketIndex, 'right'); $event.stopPropagation()">
-                 <i class="fa fa-times"></i>
-               </button>
-             </div>
-             <div *ngIf="!bracket.rightTeam" class="text-center text-muted small">
-               Click to add Team 2
-             </div>
-           </div>
-         </div>
-       </div>
-     </div>
-   </div>
- </div>
-</div>
+    <!-- Bingo View -->
+    <div *ngIf="originalPrediction?.predictionType === 'Bingo' && postBingo && postBingo.bingoCells"
+         class="mb-4">
+      <h5 class="text-light mb-3">
+        <i class="fa fa-th me-2"></i>Your Bingo Card
+      </h5>
+      <div class="bingo-grid"
+           [style.grid-template-columns]="'repeat(' + (postBingo.gridSize || 5) + ', 1fr)'"
+           style="display: grid; gap: 8px; max-width: 500px; margin: 0 auto;">
+        <div *ngFor="let cell of (postBingo.bingoCells || []); let cellIndex = index"
+             class="bingo-cell"
+             style="aspect-ratio: 1; border: 2px dashed #6c757d; border-radius: 4px; padding: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;"
+             (click)="!cell.team && showTeamAssignmentOptions({ cellIndex })">
+          <div *ngIf="cell.team" class="text-center">
+            <img *ngIf="cell.team.photoUrl" [src]="cell.team.photoUrl"
+                 class="rounded mb-1" width="32" height="32" alt="Team">
+            <div class="small text-light">{{ cell.team.name }}</div>
+            <button class="btn btn-sm btn-outline-danger mt-1"
+                    (click)="removeTeamFromBingo(cellIndex); $event.stopPropagation()">
+              <i class="fa fa-times"></i>
+            </button>
+          </div>
+          <div *ngIf="!cell.team" class="text-center text-muted">
+            <i class="fa fa-plus-circle fa-lg"></i>
+            <div class="small mt-1">Click to add team</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Available Teams -->
+    <div class="mb-4" *ngIf="getAvailableTeams().length > 0">
+      <h6 class="text-light mb-2">Available Teams ({{ getAvailableTeams().length }})</h6>
+      <div class="d-flex flex-wrap gap-2">
+        <span *ngFor="let team of getAvailableTeams().slice(0, 10)"
+              class="badge bg-primary p-2">
+          {{ team.name }}
+        </span>
+        <span *ngIf="getAvailableTeams().length > 10"
+              class="badge bg-secondary p-2">
+          +{{ getAvailableTeams().length - 10 }} more
+        </span>
+      </div>
+    </div>
+
+    <!-- Validation Status -->
+    <div class="alert mb-3" [class.alert-success]="isValidCounterPrediction()" [class.alert-warning]="!isValidCounterPrediction()">
+      <div *ngIf="isValidCounterPrediction()">
+        <i class="fa fa-check-circle me-2"></i>
+        Ready to submit your counter prediction!
+      </div>
+      <div *ngIf="!isValidCounterPrediction()">
+        <i class="fa fa-exclamation-triangle me-2"></i>
+        Please assign teams to create your counter prediction
+      </div>
+    </div>
+
+    <!-- Submit Button -->
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+      <button class="btn btn-outline-light" (click)="toggleForm()" [disabled]="isSubmitting">
+        Cancel
+      </button>
+      <button
+        class="btn btn-success"
+        [disabled]="!isValidCounterPrediction() || isSubmitting"
+        (click)="submitCounterPrediction()">
+        <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-2"></span>
+        <i class="fa fa-check me-2" *ngIf="!isSubmitting"></i>
+        Submit Counter Prediction
+      </button>
+    </div>
+  </div>
 </div>
 
-<!-- Bingo View - Fixed with proper null checks -->
-<div *ngIf="originalPrediction?.predictionType === 'Bingo' && postBingo && postBingo.bingoCells"
-  class="card bg-secondary border-secondary mb-4">
-<div class="card-header bg-secondary border-secondary">
- <h4 class="text-light mb-0">
-   <i class="fa fa-th me-2"></i>Your Bingo Card
- </h4>
-</div>
-<div class="card-body">
- <div class="bingo-grid"
-      [style.grid-template-columns]="'repeat(' + (postBingo.gridSize || 5) + ', 1fr)'"
-      style="display: grid; gap: 8px;">
-   <div *ngFor="let cell of (postBingo.bingoCells || []); let cellIndex = index"
-        class="bingo-cell"
-        style="aspect-ratio: 1; border: 2px dashed #6c757d; border-radius: 4px; padding: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;"
-        (click)="!cell.team && showTeamAssignmentOptions({ cellIndex })">
-     <div *ngIf="cell.team" class="text-center">
-       <img *ngIf="cell.team.photoUrl" [src]="cell.team.photoUrl"
-            class="rounded mb-1" width="32" height="32" alt="Team">
-       <div class="small text-light">{{ cell.team.name }}</div>
-       <button class="btn btn-sm btn-outline-danger mt-1"
-               (click)="removeTeamFromBingo(cellIndex); $event.stopPropagation()">
-         <i class="fa fa-times"></i>
-       </button>
-     </div>
-     <div *ngIf="!cell.team" class="text-center text-muted">
-       <i class="fa fa-plus-circle fa-lg"></i>
-       <div class="small mt-1">Click to add team</div>
-     </div>
-   </div>
- </div>
-</div>
+<!-- Loading state -->
+<div *ngIf="isCheckingEligibility()" class="text-center py-3">
+  <div class="spinner-border text-primary" role="status">
+    <span class="visually-hidden">Loading...</span>
+  </div>
+  <p class="mt-2 text-muted">Checking eligibility...</p>
 </div>

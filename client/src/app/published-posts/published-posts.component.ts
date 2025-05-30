@@ -583,8 +583,9 @@ export class PublishedPostsComponent implements OnInit {
   }
 
   counterPredict(predictionId: number): void {
-    this.toastr.info('Counter prediction feature coming soon!');
-    this.viewPrediction(predictionId);
+    this.router.navigate(['/prediction-details', predictionId], {
+      queryParams: { action: 'counter-predict' }
+    });
   }
 
   viewResponses(predictionId: number): void {

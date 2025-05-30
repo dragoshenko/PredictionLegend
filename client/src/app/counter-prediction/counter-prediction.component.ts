@@ -1,16 +1,13 @@
-// Replace your existing component with this fixed version
-
-// counter-prediction/counter-prediction.component.ts
-import { Component, inject, Input, OnInit } from '@angular/core';
+// client/src/app/counter-prediction/counter-prediction.component.ts
+import { Component, inject, Input, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
-import { CreationFlowService } from '../_services/creation-flow.service';
+import { CounterPredictionService } from '../_services/counter-prediction.service';
 import { PredictionType } from '../_models/predictionType';
 import { Team } from '../_models/team';
+import { AccountService } from '../_services/account.service';
 
-// Interface definitions for type safety
 interface RankColumn {
   team: Team | null;
   officialScore: number;
@@ -29,22 +26,13 @@ interface RankTable {
   rows: RankRow[];
 }
 
-interface BracketMatch {
-  order: number;
-  leftTeam: Team | null;
-  rightTeam: Team | null;
-  officialScoreLeftTeam: number;
-  officialScoreRightTeam: number;
-  score: number;
-  isWrong: boolean;
-}
-
-interface RootBracket {
-  score: number;
-  bracketType: string;
-  leftTeam: Team | null;
-  rightTeam: Team | null;
-  brackets: BracketMatch[];
+interface PostRankData {
+  rankingTemplateId: number;
+  predictionId: number;
+  rankTable: RankTable;
+  teams: Team[];
+  totalScore: number;
+  isOfficialResult: boolean;
 }
 
 interface BingoCell {
@@ -54,20 +42,6 @@ interface BingoCell {
   score: number;
   officialScore: number;
   isWrong: boolean;
-}
-
-interface PostRankData {
-  rankTable: RankTable;
-  teams: Team[];
-  totalScore: number;
-  isOfficialResult: boolean;
-}
-
-interface PostBracketData {
-  rootBracket: RootBracket;
-  teams: Team[];
-  totalScore: number;
-  isOfficialResult: boolean;
 }
 
 interface PostBingoData {
@@ -90,23 +64,27 @@ export class CounterPredictionComponent implements OnInit {
   @Input() availableTeams: Team[] = [];
 
   private fb = inject(FormBuilder);
-  private router = inject(Router);
   private toastr = inject(ToastrService);
-  private creationFlowService = inject(CreationFlowService);
+  private counterPredictionService = inject(CounterPredictionService);
+  private accountService = inject(AccountService);
 
   counterPredictionForm: FormGroup = new FormGroup({});
   selectedTeams: Team[] = [];
+  showForm = signal(false);
+  canCounterPredict = signal(false);
+  isCheckingEligibility = signal(false);
+  hasExistingCounterPrediction = signal(false);
 
   // Post structures for different types with proper typing
   postRank: PostRankData | null = null;
-  postBracket: PostBracketData | null = null;
   postBingo: PostBingoData | null = null;
 
   isSubmitting = false;
-  showForm = false;
 
   ngOnInit(): void {
     this.initializeForm();
+    this.checkCounterPredictEligibility();
+
     if (this.template && this.availableTeams.length > 0) {
       this.initializeCounterPrediction();
     }
@@ -114,9 +92,40 @@ export class CounterPredictionComponent implements OnInit {
 
   initializeForm(): void {
     this.counterPredictionForm = this.fb.group({
-      notes: ['', [Validators.maxLength(500)]],
-      isPublic: [true]
+      notes: ['', [Validators.maxLength(500)]]
     });
+  }
+
+  async checkCounterPredictEligibility(): Promise<void> {
+    if (!this.originalPrediction?.id) return;
+
+    this.isCheckingEligibility.set(true);
+    try {
+      const canCounterPredict = await this.counterPredictionService
+        .canUserCounterPredict(this.originalPrediction.id)
+        .toPromise();
+
+      this.canCounterPredict.set(canCounterPredict || false);
+
+      if (!canCounterPredict) {
+        // Check if user already has a counter prediction
+        try {
+          const existing = await this.counterPredictionService
+            .getUserCounterPrediction(this.originalPrediction.id)
+            .toPromise();
+
+          this.hasExistingCounterPrediction.set(!!existing);
+        } catch (error) {
+          // No existing counter prediction found
+          this.hasExistingCounterPrediction.set(false);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking counter prediction eligibility:', error);
+      this.canCounterPredict.set(false);
+    } finally {
+      this.isCheckingEligibility.set(false);
+    }
   }
 
   initializeCounterPrediction(): void {
@@ -127,15 +136,16 @@ export class CounterPredictionComponent implements OnInit {
 
     // Initialize post structure based on prediction type
     switch (this.originalPrediction.predictionType) {
+      case 'Ranking':
       case PredictionType.Ranking:
         this.initializeCounterRanking();
         break;
-      case PredictionType.Bracket:
-        this.initializeCounterBracket();
-        break;
+      case 'Bingo':
       case PredictionType.Bingo:
         this.initializeCounterBingo();
         break;
+      default:
+        console.warn('Unsupported prediction type:', this.originalPrediction.predictionType);
     }
   }
 
@@ -144,6 +154,8 @@ export class CounterPredictionComponent implements OnInit {
     const numberOfColumns = this.template.numberOfColumns || 1;
 
     this.postRank = {
+      rankingTemplateId: this.template.id,
+      predictionId: this.originalPrediction.id,
       rankTable: {
         numberOfRows,
         numberOfColumns,
@@ -175,39 +187,6 @@ export class CounterPredictionComponent implements OnInit {
     }
   }
 
-  initializeCounterBracket(): void {
-    const numberOfRounds = this.template.numberOfRounds || 4;
-
-    this.postBracket = {
-      rootBracket: {
-        score: 0,
-        bracketType: this.template.bracketType || 'SingleTeam',
-        leftTeam: null,
-        rightTeam: null,
-        brackets: []
-      },
-      teams: [...this.selectedTeams],
-      totalScore: 0,
-      isOfficialResult: false
-    };
-
-    // Initialize bracket structure
-    const totalMatches = Math.pow(2, numberOfRounds) - 1;
-
-    for (let i = 0; i < totalMatches; i++) {
-      const bracket: BracketMatch = {
-        order: i,
-        leftTeam: null,
-        rightTeam: null,
-        officialScoreLeftTeam: 0,
-        officialScoreRightTeam: 0,
-        score: 0,
-        isWrong: false
-      };
-      this.postBracket.rootBracket.brackets.push(bracket);
-    }
-  }
-
   initializeCounterBingo(): void {
     const gridSize = this.template.gridSize || 5;
 
@@ -235,20 +214,10 @@ export class CounterPredictionComponent implements OnInit {
     }
   }
 
-  // Team assignment methods with null checks
+  // Team assignment methods
   assignTeamToRanking(rowIndex: number, columnIndex: number, team: Team): void {
     if (!this.postRank?.rankTable?.rows[rowIndex]?.columns[columnIndex]) return;
     this.postRank.rankTable.rows[rowIndex].columns[columnIndex].team = team;
-  }
-
-  assignTeamToBracket(bracketIndex: number, position: 'left' | 'right', team: Team): void {
-    if (!this.postBracket?.rootBracket?.brackets[bracketIndex]) return;
-
-    if (position === 'left') {
-      this.postBracket.rootBracket.brackets[bracketIndex].leftTeam = team;
-    } else {
-      this.postBracket.rootBracket.brackets[bracketIndex].rightTeam = team;
-    }
   }
 
   assignTeamToBingo(cellIndex: number, team: Team): void {
@@ -263,16 +232,6 @@ export class CounterPredictionComponent implements OnInit {
     }
   }
 
-  removeTeamFromBracket(bracketIndex: number, position: 'left' | 'right'): void {
-    if (this.postBracket?.rootBracket?.brackets[bracketIndex]) {
-      if (position === 'left') {
-        this.postBracket.rootBracket.brackets[bracketIndex].leftTeam = null;
-      } else {
-        this.postBracket.rootBracket.brackets[bracketIndex].rightTeam = null;
-      }
-    }
-  }
-
   removeTeamFromBingo(cellIndex: number): void {
     if (this.postBingo?.bingoCells[cellIndex]) {
       this.postBingo.bingoCells[cellIndex].team = null;
@@ -282,10 +241,10 @@ export class CounterPredictionComponent implements OnInit {
   // Validation
   isValidCounterPrediction(): boolean {
     switch (this.originalPrediction?.predictionType) {
+      case 'Ranking':
       case PredictionType.Ranking:
         return this.isValidRanking();
-      case PredictionType.Bracket:
-        return this.isValidBracket();
+      case 'Bingo':
       case PredictionType.Bingo:
         return this.isValidBingo();
       default:
@@ -296,12 +255,6 @@ export class CounterPredictionComponent implements OnInit {
   private isValidRanking(): boolean {
     if (!this.postRank?.rankTable?.rows?.[0]?.columns) return false;
     return this.postRank.rankTable.rows[0].columns.some((col: RankColumn) => col.team !== null);
-  }
-
-  private isValidBracket(): boolean {
-    if (!this.postBracket?.rootBracket?.brackets || !this.template?.numberOfRounds) return false;
-    const firstRoundBrackets = this.postBracket.rootBracket.brackets.slice(0, Math.pow(2, this.template.numberOfRounds - 1));
-    return firstRoundBrackets.some((bracket: BracketMatch) => bracket.leftTeam && bracket.rightTeam);
   }
 
   private isValidBingo(): boolean {
@@ -325,28 +278,39 @@ export class CounterPredictionComponent implements OnInit {
 
     try {
       const counterPredictionData = {
-        originalPredictionId: this.originalPrediction.id,
-        templateId: this.template.id,
-        predictionType: this.originalPrediction.predictionType,
-        notes: this.counterPredictionForm.get('notes')?.value,
-        isPublic: this.counterPredictionForm.get('isPublic')?.value,
-        postRank: this.originalPrediction.predictionType === PredictionType.Ranking ? this.postRank : null,
-        postBracket: this.originalPrediction.predictionType === PredictionType.Bracket ? this.postBracket : null,
-        postBingo: this.originalPrediction.predictionType === PredictionType.Bingo ? this.postBingo : null
+        notes: this.counterPredictionForm.get('notes')?.value || '',
+        postRank: this.originalPrediction.predictionType === 'Ranking' ? this.postRank : null,
+        postBingo: this.originalPrediction.predictionType === 'Bingo' ? this.postBingo : null
       };
 
-      const result = await this.creationFlowService.createCounterPrediction(counterPredictionData, this.getCurrentUserId()).toPromise();
+      console.log('Submitting counter prediction:', counterPredictionData);
+
+      const result = await this.counterPredictionService
+        .createCounterPrediction(this.originalPrediction.id, counterPredictionData)
+        .toPromise();
 
       this.toastr.success('Counter prediction created successfully!');
-      this.showForm = false;
+      this.showForm.set(false);
       this.resetForm();
 
-      // Emit event to parent component to refresh the prediction details
-      window.location.reload(); // Simple reload for now
+      // Update state
+      this.canCounterPredict.set(false);
+      this.hasExistingCounterPrediction.set(true);
 
-    } catch (error) {
+      // Emit event to parent component to refresh
+      window.location.reload();
+
+    } catch (error: any) {
       console.error('Error creating counter prediction:', error);
-      this.toastr.error('Failed to create counter prediction');
+
+      let errorMessage = 'Failed to create counter prediction';
+      if (error?.error?.message) {
+        errorMessage = error.error.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      this.toastr.error(errorMessage);
     } finally {
       this.isSubmitting = false;
     }
@@ -354,15 +318,14 @@ export class CounterPredictionComponent implements OnInit {
 
   // UI helpers
   toggleForm(): void {
-    this.showForm = !this.showForm;
-    if (!this.showForm) {
+    this.showForm.update(current => !current);
+    if (!this.showForm()) {
       this.resetForm();
     }
   }
 
   resetForm(): void {
     this.counterPredictionForm.reset();
-    this.counterPredictionForm.patchValue({ isPublic: true });
     this.initializeCounterPrediction();
   }
 
@@ -371,6 +334,7 @@ export class CounterPredictionComponent implements OnInit {
 
     // Collect used teams based on prediction type
     switch (this.originalPrediction?.predictionType) {
+      case 'Ranking':
       case PredictionType.Ranking:
         this.postRank?.rankTable?.rows?.forEach((row: RankRow) => {
           row.columns?.forEach((col: RankColumn) => {
@@ -378,12 +342,7 @@ export class CounterPredictionComponent implements OnInit {
           });
         });
         break;
-      case PredictionType.Bracket:
-        this.postBracket?.rootBracket?.brackets?.forEach((bracket: BracketMatch) => {
-          if (bracket.leftTeam) usedTeams.add(bracket.leftTeam.id);
-          if (bracket.rightTeam) usedTeams.add(bracket.rightTeam.id);
-        });
-        break;
+      case 'Bingo':
       case PredictionType.Bingo:
         this.postBingo?.bingoCells?.forEach((cell: BingoCell) => {
           if (cell.team) usedTeams.add(cell.team.id);
@@ -394,153 +353,6 @@ export class CounterPredictionComponent implements OnInit {
     return this.selectedTeams.filter(team => !usedTeams.has(team.id));
   }
 
-  private getCurrentUserId(): number {
-    // Get from auth service
-    return 1; // Mock for now
-  }
-
-  // Helper methods for templates
-  getBingoCell(row: number, col: number): BingoCell | undefined {
-    return this.postBingo?.bingoCells?.find((cell: BingoCell) => cell.row === row && cell.column === col);
-  }
-
-  getBracketByRound(round: number): BracketMatch[] {
-    if (!this.postBracket?.rootBracket?.brackets || !this.template?.numberOfRounds) {
-      return [];
-    }
-
-    const bracketsPerRound = Math.pow(2, this.template.numberOfRounds - round);
-    const startIndex = Math.pow(2, this.template.numberOfRounds) - Math.pow(2, this.template.numberOfRounds - round + 1);
-
-    return this.postBracket.rootBracket.brackets.slice(startIndex, startIndex + bracketsPerRound);
-  }
-
-
-
-  private assignTeamToFirstAvailableSlot(team: Team): void {
-    switch (this.originalPrediction?.predictionType) {
-      case PredictionType.Ranking:
-        // Find first empty slot in ranking
-        if (!this.postRank?.rankTable?.rows) {
-          this.toastr.warning('Ranking structure not initialized');
-          return;
-        }
-
-        for (let rowIndex = 0; rowIndex < this.postRank.rankTable.rows.length; rowIndex++) {
-          for (let colIndex = 0; colIndex < this.postRank.rankTable.rows[rowIndex].columns.length; colIndex++) {
-            if (!this.postRank.rankTable.rows[rowIndex].columns[colIndex].team) {
-              this.assignTeamToRanking(rowIndex, colIndex, team);
-              return;
-            }
-          }
-        }
-        break;
-
-      case PredictionType.Bracket:
-        // Find first empty bracket position
-        if (!this.postBracket?.rootBracket?.brackets) {
-          this.toastr.warning('Bracket structure not initialized');
-          return;
-        }
-
-        for (let bracketIndex = 0; bracketIndex < this.postBracket.rootBracket.brackets.length; bracketIndex++) {
-          const bracket = this.postBracket.rootBracket.brackets[bracketIndex];
-          if (!bracket.leftTeam) {
-            this.assignTeamToBracket(bracketIndex, 'left', team);
-            return;
-          } else if (!bracket.rightTeam) {
-            this.assignTeamToBracket(bracketIndex, 'right', team);
-            return;
-          }
-        }
-        break;
-
-      case PredictionType.Bingo:
-        // Find first empty bingo cell
-        if (!this.postBingo?.bingoCells) {
-          this.toastr.warning('Bingo structure not initialized');
-          return;
-        }
-
-        for (let cellIndex = 0; cellIndex < this.postBingo.bingoCells.length; cellIndex++) {
-          if (!this.postBingo.bingoCells[cellIndex].team) {
-            this.assignTeamToBingo(cellIndex, team);
-            return;
-          }
-        }
-        break;
-    }
-
-    this.toastr.warning('No available positions for this team');
-  }
-
-  // Auto-fill methods for quick setup with proper null checks
-  autoFillRanking(): void {
-    if (!this.postRank?.rankTable?.rows) {
-      this.toastr.error('Ranking structure not initialized');
-      return;
-    }
-
-    const availableTeams = this.getAvailableTeams();
-    let teamIndex = 0;
-
-    for (let rowIndex = 0; rowIndex < this.postRank.rankTable.rows.length && teamIndex < availableTeams.length; rowIndex++) {
-      for (let colIndex = 0; colIndex < this.postRank.rankTable.rows[rowIndex].columns.length && teamIndex < availableTeams.length; colIndex++) {
-        if (!this.postRank.rankTable.rows[rowIndex].columns[colIndex].team) {
-          this.assignTeamToRanking(rowIndex, colIndex, availableTeams[teamIndex++]);
-        }
-      }
-    }
-
-    this.toastr.info(`Auto-filled ${teamIndex} positions`);
-  }
-
-  autoFillBracket(): void {
-    if (!this.postBracket?.rootBracket?.brackets) {
-      this.toastr.error('Bracket structure not initialized');
-      return;
-    }
-
-    const availableTeams = this.getAvailableTeams();
-    const firstRoundBrackets = this.getBracketByRound(1);
-    let teamIndex = 0;
-
-    for (let bracketIndex = 0; bracketIndex < firstRoundBrackets.length && teamIndex < availableTeams.length; bracketIndex++) {
-      const bracket = firstRoundBrackets[bracketIndex];
-      if (!bracket.leftTeam && teamIndex < availableTeams.length) {
-        this.assignTeamToBracket(bracketIndex, 'left', availableTeams[teamIndex++]);
-      }
-      if (!bracket.rightTeam && teamIndex < availableTeams.length) {
-        this.assignTeamToBracket(bracketIndex, 'right', availableTeams[teamIndex++]);
-      }
-    }
-
-    this.toastr.info(`Auto-filled ${teamIndex} bracket positions`);
-  }
-
-  autoFillBingo(): void {
-    if (!this.postBingo?.bingoCells) {
-      this.toastr.error('Bingo structure not initialized');
-      return;
-    }
-
-    const availableTeams = this.getAvailableTeams();
-    const emptyCells = this.postBingo.bingoCells
-      .map((cell: BingoCell, index: number) => ({ cell, index }))
-      .filter(({ cell }) => !cell.team);
-
-    // Randomly select cells to fill
-    const cellsToFill = Math.min(availableTeams.length, emptyCells.length);
-    const randomCells = emptyCells.sort(() => 0.5 - Math.random()).slice(0, cellsToFill);
-
-    randomCells.forEach(({ index }, teamIndex) => {
-      if (teamIndex < availableTeams.length) {
-        this.assignTeamToBingo(index, availableTeams[teamIndex]);
-      }
-    });
-
-    this.toastr.info(`Auto-filled ${cellsToFill} bingo squares`);
-  }
   showTeamAssignmentOptions(position: any): void {
     const availableTeams = this.getAvailableTeams();
 
@@ -550,21 +362,47 @@ export class CounterPredictionComponent implements OnInit {
     }
 
     // For now, assign the first available team
-    // In the future, this could open a modal to let user choose
     const teamToAssign = availableTeams[0];
 
     if (position?.rowIndex !== undefined && position?.colIndex !== undefined) {
       // Ranking assignment
       this.assignTeamToRanking(position.rowIndex, position.colIndex, teamToAssign);
-    } else if (position?.bracketIndex !== undefined && position?.position) {
-      // Bracket assignment
-      this.assignTeamToBracket(position.bracketIndex, position.position, teamToAssign);
     } else if (position?.cellIndex !== undefined) {
       // Bingo assignment
       this.assignTeamToBingo(position.cellIndex, teamToAssign);
-    } else {
-      // Fallback to auto-assignment
-      this.assignTeamToFirstAvailableSlot(teamToAssign);
     }
+
+    this.toastr.success(`${teamToAssign.name} assigned successfully`);
+  }
+
+  // Helper method to get user's current status
+  getCounterPredictionStatus(): string {
+    if (this.isCheckingEligibility()) {
+      return 'Checking eligibility...';
+    }
+
+    if (this.hasExistingCounterPrediction()) {
+      return 'You have already submitted a counter prediction for this post.';
+    }
+
+    if (!this.canCounterPredict()) {
+      const currentUser = this.accountService.currentUser();
+      if (this.originalPrediction?.author?.id === currentUser?.id) {
+        return 'You cannot counter-predict your own prediction.';
+      }
+      if (this.originalPrediction?.isDraft) {
+        return 'Counter predictions are not available for draft predictions.';
+      }
+      if (!this.originalPrediction?.isActive) {
+        return 'This prediction is no longer active.';
+      }
+      return 'Counter prediction not available.';
+    }
+
+    return 'You can create a counter prediction for this post.';
+  }
+
+  canShowCounterPredictButton(): boolean {
+    return this.canCounterPredict() && !this.isCheckingEligibility();
   }
 }

@@ -84,14 +84,6 @@ public class CounterPredictionDTO
     public PostBingoDTO? PostBingo { get; set; }
 }
 
-public class CounterPredictionRequestDTO
-{
-    public string? Notes { get; set; }
-    public PostRankDTO? PostRank { get; set; }
-    public PostBracketDTO? PostBracket { get; set; }
-    public PostBingoDTO? PostBingo { get; set; }
-}
-
 public class UserPostSummaryDTO
 {
     public int Id { get; set; }
