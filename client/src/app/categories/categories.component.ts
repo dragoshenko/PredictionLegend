@@ -1,5 +1,5 @@
-// categories.component.ts - OnPush Change Detection Strategy
-import { Component, inject, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+// categories.component.ts - FIXED VERSION
+import { Component, inject, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -15,7 +15,7 @@ interface CategoryWithUI extends Category {
 @Component({
   selector: 'app-categories',
   imports: [CommonModule, FormsModule, RouterModule],
-  changeDetection: ChangeDetectionStrategy.OnPush, // Use OnPush strategy
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container-fluid mt-4">
       <!-- Header -->
@@ -370,6 +370,38 @@ export class CategoriesComponent implements OnInit, OnDestroy {
 
   trackByCategory = (index: number, category: CategoryWithUI): number => category.id;
 
+  constructor() {
+    // FIXED: Use effect to watch for signal changes and manually trigger change detection
+    effect(() => {
+      const serviceCategories = this.categoryService.rootCategories();
+      const allCategories = this.categoryService.allCategories();
+
+      console.log('Effect triggered - categories changed:', serviceCategories.length);
+
+      if (serviceCategories.length > 0 && this.rootCategories.length === 0) {
+        console.log('Setting categories from effect...');
+
+        this.rootCategories = serviceCategories.map(category => ({
+          ...category,
+          expanded: false
+        }));
+
+        this.allCategories = allCategories;
+        this.applyFilters();
+
+        if (!this.hasShownSuccessMessage) {
+          this.toastr.success(`Loaded ${this.rootCategories.length} categories`);
+          this.hasShownSuccessMessage = true;
+        }
+
+        this.isLoading = false;
+
+        // FIXED: Manually trigger change detection
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
   ngOnInit(): void {
     this.loadCategories();
   }
@@ -391,59 +423,19 @@ export class CategoriesComponent implements OnInit, OnDestroy {
       console.log('Loading categories...');
       this.categoryService.getCategories();
 
-      // Check every 200ms for loaded data
-      this.loadCheckInterval = setInterval(() => {
-        this.checkForLoadedData();
-      }, 200);
-
-      // Stop checking after 10 seconds
+      // FIXED: Simplified timeout approach - rely more on the effect
       setTimeout(() => {
-        if (this.loadCheckInterval) {
-          clearInterval(this.loadCheckInterval);
-          this.loadCheckInterval = null;
-        }
         if (this.rootCategories.length === 0) {
+          console.log('Categories still not loaded after timeout');
           this.isLoading = false;
           this.cdr.markForCheck();
         }
-      }, 10000);
+      }, 5000);
 
     } catch (error) {
       console.error('Error loading categories:', error);
       this.toastr.error('Failed to load categories');
       this.isLoading = false;
-      this.cdr.markForCheck();
-    }
-  }
-
-  private checkForLoadedData(): void {
-    const serviceCategories = this.categoryService.rootCategories();
-
-    if (serviceCategories.length > 0 && this.rootCategories.length === 0) {
-      console.log('Categories detected, updating component...');
-
-      this.rootCategories = serviceCategories.map(category => ({
-        ...category,
-        expanded: false
-      }));
-
-      this.allCategories = this.categoryService.allCategories();
-      this.applyFilters();
-
-      if (!this.hasShownSuccessMessage) {
-        this.toastr.success(`Loaded ${this.rootCategories.length} categories`);
-        this.hasShownSuccessMessage = true;
-      }
-
-      this.isLoading = false;
-
-      // Stop the interval
-      if (this.loadCheckInterval) {
-        clearInterval(this.loadCheckInterval);
-        this.loadCheckInterval = null;
-      }
-
-      // Trigger change detection
       this.cdr.markForCheck();
     }
   }

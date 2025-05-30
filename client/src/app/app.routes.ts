@@ -1,9 +1,5 @@
-// app.routes.ts - UPDATED VERSION
 import { Routes } from '@angular/router';
 import { HomeComponent } from './home/home.component';
-import { CategoriesComponent } from './categories/categories.component';
-import { SitePredictionsComponent } from './site-predictions/site-predictions.component';
-import { TrendingPredictionsComponent } from './trending-predictions/trending-predictions.component';
 import { AuthComponent } from './auth/auth.component';
 import { ProfileComponent } from './profile/profile.component';
 import { AuthGuard } from './_guards/auth.guard';
@@ -34,9 +30,6 @@ export const routes: Routes = [
   { path: 'reset-password', component: ResetPasswordComponent },
 
   // Public routes
-  { path: 'categories', component: CategoriesComponent },
-  { path: 'site-predictions', component: SitePredictionsComponent },
-  { path: 'trending-predictions', component: TrendingPredictionsComponent },
   { path: 'published-posts', component: PublishedPostsComponent },
   { path: 'prediction-details/:id', component: PredictionDetailsComponent },
   { path: 'post-view/:id', component: PostViewComponent },
