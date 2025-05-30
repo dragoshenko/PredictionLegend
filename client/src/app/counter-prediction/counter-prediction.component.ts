@@ -180,22 +180,16 @@ export class CounterPredictionComponent implements OnInit {
     this.selectedTeams = [...this.availableTeams];
 
     // Initialize post structure based on prediction type
-    switch (this.originalPrediction.predictionType) {
-      case 'Ranking':
-      case PredictionType.Ranking:
-      case 0:
-      case '0':
-        this.initializeCounterRanking();
-        break;
-      case 'Bingo':
-      case PredictionType.Bingo:
-      case 2:
-      case '2':
-        this.initializeCounterBingo();
-        break;
-      default:
-        console.warn('Unsupported prediction type:', this.originalPrediction.predictionType);
-        this.toastr.warning(`Unsupported prediction type: ${this.originalPrediction.predictionType}`);
+    const predType = this.originalPrediction.predictionType;
+    if (predType === 'Ranking' || predType === 0 || predType === '0') {
+      this.initializeCounterRanking();
+    } else if (predType === 'Bingo' || predType === 2 || predType === '2') {
+      this.initializeCounterBingo();
+    } else if (predType === 'Bracket' || predType === 1 || predType === '1') {
+      this.toastr.info('Bracket counter predictions will be available soon');
+    } else {
+      console.warn('Unsupported prediction type:', this.originalPrediction.predictionType);
+      this.toastr.warning(`Unsupported prediction type: ${this.originalPrediction.predictionType}`);
     }
 
     console.log('Counter prediction initialized:', {
@@ -422,7 +416,8 @@ export class CounterPredictionComponent implements OnInit {
   getAvailableTeams(): Team[] {
     const usedTeamIds = new Set<number>();
 
-    if (this.originalPrediction?.predictionType === 'Ranking' && this.postRank) {
+    const predType = this.originalPrediction?.predictionType;
+    if ((predType === 'Ranking' || predType === 0 || predType === '0') && this.postRank) {
       this.postRank.rankTable.rows.forEach(row => {
         row.columns.forEach(col => {
           if (col.team) {
@@ -430,7 +425,7 @@ export class CounterPredictionComponent implements OnInit {
           }
         });
       });
-    } else if (this.originalPrediction?.predictionType === 'Bingo' && this.postBingo) {
+    } else if ((predType === 'Bingo' || predType === 2 || predType === '2') && this.postBingo) {
       this.postBingo.bingoCells.forEach(cell => {
         if (cell.team) {
           usedTeamIds.add(cell.team.id);
@@ -445,7 +440,8 @@ export class CounterPredictionComponent implements OnInit {
   getAssignedTeams(): Team[] {
     const assignedTeamIds = new Set<number>();
 
-    if (this.originalPrediction?.predictionType === 'Ranking' && this.postRank) {
+    const predType = this.originalPrediction?.predictionType;
+    if ((predType === 'Ranking' || predType === 0 || predType === '0') && this.postRank) {
       this.postRank.rankTable.rows.forEach(row => {
         row.columns.forEach(col => {
           if (col.team) {
@@ -453,7 +449,7 @@ export class CounterPredictionComponent implements OnInit {
           }
         });
       });
-    } else if (this.originalPrediction?.predictionType === 'Bingo' && this.postBingo) {
+    } else if ((predType === 'Bingo' || predType === 2 || predType === '2') && this.postBingo) {
       this.postBingo.bingoCells.forEach(cell => {
         if (cell.team) {
           assignedTeamIds.add(cell.team.id);
@@ -464,33 +460,67 @@ export class CounterPredictionComponent implements OnInit {
     return this.selectedTeams.filter(team => assignedTeamIds.has(team.id));
   }
 
-  // QUICK ACTION METHODS - ENHANCED
+  // ENHANCED QUICK ACTION METHODS
+  autoFillPrediction(): void {
+    const predType = this.originalPrediction?.predictionType;
+    if (predType === 'Ranking' || predType === 0 || predType === '0') {
+      this.autoFillRanking();
+    } else if (predType === 'Bingo' || predType === 2 || predType === '2') {
+      this.autoFillBingo();
+    } else {
+      this.toastr.warning('Auto-fill not supported for this prediction type');
+    }
+  }
+
+  smartFillPrediction(): void {
+    const predType = this.originalPrediction?.predictionType;
+    if (predType === 'Ranking' || predType === 0 || predType === '0') {
+      this.smartFillRanking();
+    } else if (predType === 'Bingo' || predType === 2 || predType === '2') {
+      this.smartFillBingo();
+    } else {
+      this.toastr.warning('Smart fill not supported for this prediction type');
+    }
+  }
+
   autoFillRanking(): void {
     if (!this.postRank) return;
 
     const availableTeams = this.getAvailableTeams();
+    if (availableTeams.length === 0) {
+      this.toastr.warning('No teams available to assign');
+      return;
+    }
+
     let teamIndex = 0;
+    let assignedCount = 0;
 
     for (let rowIndex = 0; rowIndex < this.postRank.rankTable.rows.length && teamIndex < availableTeams.length; rowIndex++) {
       for (let colIndex = 0; colIndex < this.postRank.rankTable.rows[rowIndex].columns.length && teamIndex < availableTeams.length; colIndex++) {
         const slot = this.postRank.rankTable.rows[rowIndex].columns[colIndex];
         if (!slot.team) {
           slot.team = availableTeams[teamIndex++];
+          assignedCount++;
         }
       }
     }
 
-    this.toastr.success(`Auto-filled ${teamIndex} positions`);
+    this.toastr.success(`Auto-filled ${assignedCount} positions`, 'Ranking Complete');
   }
 
   autoFillBingo(): void {
     if (!this.postBingo) return;
 
     const availableTeams = this.getAvailableTeams();
-    const emptyCells = this.postBingo.bingoCells.filter(cell => !cell.team);
+    if (availableTeams.length === 0) {
+      this.toastr.warning('No teams available to assign');
+      return;
+    }
 
-    // Randomly select cells to fill
+    const emptyCells = this.postBingo.bingoCells.filter(cell => !cell.team);
     const cellsToFill = Math.min(availableTeams.length, emptyCells.length);
+
+    // Randomly select cells to fill for better bingo distribution
     const shuffledCells = [...emptyCells].sort(() => 0.5 - Math.random()).slice(0, cellsToFill);
 
     shuffledCells.forEach((cell, index) => {
@@ -499,13 +529,103 @@ export class CounterPredictionComponent implements OnInit {
       }
     });
 
-    this.toastr.success(`Auto-filled ${cellsToFill} bingo squares`);
+    this.toastr.success(`Auto-filled ${cellsToFill} bingo squares`, 'Bingo Complete');
+  }
+
+  // Smart fill tries to be more strategic about placement
+  smartFillRanking(): void {
+    if (!this.postRank) return;
+
+    const availableTeams = this.getAvailableTeams();
+    if (availableTeams.length === 0) {
+      this.toastr.warning('No teams available to assign');
+      return;
+    }
+
+    // Sort teams alphabetically for consistent placement
+    const sortedTeams = [...availableTeams].sort((a, b) => a.name.localeCompare(b.name));
+
+    let teamIndex = 0;
+    let assignedCount = 0;
+
+    for (let rowIndex = 0; rowIndex < this.postRank.rankTable.rows.length && teamIndex < sortedTeams.length; rowIndex++) {
+      for (let colIndex = 0; colIndex < this.postRank.rankTable.rows[rowIndex].columns.length && teamIndex < sortedTeams.length; colIndex++) {
+        const slot = this.postRank.rankTable.rows[rowIndex].columns[colIndex];
+        if (!slot.team) {
+          slot.team = sortedTeams[teamIndex++];
+          assignedCount++;
+        }
+      }
+    }
+
+    this.toastr.success(`Smart-filled ${assignedCount} positions alphabetically`, 'Strategic Ranking');
+  }
+
+  smartFillBingo(): void {
+    if (!this.postBingo) return;
+
+    const availableTeams = this.getAvailableTeams();
+    if (availableTeams.length === 0) {
+      this.toastr.warning('No teams available to assign');
+      return;
+    }
+
+    const emptyCells = this.postBingo.bingoCells.filter(cell => !cell.team);
+
+    // For bingo, try to distribute teams in a pattern (corners first, then edges, then center)
+    const gridSize = this.postBingo.gridSize;
+    const cornerCells = emptyCells.filter(cell =>
+      (cell.row === 0 || cell.row === gridSize - 1) &&
+      (cell.column === 0 || cell.column === gridSize - 1)
+    );
+
+    const edgeCells = emptyCells.filter(cell =>
+      !cornerCells.includes(cell) &&
+      (cell.row === 0 || cell.row === gridSize - 1 || cell.column === 0 || cell.column === gridSize - 1)
+    );
+
+    const centerCells = emptyCells.filter(cell =>
+      !cornerCells.includes(cell) && !edgeCells.includes(cell)
+    );
+
+    // Sort teams by name for consistent placement
+    const sortedTeams = [...availableTeams].sort((a, b) => a.name.localeCompare(b.name));
+
+    let teamIndex = 0;
+    let assignedCount = 0;
+
+    // Fill corners first
+    for (const cell of cornerCells.slice(0, Math.min(sortedTeams.length - teamIndex, cornerCells.length))) {
+      if (teamIndex < sortedTeams.length) {
+        cell.team = sortedTeams[teamIndex++];
+        assignedCount++;
+      }
+    }
+
+    // Then edges
+    for (const cell of edgeCells.slice(0, Math.min(sortedTeams.length - teamIndex, edgeCells.length))) {
+      if (teamIndex < sortedTeams.length) {
+        cell.team = sortedTeams[teamIndex++];
+        assignedCount++;
+      }
+    }
+
+    // Finally center
+    for (const cell of centerCells.slice(0, Math.min(sortedTeams.length - teamIndex, centerCells.length))) {
+      if (teamIndex < sortedTeams.length) {
+        cell.team = sortedTeams[teamIndex++];
+        assignedCount++;
+      }
+    }
+
+    this.toastr.success(`Smart-filled ${assignedCount} squares strategically`, 'Strategic Bingo');
   }
 
   clearAll(): void {
-    if (this.originalPrediction?.predictionType === 'Ranking') {
+    const predType = this.originalPrediction?.predictionType;
+    if (predType === 'Ranking' || predType === 0 || predType === '0') {
       this.clearAllRankings();
-    } else if (this.originalPrediction?.predictionType === 'Bingo') {
+    } else if (predType === 'Bingo' || predType === 2 || predType === '2') {
       this.clearAllBingo();
     }
     this.clearSelection();
@@ -537,9 +657,10 @@ export class CounterPredictionComponent implements OnInit {
     const availableTeams = this.getAvailableTeams();
     if (availableTeams.length === 0) return;
 
-    if (this.originalPrediction?.predictionType === 'Ranking') {
+    const predType = this.originalPrediction?.predictionType;
+    if (predType === 'Ranking' || predType === 0 || predType === '0') {
       this.shuffleRankingTeams(availableTeams);
-    } else if (this.originalPrediction?.predictionType === 'Bingo') {
+    } else if (predType === 'Bingo' || predType === 2 || predType === '2') {
       this.shuffleBingoTeams(availableTeams);
     }
   }
@@ -585,22 +706,89 @@ export class CounterPredictionComponent implements OnInit {
     this.toastr.success('Bingo squares shuffled randomly');
   }
 
-  // VALIDATION
+  // Helper method to check if prediction type is recognized
+  isRecognizedPredictionType(): boolean {
+    const predType = this.originalPrediction?.predictionType;
+    return (predType === 'Ranking' || predType === 0 || predType === '0') ||
+           (predType === 'Bingo' || predType === 2 || predType === '2') ||
+           (predType === 'Bracket' || predType === 1 || predType === '1');
+  }
+
+  // Helper method to determine if ranking should be shown
+  shouldShowRanking(): boolean {
+    const predType = this.originalPrediction?.predictionType;
+    const isRankingType = (predType === 'Ranking' || predType === 0 || predType === '0');
+    const hasPostRank = !!this.postRank;
+    const hasRankTable = !!this.postRank?.rankTable;
+    const hasRows = (this.postRank?.rankTable?.rows?.length || 0) > 0;
+
+    console.log('shouldShowRanking check:', {
+      predType,
+      isRankingType,
+      hasPostRank,
+      hasRankTable,
+      hasRows,
+      result: isRankingType && hasPostRank && hasRankTable && hasRows
+    });
+
+    return isRankingType && hasPostRank && hasRankTable && hasRows;
+  }
+
+  // VALIDATION - Only allow submission at 100%
   isValidCounterPrediction(): boolean {
-    if (this.originalPrediction?.predictionType === 'Ranking' && this.postRank?.rankTable?.rows) {
-      return this.postRank.rankTable.rows.some(row =>
-        row.columns && row.columns.some(col => col.team !== null)
-      );
-    } else if (this.originalPrediction?.predictionType === 'Bingo' && this.postBingo?.bingoCells) {
-      return this.postBingo.bingoCells.some(cell => cell.team !== null);
+    const predType = this.originalPrediction?.predictionType;
+
+    if ((predType === 'Ranking' || predType === 0 || predType === '0') && this.postRank?.rankTable?.rows) {
+      // For ranking: ALL positions must be filled
+      const totalSlots = this.postRank.rankTable.numberOfRows * this.postRank.rankTable.numberOfColumns;
+      const filledSlots = this.postRank.rankTable.rows.reduce((count, row) => {
+        return count + row.columns.filter(col => col.team !== null).length;
+      }, 0);
+
+      return filledSlots === totalSlots && totalSlots > 0;
+    } else if ((predType === 'Bingo' || predType === 2 || predType === '2') && this.postBingo?.bingoCells) {
+      // For bingo: ALL cells must be filled
+      const totalCells = this.postBingo.bingoCells.length;
+      const filledCells = this.postBingo.bingoCells.filter(cell => cell.team !== null).length;
+
+      return filledCells === totalCells && totalCells > 0;
     }
+
     return false;
   }
 
-  // SUBMIT COUNTER PREDICTION
+  // Get completion percentage (already exists but ensuring it's accurate)
+  getCompletionPercentage(): number {
+    const predType = this.originalPrediction?.predictionType;
+
+    if ((predType === 'Ranking' || predType === 0 || predType === '0') && this.postRank?.rankTable?.rows) {
+      const totalSlots = this.postRank.rankTable.numberOfRows * this.postRank.rankTable.numberOfColumns;
+      const filledSlots = this.postRank.rankTable.rows.reduce((count, row) => {
+        return count + row.columns.filter(col => col.team !== null).length;
+      }, 0);
+
+      return totalSlots > 0 ? Math.round((filledSlots / totalSlots) * 100) : 0;
+    } else if ((predType === 'Bingo' || predType === 2 || predType === '2') && this.postBingo?.bingoCells) {
+      const totalCells = this.postBingo.bingoCells.length;
+      const filledCells = this.postBingo.bingoCells.filter(cell => cell.team !== null).length;
+
+      return totalCells > 0 ? Math.round((filledCells / totalCells) * 100) : 0;
+    }
+
+    return 0;
+  }
+
+  // SUBMIT COUNTER PREDICTION - Updated with 100% requirement
   async submitCounterPrediction(): Promise<void> {
+    const completionPercentage = this.getCompletionPercentage();
+
+    if (completionPercentage < 100) {
+      this.toastr.error(`Please fill all positions before submitting (${completionPercentage}% complete)`);
+      return;
+    }
+
     if (!this.isValidCounterPrediction()) {
-      this.toastr.error('Please make at least some predictions to submit');
+      this.toastr.error('Please complete your prediction before submitting');
       return;
     }
 
@@ -614,8 +802,8 @@ export class CounterPredictionComponent implements OnInit {
     try {
       const counterPredictionData = {
         notes: this.counterPredictionForm.get('notes')?.value || '',
-        postRank: this.originalPrediction.predictionType === 'Ranking' ? this.postRank : null,
-        postBingo: this.originalPrediction.predictionType === 'Bingo' ? this.postBingo : null
+        postRank: (this.originalPrediction.predictionType === 'Ranking' || this.originalPrediction.predictionType === 0 || this.originalPrediction.predictionType === '0') ? this.postRank : null,
+        postBingo: (this.originalPrediction.predictionType === 'Bingo' || this.originalPrediction.predictionType === 2 || this.originalPrediction.predictionType === '2') ? this.postBingo : null
       };
 
       console.log('Submitting counter prediction:', counterPredictionData);
@@ -706,9 +894,10 @@ export class CounterPredictionComponent implements OnInit {
 
   // Check if a team is currently selected in the UI
   isTeamSelected(team: Team): boolean {
-    if (this.originalPrediction?.predictionType === 'Ranking' && this.postRank) {
+    const predType = this.originalPrediction?.predictionType;
+    if ((predType === 'Ranking' || predType === 0 || predType === '0') && this.postRank) {
       return this.findTeamInRanking(team) !== null;
-    } else if (this.originalPrediction?.predictionType === 'Bingo' && this.postBingo) {
+    } else if ((predType === 'Bingo' || predType === 2 || predType === '2') && this.postBingo) {
       return this.findTeamInBingo(team) !== -1;
     }
     return false;
@@ -716,12 +905,13 @@ export class CounterPredictionComponent implements OnInit {
 
   // Get the position where a team is assigned (for display purposes)
   getTeamPosition(team: Team): string {
-    if (this.originalPrediction?.predictionType === 'Ranking' && this.postRank) {
+    const predType = this.originalPrediction?.predictionType;
+    if ((predType === 'Ranking' || predType === 0 || predType === '0') && this.postRank) {
       const position = this.findTeamInRanking(team);
       if (position) {
         return `Rank ${position.rowIndex + 1}`;
       }
-    } else if (this.originalPrediction?.predictionType === 'Bingo' && this.postBingo) {
+    } else if ((predType === 'Bingo' || predType === 2 || predType === '2') && this.postBingo) {
       const cellIndex = this.findTeamInBingo(team);
       if (cellIndex !== -1) {
         const cell = this.postBingo.bingoCells[cellIndex];

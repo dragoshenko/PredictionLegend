@@ -1,4 +1,4 @@
-/* Enhanced Counter Prediction Component Styles */
+/* Enhanced Counter Prediction Component Styles with Drag & Drop */
 
 .counter-prediction-container {
   --primary-color: #007bff;
@@ -20,6 +20,66 @@
 .counter-prediction-container .small {
   font-size: 0.875rem;
   line-height: 1.25;
+}
+
+/* Drag and Drop Enhancements */
+.counter-prediction-container .team-item {
+  transition: var(--transition);
+  border-radius: var(--border-radius);
+  position: relative;
+  overflow: hidden;
+}
+
+.counter-prediction-container .team-item.cdk-drag-dragging {
+  box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
+  transform: rotate(2deg);
+  opacity: 0.8;
+  z-index: 1000;
+}
+
+.counter-prediction-container .team-item:not(.cdk-drag-dragging) {
+  cursor: grab;
+}
+
+.counter-prediction-container .team-item:not(.cdk-drag-dragging):active {
+  cursor: grabbing;
+}
+
+/* Custom Drag Preview */
+.counter-prediction-container .drag-preview {
+  transform: rotate(2deg) scale(1.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  border-radius: var(--border-radius);
+  max-width: 200px;
+  z-index: 1000;
+}
+
+/* Drop Zone Styling */
+.counter-prediction-container .team-slot.cdk-drop-list-receiving {
+  border-color: var(--info-color) !important;
+  background: rgba(23, 162, 184, 0.15) !important;
+  transform: scale(1.02);
+  box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.25);
+}
+
+.counter-prediction-container .bingo-cell.cdk-drop-list-receiving {
+  border-color: var(--info-color) !important;
+  background: rgba(23, 162, 184, 0.15) !important;
+  transform: scale(1.05);
+  box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.25);
+}
+
+/* Drag Placeholder */
+.counter-prediction-container .cdk-drag-placeholder {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px dashed var(--secondary-color);
+  border-radius: var(--border-radius);
+  opacity: 0.5;
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.counter-prediction-container .cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
 }
 
 /* Team Slot Styling */
@@ -49,18 +109,18 @@
   background: rgba(108, 117, 125, 0.05);
 }
 
+.counter-prediction-container .team-slot.empty:hover {
+  border-color: var(--info-color);
+  background: rgba(23, 162, 184, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(23, 162, 184, 0.2);
+}
+
 .counter-prediction-container .team-slot.selected {
   border-color: var(--primary-color);
   background: rgba(0, 123, 255, 0.15);
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
   transform: scale(1.02);
-}
-
-.counter-prediction-container .team-slot.selecting:hover {
-  border-color: var(--info-color);
-  background: rgba(23, 162, 184, 0.1);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(23, 162, 184, 0.2);
 }
 
 /* Bingo Cell Styling */
@@ -92,6 +152,13 @@
   background: rgba(108, 117, 125, 0.05);
 }
 
+.counter-prediction-container .bingo-cell.empty:hover {
+  border-color: var(--info-color);
+  background: rgba(23, 162, 184, 0.1);
+  transform: scale(1.02);
+  box-shadow: 0 4px 8px rgba(23, 162, 184, 0.2);
+}
+
 .counter-prediction-container .bingo-cell.selected {
   border-color: var(--primary-color);
   background: rgba(0, 123, 255, 0.15);
@@ -99,24 +166,10 @@
   transform: scale(1.05);
 }
 
-.counter-prediction-container .bingo-cell.selecting:hover {
-  border-color: var(--info-color);
-  background: rgba(23, 162, 184, 0.1);
-  transform: scale(1.02);
-  box-shadow: 0 4px 8px rgba(23, 162, 184, 0.2);
-}
-
-/* Team Item Styling */
-.counter-prediction-container .team-item {
-  transition: var(--transition);
-  border-radius: var(--border-radius);
-  position: relative;
-  overflow: hidden;
-}
-
+/* Team Item Enhancements for Drag & Drop */
 .counter-prediction-container .team-item.selectable {
   border-color: var(--primary-color) !important;
-  cursor: pointer;
+  cursor: grab;
   background: rgba(0, 123, 255, 0.05);
 }
 
@@ -126,29 +179,79 @@
   box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2);
 }
 
-.counter-prediction-container .team-item.selectable::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-  transition: left 0.3s ease;
-  pointer-events: none;
-}
-
-.counter-prediction-container .team-item.selectable:hover::before {
-  left: 100%;
+.counter-prediction-container .team-item.selectable:active {
+  cursor: grabbing;
 }
 
 .counter-prediction-container .team-item.available {
   opacity: 0.7;
+  cursor: grab;
 }
 
 .counter-prediction-container .team-item.available:hover {
   opacity: 1;
   background: rgba(108, 117, 125, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Drag Handle */
+.counter-prediction-container .fa-grip-vertical {
+  color: rgba(255, 255, 255, 0.5);
+  transition: var(--transition);
+}
+
+.counter-prediction-container .team-item:hover .fa-grip-vertical {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Drop Zone Animations */
+.counter-prediction-container .team-slot.cdk-drop-list-receiving::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg,
+    rgba(23, 162, 184, 0.1) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(23, 162, 184, 0.1) 50%,
+    rgba(23, 162, 184, 0.1) 75%,
+    transparent 75%);
+  background-size: 20px 20px;
+  border-radius: var(--border-radius);
+  animation: slideBackground 1s linear infinite;
+  pointer-events: none;
+}
+
+.counter-prediction-container .bingo-cell.cdk-drop-list-receiving::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg,
+    rgba(23, 162, 184, 0.1) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(23, 162, 184, 0.1) 50%,
+    rgba(23, 162, 184, 0.1) 75%,
+    transparent 75%);
+  background-size: 15px 15px;
+  border-radius: var(--border-radius);
+  animation: slideBackground 1s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes slideBackground {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 20px 20px;
+  }
 }
 
 /* Selection Indicators */
@@ -270,17 +373,6 @@
   padding: 0.5rem;
 }
 
-/* Ranking Specific */
-.counter-prediction-container .table td:first-child {
-  text-align: center;
-  font-weight: bold;
-  background: linear-gradient(135deg, var(--warning-color), #e0a800);
-  color: #212529;
-  border-radius: var(--border-radius);
-  margin: 4px;
-  padding: 1rem;
-}
-
 /* Grid Layout */
 .counter-prediction-container .bingo-grid {
   display: grid;
@@ -292,34 +384,24 @@
   border-radius: 12px;
 }
 
-/* Image Styling */
-.counter-prediction-container img {
-  transition: var(--transition);
-  object-fit: cover;
+/* Drag & Drop Success Animation */
+.counter-prediction-container .drop-success {
+  animation: dropSuccess 0.6s ease-in-out;
 }
 
-.counter-prediction-container img:hover {
-  transform: scale(1.05);
-}
-
-/* Icon Styling */
-.counter-prediction-container .fa {
-  transition: var(--transition);
-}
-
-.counter-prediction-container .btn:hover .fa {
-  transform: scale(1.1);
-}
-
-/* Loading States */
-.counter-prediction-container .spinner-border {
-  width: 1.5rem;
-  height: 1.5rem;
-}
-
-.counter-prediction-container .spinner-border-sm {
-  width: 1rem;
-  height: 1rem;
+@keyframes dropSuccess {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 20px rgba(40, 167, 69, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+  }
 }
 
 /* Responsive Design */
@@ -339,39 +421,12 @@
     gap: 4px;
   }
 
-  .counter-prediction-container .table th,
-  .counter-prediction-container .table td {
-    padding: 0.5rem 0.25rem;
-    font-size: 0.875rem;
-  }
-
   .counter-prediction-container .team-item {
     padding: 0.5rem;
   }
 
   .counter-prediction-container .very-small {
     font-size: 0.6rem;
-  }
-}
-
-@media (max-width: 576px) {
-  .counter-prediction-container .bingo-grid {
-    max-width: 250px;
-  }
-
-  .counter-prediction-container .bingo-cell {
-    min-height: 50px;
-    padding: 2px;
-  }
-
-  .counter-prediction-container .team-slot {
-    min-height: 50px;
-    padding: 6px;
-  }
-
-  .counter-prediction-container .btn-sm {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
   }
 }
 
@@ -383,119 +438,10 @@
   outline-offset: 2px;
 }
 
-/* High Contrast Mode */
-@media (prefers-contrast: high) {
-  .counter-prediction-container .team-slot,
-  .counter-prediction-container .bingo-cell {
-    border-width: 3px;
-  }
-}
-
 /* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   .counter-prediction-container * {
     transition: none !important;
+    animation: none !important;
   }
-
-  .counter-prediction-container .team-item::before {
-    display: none;
-  }
-}
-
-/* Dark Mode Enhancements */
-.counter-prediction-container .bg-dark {
-  background: linear-gradient(135deg, #2c3e50, #34495e) !important;
-}
-
-.counter-prediction-container .bg-secondary {
-  background: linear-gradient(135deg, #6f42c1, #5a32a3) !important;
-}
-
-.counter-prediction-container .bg-info {
-  background: linear-gradient(135deg, var(--info-color), #138496) !important;
-}
-
-/* Animation Classes */
-.counter-prediction-container .fade-in {
-  animation: fadeIn 0.5s ease-in;
-}
-
-.counter-prediction-container .slide-up {
-  animation: slideUp 0.3s ease-out;
-}
-
-.counter-prediction-container .pulse {
-  animation: pulse 2s infinite;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(0, 123, 255, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0);
-  }
-}
-
-/* Success Animation */
-.counter-prediction-container .success-animation {
-  animation: successPulse 0.6s ease-in-out;
-}
-
-@keyframes successPulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
-  }
-  50% {
-    transform: scale(1.05);
-    box-shadow: 0 0 0 20px rgba(40, 167, 69, 0);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
-  }
-}
-
-/* Custom Scrollbar */
-.counter-prediction-container *::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.counter-prediction-container *::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-}
-
-.counter-prediction-container *::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 3px;
-}
-
-.counter-prediction-container *::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
 }
