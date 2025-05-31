@@ -60,12 +60,40 @@
   aspect-ratio: 1;
 }
 
+/* Clickable slot styling */
+.clickable-slot {
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.clickable-slot:hover {
+  transform: scale(1.02);
+}
+
+.clickable-slot.can-assign {
+  border-color: #007bff !important;
+  background: linear-gradient(145deg, #0056b3, #007bff) !important;
+  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+}
+
+.clickable-slot.can-assign:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+}
+
+.clickable-slot.selected-slot {
+  border-color: #007bff !important;
+  background: linear-gradient(145deg, #0056b3, #007bff) !important;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.3);
+}
+
 /* Bingo cell styling */
 .bingo-cell {
   aspect-ratio: 1;
   border-radius: 8px;
   padding: 8px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
   min-height: 100px;
@@ -80,31 +108,8 @@
 }
 
 .bingo-cell.occupied {
-  border: 2px solid #6f42c1;
-  background: linear-gradient(145deg, #4c2a85, #6f42c1);
-}
-
-.bingo-cell.cdk-drop-list-receiving {
-  border-color: #17a2b8;
-  background: linear-gradient(145deg, #0c5460, #17a2b8);
-  transform: scale(1.02);
-  box-shadow: 0 8px 25px rgba(23, 162, 184, 0.4);
-}
-
-.bingo-cell::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-  transition: left 0.3s ease;
-  pointer-events: none;
-}
-
-.bingo-cell:hover::before {
-  left: 100%;
+  border: 2px solid #007bff;
+  background: linear-gradient(145deg, #0056b3, #007bff);
 }
 
 /* Ranking table */
@@ -131,15 +136,15 @@
 }
 
 .rank-number {
-  background: linear-gradient(145deg, #ffc107, #e0a800);
-  color: #000;
+  background: linear-gradient(145deg, #6c757d, #495057);
+  color: #fff;
   font-weight: bold;
   text-align: center;
   padding: 16px 12px;
   font-size: 1.2rem;
   border-radius: 8px;
   margin: 4px;
-  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+  box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
 }
 
 /* Team slot styling */
@@ -148,7 +153,6 @@
   border-radius: 8px;
   padding: 12px;
   margin: 4px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
 }
@@ -159,31 +163,8 @@
 }
 
 .team-slot.occupied {
-  border: 2px solid #28a745;
-  background: linear-gradient(145deg, #1e5128, #28a745);
-}
-
-.team-slot.cdk-drop-list-receiving {
-  border-color: #17a2b8;
-  background: linear-gradient(145deg, #0c5460, #17a2b8);
-  transform: scale(1.02);
-  box-shadow: 0 8px 25px rgba(23, 162, 184, 0.4);
-}
-
-.team-slot::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-  transition: left 0.3s ease;
-  pointer-events: none;
-}
-
-.team-slot:hover::before {
-  left: 100%;
+  border: 2px solid #007bff;
+  background: linear-gradient(145deg, #0056b3, #007bff);
 }
 
 /* Team item styling */
@@ -286,73 +267,47 @@
   background: rgba(255, 255, 255, 0.5);
 }
 
-/* Team card styling */
-.team-card {
+/* Clickable team card styling */
+.clickable-team {
   background: linear-gradient(145deg, #007bff, #0056b3);
   border: none;
   border-radius: 8px;
   padding: 12px;
-  cursor: grab;
+  cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
   user-select: none;
 }
 
-.team-card:hover {
+.clickable-team:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3);
 }
 
-.team-card.cdk-drag-disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+.clickable-team.selected-team {
+  background: linear-gradient(145deg, #007bff, #0056b3);
+  border: 2px solid #007bff;
+  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+}
+
+.clickable-team.selected-team:hover {
+  box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
 }
 
 .team-card-content {
   pointer-events: none;
 }
 
-.drag-handle {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 1rem;
-  pointer-events: none;
-}
-
-/* Drag preview */
-.drag-preview {
-  background: linear-gradient(145deg, #007bff, #0056b3);
-  border-radius: 8px;
-  padding: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  transform: rotate(5deg);
-  color: white;
-  max-width: 200px;
-}
-
-/* CDK Drag placeholders */
-.cdk-drag-placeholder {
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px dashed #6c757d;
-  border-radius: 8px;
-  min-height: 60px;
-  opacity: 0.5;
-  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
-}
-
-.cdk-drag-animating {
-  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
-}
-
 /* Settings card */
 .settings-card {
-  background: linear-gradient(145deg, #28a745, #1e7e34);
+  background: linear-gradient(145deg, #007bff, #0056b3);
   border: none;
   border-radius: 12px;
-  box-shadow: 0 8px 25px rgba(40, 167, 69, 0.2);
+  box-shadow: 0 8px 25px rgba(0, 123, 255, 0.2);
 }
 
 .settings-card .card-header {
-  background: linear-gradient(145deg, #1e7e34, #155724);
+  background: linear-gradient(145deg, #0056b3, #004085);
   border: none;
   padding: 1rem 1.5rem;
 }
@@ -405,23 +360,36 @@
 }
 
 /* Animations */
-@keyframes dropSuccess {
+@keyframes assignSuccess {
   0% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7);
   }
   50% {
     transform: scale(1.05);
-    box-shadow: 0 0 0 20px rgba(40, 167, 69, 0);
+    box-shadow: 0 0 0 20px rgba(0, 123, 255, 0);
   }
   100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0);
   }
 }
 
-.drop-success {
-  animation: dropSuccess 0.6s ease-in-out;
+.assign-success {
+  animation: assignSuccess 0.6s ease-in-out;
+}
+
+@keyframes selectPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(0, 123, 255, 0);
+  }
+}
+
+.selected-team {
+  animation: selectPulse 2s infinite;
 }
 
 /* Button improvements */
@@ -447,6 +415,19 @@
 
 .progress-bar {
   transition: width 0.3s ease;
+}
+
+/* Visual feedback for assignment flow */
+.assignment-flow-active .clickable-slot.empty {
+  border-style: solid;
+  border-width: 2px;
+  border-color: #007bff;
+  background: linear-gradient(145deg, #0056b3, #007bff);
+}
+
+.assignment-flow-active .clickable-slot.empty:hover {
+  border-color: #28a745;
+  background: linear-gradient(145deg, #1e7e34, #28a745);
 }
 
 /* Responsive design */
@@ -542,9 +523,8 @@
 }
 
 /* Accessibility improvements */
-.team-card:focus,
-.team-slot:focus,
-.bingo-cell:focus {
+.clickable-team:focus,
+.clickable-slot:focus {
   outline: 2px solid #007bff;
   outline-offset: 2px;
 }
@@ -564,16 +544,14 @@
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .team-card,
-  .team-slot,
-  .bingo-cell,
+  .clickable-team,
+  .clickable-slot,
   .btn {
     transition: none;
   }
 
-  .team-slot::before,
-  .bingo-cell::before {
-    display: none;
+  .selected-team {
+    animation: none;
   }
 }
 
@@ -597,14 +575,239 @@
   contain: layout style paint;
 }
 
-.team-card {
+.clickable-team {
   contain: layout style paint;
 }
 
-.team-slot {
+.clickable-slot {
   contain: layout style paint;
 }
 
 .bingo-cell {
   contain: layout style paint;
+}
+
+/* Hover effects for better UX */
+.clickable-slot.empty::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  transition: left 0.3s ease;
+  pointer-events: none;
+}
+
+.clickable-slot.empty:hover::before {
+  left: 100%;
+}
+
+/* Selection indicators */
+.team-selection-indicator {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 20px;
+  height: 20px;
+  background: #007bff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 12px;
+  z-index: 10;
+}
+
+/* Interactive feedback */
+.clickable-team:active {
+  transform: scale(0.98);
+}
+
+.clickable-slot:active {
+  transform: scale(0.98);
+}
+
+/* Success states */
+.assignment-success {
+  background: linear-gradient(145deg, #007bff, #0056b3) !important;
+  border-color: #007bff !important;
+}
+
+/* Info card for selected team */
+.selected-team-info {
+  background: linear-gradient(145deg, #17a2b8, #138496);
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(23, 162, 184, 0.2);
+}
+
+.selected-team-info .card-header {
+  background: linear-gradient(145deg, #138496, #0c5460);
+  border: none;
+  padding: 1rem 1.5rem;
+}
+
+/* Enhanced visual feedback */
+.can-assign-glow {
+  box-shadow: 0 0 15px rgba(0, 123, 255, 0.5);
+}
+
+.assignment-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 123, 255, 0.9);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.can-assign:hover .assignment-hint {
+  opacity: 1;
+}
+
+/* Improved button styles */
+.btn-clear-selection {
+  background: linear-gradient(145deg, #6c757d, #495057);
+  border: none;
+  color: white;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-clear-selection:hover {
+  background: linear-gradient(145deg, #495057, #343a40);
+  transform: translateY(-1px);
+}
+
+/* Notification styles for better feedback */
+.assignment-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 123, 255, 0.9);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  z-index: 9999;
+  animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Team assignment flow visual guide */
+.assignment-flow-guide {
+  position: relative;
+}
+
+.assignment-flow-guide::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2px dashed #007bff;
+  border-radius: 8px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.assignment-flow-active .assignment-flow-guide::after {
+  opacity: 1;
+}
+
+/* Enhanced empty slot styling */
+.empty-slot.can-receive {
+  background: linear-gradient(145deg, #007bff, #0056b3);
+  color: white;
+}
+
+.empty-slot.can-receive i {
+  opacity: 1;
+  color: white;
+}
+
+/* Drag-free interaction indicators */
+.click-to-assign-indicator {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0, 123, 255, 0.8);
+  color: white;
+  font-size: 10px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.clickable-slot:hover .click-to-assign-indicator {
+  opacity: 1;
+}
+
+/* Team card hover enhancements */
+.clickable-team::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  pointer-events: none;
+}
+
+.clickable-team:hover::before {
+  transform: translateX(100%);
+}
+
+/* Enhanced progress indicator */
+.progress-enhanced {
+  background: linear-gradient(90deg, #e9ecef, #f8f9fa);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.progress-enhanced .progress-bar {
+  background: linear-gradient(90deg, #007bff, #17a2b8);
+  border-radius: 8px;
+  position: relative;
+}
+
+.progress-enhanced .progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: progressShine 2s infinite;
+}
+
+@keyframes progressShine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }

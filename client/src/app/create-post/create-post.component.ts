@@ -5,7 +5,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Team } from '../_models/team';
 import { PredictionType } from '../_models/predictionType';
 import { ToastrService } from 'ngx-toastr';
-import { CdkDragDrop, DragDropModule, transferArrayItem } from '@angular/cdk/drag-drop';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 
@@ -52,20 +51,16 @@ interface PostBingoData {
   isOfficialResult: boolean;
 }
 
-interface PublishPostRequest {
-  predictionId: number;
-  templateId: number;
-  predictionType: PredictionType | string;
-  notes: string;
-  isDraft: boolean;
-  postRank?: PostRankData | null;
-  postBracket?: any;
-  postBingo?: PostBingoData | null;
+interface SelectedSlot {
+  type: 'ranking' | 'bingo';
+  rowIndex?: number;
+  colIndex?: number;
+  cellIndex?: number;
 }
 
 @Component({
   selector: 'app-create-post',
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, DragDropModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './create-post.component.html',
   styleUrls: ['./create-post.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -77,7 +72,7 @@ export class CreatePostComponent implements OnInit {
   private fb = inject(FormBuilder);
   private http = inject(HttpClient);
 
-  // map for prediction types
+  // Map for prediction types
   predictionTypeMap = {
     [PredictionType.Ranking]: 0,
     [PredictionType.Bracket]: 1,
@@ -90,15 +85,14 @@ export class CreatePostComponent implements OnInit {
   predictionType: PredictionType = PredictionType.Ranking;
   template: any = null;
   selectedTeams: Team[] = [];
-  predictionTypeEnumMap = {
-    [PredictionType.Ranking]: 0,
-    [PredictionType.Bracket]: 1,
-    [PredictionType.Bingo]: 2,
-  };
 
   // Post data
   postRank: PostRankData | null = null;
   postBingo: PostBingoData | null = null;
+
+  // Selection state for click-to-assign
+  selectedTeamForAssignment: Team | null = null;
+  selectedSlot: SelectedSlot | null = null;
 
   // Forms
   postForm: FormGroup = new FormGroup({});
@@ -106,12 +100,6 @@ export class CreatePostComponent implements OnInit {
   // UI State
   isLoading = false;
   isSubmitting = false;
-
-  // Track by functions for performance
-  trackByTeamId = (index: number, team: Team): number => team.id;
-  trackByRowIndex = (index: number, row: RankRow): number => row.order;
-  trackByIndex = (index: number): number => index;
-  trackByCellIndex = (index: number, cell: BingoCell): number => index;
 
   ngOnInit(): void {
     this.initializeForm();
@@ -243,46 +231,117 @@ export class CreatePostComponent implements OnInit {
     }
   }
 
-  // Optimized drag & drop for Rankings
-  dropTeamInRanking(event: CdkDragDrop<any>, rowIndex: number, columnIndex: number): void {
-    if (!this.postRank) return;
+  // Team selection for assignment
+  selectTeamForAssignment(team: Team): void {
+    if (this.selectedTeamForAssignment?.id === team.id) {
+      // Deselect if clicking the same team
+      this.selectedTeamForAssignment = null;
+      this.selectedSlot = null;
+      this.toastr.info('Team deselected');
+    } else {
+      // Select new team
+      this.selectedTeamForAssignment = team;
+      this.selectedSlot = null;
+      this.toastr.success(`${team.name} selected. Click on a position to assign it.`);
+    }
+  }
+
+  // Handle slot clicks for assignment
+  handleSlotClick(type: 'ranking' | 'bingo', ...args: number[]): void {
+    if (!this.selectedTeamForAssignment) {
+      this.toastr.info('Please select a team first');
+      return;
+    }
+
+    if (type === 'ranking') {
+      const [rowIndex, colIndex] = args;
+      this.assignTeamToRankingSlot(rowIndex, colIndex);
+    } else if (type === 'bingo') {
+      const [cellIndex] = args;
+      this.assignTeamToBingoCell(cellIndex);
+    }
+  }
+
+  assignTeamToRankingSlot(rowIndex: number, columnIndex: number): void {
+    if (!this.postRank || !this.selectedTeamForAssignment) return;
 
     const targetSlot = this.postRank.rankTable.rows[rowIndex]?.columns[columnIndex];
     if (!targetSlot) return;
 
-    // Check if dropping from available teams list
-    if (event.previousContainer.id === 'available-teams') {
-      const draggedTeam = event.item.data as Team;
-
-      // Check if slot is empty
-      if (!targetSlot.team) {
-        targetSlot.team = draggedTeam;
-        this.toastr.success(`${draggedTeam.name} assigned to rank ${rowIndex + 1}`);
-      } else {
-        this.toastr.warning('This position is already occupied');
-      }
+    if (targetSlot.team) {
+      this.toastr.warning('This position is already occupied');
+      return;
     }
+
+    // Check if team is already assigned somewhere else
+    const existingPosition = this.findTeamInRanking(this.selectedTeamForAssignment.id);
+    if (existingPosition) {
+      // Remove from existing position
+      const existingSlot = this.postRank.rankTable.rows[existingPosition.rowIndex].columns[existingPosition.colIndex];
+      existingSlot.team = null;
+    }
+
+    // Assign to new position
+    targetSlot.team = this.selectedTeamForAssignment;
+    this.toastr.success(`${this.selectedTeamForAssignment.name} assigned to rank ${rowIndex + 1}`);
+
+    // Clear selection after assignment
+    this.selectedTeamForAssignment = null;
+    this.selectedSlot = null;
   }
 
-  // Drag & drop for Bingo
-  dropTeamInBingo(event: CdkDragDrop<any>, cellIndex: number): void {
-    if (!this.postBingo) return;
+  assignTeamToBingoCell(cellIndex: number): void {
+    if (!this.postBingo || !this.selectedTeamForAssignment) return;
 
     const targetCell = this.postBingo.bingoCells[cellIndex];
     if (!targetCell) return;
 
-    // Check if dropping from available teams list
-    if (event.previousContainer.id === 'available-teams') {
-      const draggedTeam = event.item.data as Team;
+    if (targetCell.team) {
+      this.toastr.warning('This bingo square is already occupied');
+      return;
+    }
 
-      // Check if cell is empty
-      if (!targetCell.team) {
-        targetCell.team = draggedTeam;
-        this.toastr.success(`${draggedTeam.name} assigned to bingo square`);
-      } else {
-        this.toastr.warning('This bingo square is already occupied');
+    // Check if team is already assigned somewhere else
+    const existingCellIndex = this.findTeamInBingo(this.selectedTeamForAssignment.id);
+    if (existingCellIndex !== -1) {
+      // Remove from existing position
+      this.postBingo.bingoCells[existingCellIndex].team = null;
+    }
+
+    // Assign to new position
+    targetCell.team = this.selectedTeamForAssignment;
+    this.toastr.success(`${this.selectedTeamForAssignment.name} assigned to bingo square`);
+
+    // Clear selection after assignment
+    this.selectedTeamForAssignment = null;
+    this.selectedSlot = null;
+  }
+
+  // Helper methods to find existing team positions
+  findTeamInRanking(teamId: number): { rowIndex: number; colIndex: number } | null {
+    if (!this.postRank) return null;
+
+    for (let rowIndex = 0; rowIndex < this.postRank.rankTable.rows.length; rowIndex++) {
+      for (let colIndex = 0; colIndex < this.postRank.rankTable.rows[rowIndex].columns.length; colIndex++) {
+        if (this.postRank.rankTable.rows[rowIndex].columns[colIndex].team?.id === teamId) {
+          return { rowIndex, colIndex };
+        }
       }
     }
+    return null;
+  }
+
+  findTeamInBingo(teamId: number): number {
+    if (!this.postBingo) return -1;
+
+    return this.postBingo.bingoCells.findIndex(cell => cell.team?.id === teamId);
+  }
+
+  // Clear selection
+  clearSelection(): void {
+    this.selectedTeamForAssignment = null;
+    this.selectedSlot = null;
+    this.toastr.info('Selection cleared');
   }
 
   // Team removal methods
@@ -348,6 +407,7 @@ export class CreatePostComponent implements OnInit {
     }
 
     this.toastr.success(`Auto-filled ${teamIndex} positions`);
+    this.clearSelection(); // Clear any active selection
   }
 
   autoFillBingo(): void {
@@ -367,6 +427,7 @@ export class CreatePostComponent implements OnInit {
     });
 
     this.toastr.success(`Auto-filled ${cellsToFill} bingo squares`);
+    this.clearSelection(); // Clear any active selection
   }
 
   clearAll(): void {
@@ -375,6 +436,7 @@ export class CreatePostComponent implements OnInit {
     } else if (this.predictionType === PredictionType.Bingo) {
       this.clearAllBingo();
     }
+    this.clearSelection(); // Clear any active selection
   }
 
   clearAllRankings(): void {
@@ -420,6 +482,7 @@ export class CreatePostComponent implements OnInit {
     }
 
     this.toastr.success('Teams shuffled randomly');
+    this.clearSelection(); // Clear any active selection
   }
 
   shuffleBingo(): void {
@@ -444,6 +507,7 @@ export class CreatePostComponent implements OnInit {
     });
 
     this.toastr.success('Bingo squares shuffled randomly');
+    this.clearSelection(); // Clear any active selection
   }
 
   // Progress tracking
@@ -609,7 +673,6 @@ export class CreatePostComponent implements OnInit {
       this.isSubmitting = false;
     }
   }
-
 
   // Navigation
   goBack(): void {

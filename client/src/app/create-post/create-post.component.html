@@ -15,7 +15,7 @@
                 Create {{ predictionType }} Post
               </h2>
               <p class="text-light mb-0 opacity-75">
-                Arrange your teams and finalize your prediction
+                Click on teams and positions to assign them
               </p>
             </div>
             <div class="d-flex gap-2">
@@ -39,6 +39,9 @@
               <h4 class="text-light mb-0">
                 <i class="fa fa-list-ol me-2"></i>Ranking Table
               </h4>
+              <p class="text-light mb-0 opacity-75 mt-1" *ngIf="selectedTeamForAssignment">
+                Click on a position to assign "{{ selectedTeamForAssignment.name }}" or click the team again to deselect
+              </p>
             </div>
             <div class="card-body p-0">
               <div class="table-responsive">
@@ -46,25 +49,24 @@
                   <thead>
                     <tr>
                       <th width="100">Rank</th>
-                      <th *ngFor="let col of postRank.rankTable.rows[0]?.columns || []; let i = index; trackBy: trackByIndex">
+                      <th *ngFor="let col of postRank.rankTable.rows[0]?.columns || []; let i = index">
                         Position {{ i + 1 }}
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr *ngFor="let row of postRank.rankTable.rows || []; let rowIndex = index; trackBy: trackByRowIndex">
+                    <tr *ngFor="let row of postRank.rankTable.rows || []; let rowIndex = index">
                       <td>
                         <div class="rank-number">{{ row.order }}</div>
                       </td>
-                      <td *ngFor="let column of row.columns || []; let colIndex = index; trackBy: trackByIndex">
+                      <td *ngFor="let column of row.columns || []; let colIndex = index">
                         <div
-                          class="team-slot"
+                          class="team-slot clickable-slot"
                           [class.occupied]="column.team"
                           [class.empty]="!column.team"
-                          cdkDropList
-                          [cdkDropListData]="[column]"
-                          (cdkDropListDropped)="dropTeamInRanking($event, rowIndex, colIndex)"
-                          cdkDropListSortingDisabled>
+                          [class.can-assign]="selectedTeamForAssignment && !column.team"
+                          [class.selected-slot]="selectedSlot?.type === 'ranking' && selectedSlot?.rowIndex === rowIndex && selectedSlot?.colIndex === colIndex"
+                          (click)="handleSlotClick('ranking', rowIndex, colIndex)">
 
                           <!-- Occupied Slot -->
                           <div *ngIf="column.team" class="team-item d-flex align-items-center">
@@ -82,7 +84,7 @@
                             </div>
                             <button
                               class="btn btn-sm btn-outline-light remove-btn"
-                              (click)="removeTeamFromSlot(rowIndex, colIndex)"
+                              (click)="removeTeamFromSlot(rowIndex, colIndex); $event.stopPropagation()"
                               type="button">
                               <i class="fa fa-times"></i>
                             </button>
@@ -90,8 +92,11 @@
 
                           <!-- Empty Slot -->
                           <div *ngIf="!column.team" class="empty-slot text-center text-muted">
-                            <i class="fa fa-plus-circle fa-2x mb-1"></i>
-                            <div class="small">Drop team here</div>
+                            <i class="fa fa-plus-circle fa-2x mb-1"
+                               [class.text-primary]="selectedTeamForAssignment"></i>
+                            <div class="small">
+                              {{ selectedTeamForAssignment ? 'Click to assign' : 'Select a team first' }}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -108,6 +113,9 @@
               <h4 class="text-light mb-0">
                 <i class="fa fa-th me-2"></i>Bingo Grid ({{ postBingo.gridSize }}x{{ postBingo.gridSize }})
               </h4>
+              <p class="text-light mb-0 opacity-75 mt-1" *ngIf="selectedTeamForAssignment">
+                Click on a square to assign "{{ selectedTeamForAssignment.name }}" or click the team again to deselect
+              </p>
             </div>
             <div class="card-body">
               <div class="bingo-grid"
@@ -115,14 +123,13 @@
                    [style.gap]="'8px'"
                    [style.display]="'grid'">
 
-                <div *ngFor="let cell of postBingo.bingoCells || []; let cellIndex = index; trackBy: trackByCellIndex"
-                     class="bingo-cell"
+                <div *ngFor="let cell of postBingo.bingoCells || []; let cellIndex = index"
+                     class="bingo-cell clickable-slot"
                      [class.occupied]="cell.team"
                      [class.empty]="!cell.team"
-                     cdkDropList
-                     [cdkDropListData]="[cell]"
-                     (cdkDropListDropped)="dropTeamInBingo($event, cellIndex)"
-                     cdkDropListSortingDisabled>
+                     [class.can-assign]="selectedTeamForAssignment && !cell.team"
+                     [class.selected-slot]="selectedSlot?.type === 'bingo' && selectedSlot?.cellIndex === cellIndex"
+                     (click)="handleSlotClick('bingo', cellIndex)">
 
                   <!-- Occupied Cell -->
                   <div *ngIf="cell.team" class="team-item text-center p-2">
@@ -138,7 +145,7 @@
                     <div class="team-description very-small text-muted">{{ cell.team.description || 'No description' }}</div>
                     <button
                       class="btn btn-sm btn-outline-light remove-btn mt-1"
-                      (click)="removeTeamFromBingo(cellIndex)"
+                      (click)="removeTeamFromBingo(cellIndex); $event.stopPropagation()"
                       type="button">
                       <i class="fa fa-times"></i>
                     </button>
@@ -146,8 +153,11 @@
 
                   <!-- Empty Cell -->
                   <div *ngIf="!cell.team" class="empty-slot text-center text-muted p-2">
-                    <i class="fa fa-plus-circle fa-lg mb-1"></i>
-                    <div class="very-small">Drop team here</div>
+                    <i class="fa fa-plus-circle fa-lg mb-1"
+                       [class.text-primary]="selectedTeamForAssignment"></i>
+                    <div class="very-small">
+                      {{ selectedTeamForAssignment ? 'Click to assign' : 'Select team first' }}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -196,6 +206,12 @@
                   [disabled]="getAvailableTeams().length === 0">
                   <i class="fa fa-random me-1"></i>Shuffle Bingo
                 </button>
+                <button
+                  class="btn btn-outline-secondary btn-sm"
+                  (click)="clearSelection()"
+                  *ngIf="selectedTeamForAssignment">
+                  <i class="fa fa-times me-1"></i>Deselect Team
+                </button>
               </div>
             </div>
           </div>
@@ -209,6 +225,9 @@
               <h5 class="text-light mb-0">
                 <i class="fa fa-users me-2"></i>Available Teams ({{ getAvailableTeams().length }})
               </h5>
+              <p class="text-light mb-0 opacity-75 mt-1">
+                Click on a team to select it, then click on a position to assign
+              </p>
             </div>
             <div class="card-body">
               <div *ngIf="getAvailableTeams().length === 0" class="text-center text-light py-3">
@@ -216,19 +235,12 @@
                 <div>All teams assigned!</div>
               </div>
 
-              <div
-                *ngIf="getAvailableTeams().length > 0"
-                cdkDropList
-                [cdkDropListData]="getAvailableTeams()"
-                cdkDropListSortingDisabled
-                id="available-teams"
-                class="team-list">
-
+              <div *ngIf="getAvailableTeams().length > 0" class="team-list">
                 <div
-                  *ngFor="let team of getAvailableTeams(); trackBy: trackByTeamId"
-                  class="team-card mb-2"
-                  cdkDrag
-                  [cdkDragData]="team">
+                  *ngFor="let team of getAvailableTeams()"
+                  class="team-card clickable-team mb-2"
+                  [class.selected-team]="selectedTeamForAssignment?.id === team.id"
+                  (click)="selectTeamForAssignment(team)">
 
                   <div class="team-card-content d-flex align-items-center">
                     <img
@@ -243,23 +255,47 @@
                       <div class="fw-bold team-name">{{ team.name }}</div>
                       <div class="small team-description">{{ team.description || 'No description' }}</div>
                     </div>
-                    <i class="fa fa-grip-vertical drag-handle"></i>
-                  </div>
-
-                  <!-- Custom drag preview -->
-                  <div *cdkDragPreview class="drag-preview">
-                    <div class="team-card-content d-flex align-items-center">
-                      <img
-                        *ngIf="team.photoUrl"
-                        [src]="team.photoUrl"
-                        class="team-image rounded me-2"
-                        width="32"
-                        height="32"
-                        alt="Team">
-                      <div class="fw-bold team-name">{{ team.name }}</div>
+                    <div *ngIf="selectedTeamForAssignment?.id === team.id">
+                      <i class="fa fa-check-circle fa-lg text-success"></i>
+                    </div>
+                    <div *ngIf="selectedTeamForAssignment?.id !== team.id">
+                      <i class="fa fa-circle-o fa-lg text-muted"></i>
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Selected Team Info -->
+          <div class="card bg-info border-info mb-4" *ngIf="selectedTeamForAssignment">
+            <div class="card-header bg-info border-info">
+              <h6 class="text-light mb-0">
+                <i class="fa fa-hand-pointer-o me-2"></i>Selected for Assignment
+              </h6>
+            </div>
+            <div class="card-body">
+              <div class="d-flex align-items-center">
+                <img
+                  *ngIf="selectedTeamForAssignment.photoUrl"
+                  [src]="selectedTeamForAssignment.photoUrl"
+                  class="rounded me-3"
+                  width="48"
+                  height="48"
+                  alt="Team">
+                <div class="me-auto">
+                  <h6 class="mb-1 text-light">{{ selectedTeamForAssignment.name }}</h6>
+                  <p class="mb-0 small text-light opacity-75">{{ selectedTeamForAssignment.description || 'No description' }}</p>
+                </div>
+              </div>
+              <div class="mt-3">
+                <p class="small text-light mb-2">
+                  <i class="fa fa-info-circle me-1"></i>
+                  Click on any empty position to assign this team
+                </p>
+                <button class="btn btn-outline-light btn-sm w-100" (click)="clearSelection()">
+                  <i class="fa fa-times me-1"></i>Deselect Team
+                </button>
               </div>
             </div>
           </div>
