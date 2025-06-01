@@ -1,4 +1,3 @@
-// client/src/app/my-prediction-view/my-prediction-view.component.ts
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -146,7 +145,7 @@ interface MyPredictionDetail {
               </h4>
               <div class="small text-light opacity-75">
                 Total Score: {{ getOriginalRankingData()?.totalScore || 0 }} |
-                Created: {{ formatDate(getOriginalRankingData()?.createdAt) }}
+                Created: {{ formatDate(predictionDetail.createdAt) }}
               </div>
             </div>
             <div class="card-body">
@@ -367,28 +366,17 @@ interface MyPredictionDetail {
                     </div>
                   </div>
                 </div>
-                <div class="col-6">
-                  <div class="card bg-success text-center">
-                    <div class="card-body py-2">
-                      <h6 class="text-light mb-0">{{ getDaysActive() }}</h6>
-                      <small class="text-light">Days Active</small>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               <ul class="list-group list-group-flush">
                 <li class="list-group-item bg-transparent border-secondary text-light">
                   <strong>Type:</strong> {{ getPredictionTypeDisplayName() }}
                 </li>
-                <li class="list-group-item bg-transparent border-secondary text-light">
-                  <strong>Created:</strong> {{ formatDate(predictionDetail.createdAt) }}
-                </li>
                 <li class="list-group-item bg-transparent border-secondary text-light" *ngIf="predictionDetail.endDate">
                   <strong>Ends:</strong> {{ formatDate(predictionDetail.endDate) }}
                 </li>
                 <li class="list-group-item bg-transparent border-secondary text-light">
-                  <strong>Status:</strong>
+                  <strong>Status: </strong>
                   <span [class]="getStatusClass()">{{ getStatusText() }}</span>
                 </li>
                 <li class="list-group-item bg-transparent border-secondary text-light">
@@ -426,7 +414,7 @@ interface MyPredictionDetail {
             </div>
           </div>
 
-          <!-- Categories -->
+          <!-- FIXED Categories Section -->
           <div class="card bg-dark border-dark mb-3" *ngIf="predictionDetail.categories && predictionDetail.categories.length > 0">
             <div class="card-header bg-dark border-dark">
               <h5 class="text-light mb-0">
@@ -436,37 +424,14 @@ interface MyPredictionDetail {
             <div class="card-body">
               <div class="d-flex flex-wrap gap-2">
                 <span *ngFor="let category of predictionDetail.categories"
-                      class="badge bg-primary"
-                      [style.background-color]="category.colorCode || '#0d6efd'">
-                  <i class="fa" [ngClass]="category.iconName" *ngIf="category.iconName" class="me-1"></i>
+                      class="badge category-badge"
+                      [style.background-color]="category.colorCode || '#0d6efd'"
+                      [style.color]="getContrastColor(category.colorCode || '#0d6efd')"
+                      [style.border]="'1px solid ' + (category.colorCode || '#0d6efd')">
+                  <i [class]="getFullIconClass(category.iconName)" class="me-1"></i>
                   {{ category.name }}
                 </span>
               </div>
-            </div>
-          </div>
-
-
-      <!-- Debug Info -->
-      <div class="card bg-dark border-dark mb-4" *ngIf="showDebugInfo">
-        <div class="card-header bg-dark border-dark">
-          <h5 class="text-light mb-0">Debug Information</h5>
-        </div>
-        <div class="card-body">
-          <div class="row">
-            <div class="col-md-6">
-              <h6 class="text-light">Prediction Data:</h6>
-              <pre class="text-light small">{{ predictionDetail | json }}</pre>
-            </div>
-            <div class="col-md-6">
-              <h6 class="text-light">Type Checks:</h6>
-              <pre class="text-light small">
-PredictionType: {{ predictionDetail.predictionType }}
-isRankingType(): {{ isRankingType() }}
-isBingoType(): {{ isBingoType() }}
-hasOriginalRankingData(): {{ hasOriginalRankingData() }}
-hasOriginalBingoData(): {{ hasOriginalBingoData() }}
-Available Teams: {{ getAvailableTeams().length }}
-              </pre>
             </div>
           </div>
         </div>
@@ -497,10 +462,31 @@ Available Teams: {{ getAvailableTeams().length }}
 
     .card {
       border-radius: 8px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
 
     .badge {
       font-size: 0.875rem;
+    }
+
+    .category-badge {
+      padding: 0.5em 0.75em;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-radius: 0.5rem;
+      display: inline-flex;
+      align-items: center;
+      transition: all 0.2s ease;
+    }
+
+    .category-badge:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
 
     .bingo-grid {
@@ -536,6 +522,9 @@ Available Teams: {{ getAvailableTeams().length }}
       max-height: 300px;
       overflow-y: auto;
       font-size: 0.8rem;
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
+      padding: 0.75rem;
     }
 
     .list-group-item {
@@ -545,10 +534,15 @@ Available Teams: {{ getAvailableTeams().length }}
     .dropdown-menu {
       background-color: #343a40;
       border-color: #495057;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
 
     .dropdown-item {
       color: #fff;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      margin: 0.1rem;
     }
 
     .dropdown-item:hover {
@@ -563,12 +557,66 @@ Available Teams: {{ getAvailableTeams().length }}
 
     .alert {
       border-radius: 8px;
+      border: none;
+    }
+
+    .alert-warning {
+      background: linear-gradient(135deg, #ffc107, #fd7e14);
+      color: #000;
+    }
+
+    .alert-info {
+      background: linear-gradient(135deg, #17a2b8, #6f42c1);
+      color: #fff;
     }
 
     code {
       background-color: rgba(255, 255, 255, 0.1);
       padding: 0.2em 0.4em;
       border-radius: 0.25rem;
+      color: #fff;
+    }
+
+    .btn {
+      border-radius: 6px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .bg-primary {
+      background: linear-gradient(135deg, #007bff, #0056b3) !important;
+    }
+
+    .card.bg-info {
+      background: linear-gradient(135deg, #17a2b8, #138496) !important;
+    }
+
+    .card.bg-success {
+      background: linear-gradient(135deg, #28a745, #1e7e34) !important;
+    }
+
+    .card.bg-warning {
+      background: linear-gradient(135deg, #ffc107, #e0a800) !important;
+    }
+
+    .card.bg-secondary {
+      background: linear-gradient(135deg, #6c757d, #545b62) !important;
+    }
+
+    .table-dark tbody tr:hover {
+      background-color: rgba(255, 255, 255, 0.075);
+    }
+
+    .bg-primary.rounded-circle {
+      background: linear-gradient(135deg, #007bff, #0056b3) !important;
     }
   `]
 })
@@ -597,13 +645,11 @@ export class MyPredictionViewComponent implements OnInit {
     try {
       console.log('Loading my prediction details for ID:', predictionId);
 
-      // Use the my-prediction specific endpoint
       const response = await this.http.get<MyPredictionDetail>(
         `${environment.apiUrl}post/my-prediction/${predictionId}`
       ).toPromise();
 
       if (response) {
-        // The API endpoint already verifies ownership, so we don't need to check here
         this.predictionDetail = response;
         console.log('My prediction details loaded:', this.predictionDetail);
       }
@@ -652,13 +698,6 @@ export class MyPredictionViewComponent implements OnInit {
     return 'text-secondary';
   }
 
-  getDaysActive(): number {
-    if (!this.predictionDetail?.createdAt) return 0;
-    const now = new Date();
-    const created = new Date(this.predictionDetail.createdAt);
-    const diffTime = Math.abs(now.getTime() - created.getTime());
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  }
 
   // RANKING DATA METHODS
   hasOriginalRankingData(): boolean {
@@ -678,7 +717,6 @@ export class MyPredictionViewComponent implements OnInit {
       return null;
     }
 
-    // Get the user's own ranking (should be the only one in "my prediction" view)
     const userRanking = this.predictionDetail.postRanks.find(pr => pr.userId === this.predictionDetail?.userId);
     return userRanking || this.predictionDetail.postRanks[0];
   }
@@ -732,7 +770,6 @@ export class MyPredictionViewComponent implements OnInit {
       return null;
     }
 
-    // Get the user's own bingo (should be the only one in "my prediction" view)
     const userBingo = this.predictionDetail.postBingos.find(pb => pb.userId === this.predictionDetail?.userId);
     return userBingo || this.predictionDetail.postBingos[0];
   }
@@ -774,7 +811,6 @@ export class MyPredictionViewComponent implements OnInit {
   }
 
   getAvailableTeams(): any[] {
-    // Extract teams from the current prediction data
     const teams: any[] = [];
     const seenTeamIds = new Set<number>();
 
@@ -799,6 +835,120 @@ export class MyPredictionViewComponent implements OnInit {
     }
 
     return teams;
+  }
+
+  // FIXED CATEGORY ICON METHODS
+  getContrastColor(hexColor: string): string {
+    if (!hexColor) return '#ffffff';
+
+    const color = hexColor.replace('#', '');
+
+    const r = parseInt(color.substr(0, 2), 16);
+    const g = parseInt(color.substr(2, 2), 16);
+    const b = parseInt(color.substr(4, 2), 16);
+
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+    return brightness > 128 ? '#000000' : '#ffffff';
+  }
+
+  getSafeIconClass(iconName: string | undefined): string {
+    if (!iconName) return 'fa-tag';
+
+    const cleanIconName = iconName.replace('fa-', '').toLowerCase().trim();
+
+    if (!cleanIconName) return 'fa-tag';
+
+    const safeIconMap: { [key: string]: string } = {
+      'sports': 'fa-trophy',
+      'sport': 'fa-trophy',
+      'soccer': 'fa-soccer-ball-o',
+      'football': 'fa-football',
+      'basketball': 'fa-basketball',
+      'baseball': 'fa-baseball',
+      'tennis': 'fa-trophy',
+      'golf': 'fa-trophy',
+      'hockey': 'fa-trophy',
+      'racing': 'fa-car',
+      'olympics': 'fa-trophy',
+      'championship': 'fa-trophy',
+      'league': 'fa-trophy',
+      'premier': 'fa-trophy',
+      'competition': 'fa-trophy',
+      'music': 'fa-music',
+      'movies': 'fa-film',
+      'tv': 'fa-tv',
+      'entertainment': 'fa-film',
+      'gaming': 'fa-gamepad',
+      'esports': 'fa-gamepad',
+      'technology': 'fa-laptop',
+      'tech': 'fa-laptop',
+      'software': 'fa-code',
+      'mobile': 'fa-mobile',
+      'computer': 'fa-laptop',
+      'business': 'fa-briefcase',
+      'finance': 'fa-money',
+      'economy': 'fa-chart-line',
+      'stocks': 'fa-chart-line',
+      'education': 'fa-graduation-cap',
+      'school': 'fa-graduation-cap',
+      'university': 'fa-university',
+      'science': 'fa-flask',
+      'books': 'fa-book',
+      'travel': 'fa-plane',
+      'tourism': 'fa-plane',
+      'geography': 'fa-globe',
+      'world': 'fa-globe',
+      'health': 'fa-heart',
+      'medicine': 'fa-medkit',
+      'fitness': 'fa-heart',
+      'news': 'fa-newspaper-o',
+      'politics': 'fa-institution',
+      'government': 'fa-institution',
+      'food': 'fa-cutlery',
+      'cooking': 'fa-cutlery',
+      'lifestyle': 'fa-home',
+      'home': 'fa-home',
+      'default': 'fa-tag',
+      'category': 'fa-tag'
+    };
+
+    if (safeIconMap[cleanIconName]) {
+      return safeIconMap[cleanIconName];
+    }
+
+    for (const [key, value] of Object.entries(safeIconMap)) {
+      if (cleanIconName.includes(key) || key.includes(cleanIconName)) {
+        return value;
+      }
+    }
+
+    const knownSafeIcons = [
+      'fa-trophy', 'fa-soccer-ball-o', 'fa-football', 'fa-basketball', 'fa-baseball',
+      'fa-music', 'fa-film', 'fa-tv', 'fa-gamepad', 'fa-laptop', 'fa-mobile',
+      'fa-book', 'fa-graduation-cap', 'fa-university', 'fa-flask', 'fa-briefcase',
+      'fa-money', 'fa-chart-line', 'fa-globe', 'fa-plane', 'fa-heart', 'fa-medkit',
+      'fa-newspaper-o', 'fa-institution', 'fa-cutlery', 'fa-home', 'fa-users',
+      'fa-tag', 'fa-tags', 'fa-star', 'fa-cog', 'fa-camera', 'fa-car'
+    ];
+
+    const withPrefix = iconName.startsWith('fa-') ? iconName : `fa-${iconName}`;
+    if (knownSafeIcons.includes(withPrefix)) {
+      return withPrefix;
+    }
+
+    const cleanWithPrefix = `fa-${cleanIconName}`;
+    if (knownSafeIcons.includes(cleanWithPrefix)) {
+      return cleanWithPrefix;
+    }
+
+    return 'fa-tag';
+  }
+
+  // This is the key method that fixes the icon display issue
+  getFullIconClass(iconName: string | undefined): string {
+    const safeIcon = this.getSafeIconClass(iconName);
+    return `fa ${safeIcon}`;
   }
 
   // UTILITY METHODS
@@ -845,15 +995,12 @@ export class MyPredictionViewComponent implements OnInit {
     try {
       await this.http.put(`${environment.apiUrl}prediction/${this.predictionDetail.id}/publish`, {}).toPromise();
       this.toastr.success('Prediction published successfully!');
-
-      // Reload the prediction to get updated status
       this.loadMyPredictionDetails(this.predictionDetail.id);
     } catch (error) {
       console.error('Error publishing prediction:', error);
       this.toastr.error('Failed to publish prediction');
     }
   }
-
 
   viewCounterPredictions(): void {
     if (this.predictionDetail) {
@@ -862,8 +1009,6 @@ export class MyPredictionViewComponent implements OnInit {
       });
     }
   }
-
-
 
   async deletePrediction(): Promise<void> {
     if (!this.predictionDetail) return;
