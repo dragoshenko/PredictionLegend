@@ -1,3 +1,5 @@
+/* client/src/app/home/home.component.css - UPDATED */
+
 /* Animation classes */
 .animation-slide-down {
   animation: slideDown 0.8s ease forwards;
@@ -18,15 +20,94 @@
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2) !important;
 }
 
-/* Category Cards */
+/* Enhanced Category Cards with Click Effects - BIGGER SIZE */
 .category-card {
   transition: all 0.3s ease;
   cursor: pointer;
+  border: 2px solid transparent !important;
+  position: relative;
+  overflow: hidden;
+  min-height: 280px; /* Increased height */
+}
+
+.category-card .card-body {
+  padding: 3rem 2rem !important; /* Increased padding */
+}
+
+/* Bigger category icons */
+.category-icon {
+  font-size: 4.5rem !important; /* Much larger icons */
+  transition: all 0.3s ease;
+  margin-bottom: 1.5rem;
+}
+
+/* Bigger category titles */
+.category-card .card-title {
+  font-size: 1.5rem !important; /* Larger titles */
+  font-weight: 600;
+  margin-bottom: 1rem;
+  transition: color 0.3s ease;
+}
+
+/* Better description text */
+.category-card .text-muted {
+  font-size: 1rem; /* Larger description text */
+  line-height: 1.5;
+}
+
+.category-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.category-card:hover::before {
+  left: 100%;
+}
+
+.category-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2) !important;
+  border-color: rgba(13, 110, 253, 0.3) !important;
 }
 
 .category-card.active {
   transform: translateY(-10px);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25) !important;
+  border-color: rgba(13, 110, 253, 0.5) !important;
+}
+
+/* Click animation */
+.category-card:active {
+  transform: translateY(-5px) scale(0.98);
+  transition: all 0.1s ease;
+}
+
+/* Category icon glow effect - ENHANCED */
+.category-card:hover .category-icon {
+  text-shadow: 0 0 25px rgba(13, 110, 253, 0.4);
+  transform: scale(1.15); /* Bigger hover effect */
+  transition: all 0.3s ease;
+}
+
+/* Category title enhancement */
+.category-card .card-title {
+  transition: color 0.3s ease;
+}
+
+.category-card:hover .card-title {
+  color: #0d6efd !important;
+}
+
+/* Loading spinner styling */
+.spinner-border {
+  width: 3rem;
+  height: 3rem;
 }
 
 /* How It Works section */
@@ -36,6 +117,46 @@
 
 .step-card:hover {
   transform: translateY(-8px);
+}
+
+/* Improved responsive category grid - 2 PER ROW */
+@media (max-width: 768px) {
+  .category-card {
+    margin-bottom: 1.5rem;
+    min-height: 240px; /* Smaller on mobile but still big */
+  }
+
+  .category-card .card-body {
+    padding: 2rem 1.5rem !important;
+  }
+
+  .category-icon {
+    font-size: 3.5rem !important; /* Smaller on mobile */
+  }
+
+  .category-card .card-title {
+    font-size: 1.3rem !important;
+  }
+}
+
+@media (min-width: 992px) {
+  /* 2 categories per row on desktop with better spacing */
+  .col-lg-5 {
+    flex: 0 0 auto;
+    width: 45%; /* 2 columns with gap */
+    margin: 0 2.5%; /* Center spacing */
+  }
+}
+
+@media (min-width: 1400px) {
+  /* Even bigger on very large screens */
+  .category-card {
+    min-height: 320px;
+  }
+
+  .category-icon {
+    font-size: 5rem !important;
+  }
 }
 
 /* Animation keyframes */
@@ -59,6 +180,23 @@
   }
 }
 
+/* Pulse animation for loading */
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.category-card.loading {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .display-4 {
@@ -67,5 +205,15 @@
 
   .animation-bounce:hover {
     transform: none;
+  }
+
+  .category-card:hover {
+    transform: translateY(-3px); /* Less movement on mobile */
+  }
+
+  /* Ensure proper centering on mobile */
+  .justify-content-center .col-md-6 {
+    max-width: 90%;
+    margin: 0 auto 1.5rem auto;
   }
 }

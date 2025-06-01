@@ -16,8 +16,6 @@ import { CreatePredictionComponent } from './create-prediction/create-prediction
 import { EditTemplateComponent } from './edit-template/edit-template.component';
 import { SelectTeamsComponent } from './select-teams/select-teams.component';
 import { CreatePostComponent } from './create-post/create-post.component';
-import { DiscussionListComponent } from './discussion/discussion-list/discussion-list.component';
-import { DiscussionPostComponent } from './discussion/discussion-post/discussion-post.component';
 import { AdminDashboardComponent } from './admin/admin-dashboard/admin-dashboard.component';
 import { UserDetailComponent } from './admin/user-detail/user-detail.component';
 import { AdminComponent } from './admin/admin.component';
@@ -67,19 +65,6 @@ export const routes: Routes = [
     component: PostViewComponent,
     data: { title: 'Post View' }
   },
-
-  // Discussion routes (some public, some protected)
-  {
-    path: 'discussions',
-    component: DiscussionListComponent,
-    data: { title: 'Discussions' }
-  },
-  {
-    path: 'discussions/:id',
-    component: DiscussionPostComponent,
-    data: { title: 'Discussion Post' }
-  },
-
   // Protected routes (require authentication)
   {
     path: '',
@@ -123,23 +108,6 @@ export const routes: Routes = [
         path: 'create-post/:predictionId/:templateId/:type',
         component: CreatePostComponent,
         data: { title: 'Create Post' }
-      },
-
-      // Discussion creation/editing (protected routes)
-      {
-        path: 'discussions/create',
-        component: DiscussionListComponent,
-        data: { title: 'Create Discussion' }
-      },
-      {
-        path: 'discussions/edit/:id',
-        component: DiscussionListComponent,
-        data: { title: 'Edit Discussion' }
-      },
-      {
-        path: 'my-discussions',
-        component: DiscussionListComponent,
-        data: { title: 'My Discussions' }
       },
 
       // Counter prediction routes (protected - require login to create)
@@ -191,8 +159,6 @@ PUBLIC ROUTES (No Auth Required):
 - /published-posts - All published predictions (main discovery page)
 - /prediction-details/:id - View prediction details + counter predictions
 - /post-view/:id - Alternative post view
-- /discussions - Public discussions
-- /discussions/:id - View specific discussions
 
 PROTECTED ROUTES (Auth Required):
 - /profile - User profile management

@@ -39,6 +39,61 @@
   font-size: 0.7rem;
 }
 
+/* Fix input group spacing and borders */
+.input-group > .form-control {
+  border-radius: 4px 0 0 4px !important;
+}
+
+.input-group > .clear-btn {
+  border-radius: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.input-group > .btn-outline-light {
+  border-radius: 0 4px 4px 0 !important;
+  margin-left: 0 !important;
+}
+
+/* Custom clear button styling */
+.clear-btn {
+  border-left: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  padding: 0.5rem 0.75rem !important;
+  min-width: 42px;
+}
+
+.clear-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  color: #fff !important;
+}
+
+.clear-btn:focus {
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
+  border-color: #0d6efd !important;
+}
+
+/* Add slight spacing between buttons */
+.input-group .btn + .btn {
+  margin-left: 2px;
+}
+
+/* Remove browser's default search clear button */
+.form-control[type="search"]::-webkit-search-cancel-button,
+.form-control[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Remove Firefox's default search clear button */
+.form-control[type="search"]::-moz-search-cancel-button {
+  display: none;
+}
+
 .form-control:focus {
   border-color: #0d6efd;
   box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);

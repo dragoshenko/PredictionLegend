@@ -1,4 +1,3 @@
-<!-- client/src/app/search-dropdown/search-dropdown.component.html -->
 <div class="search-container position-relative">
   <div class="input-group">
     <input
@@ -12,6 +11,16 @@
       (blur)="onBlur()"
       (keydown)="onKeyDown($event)"
       autocomplete="off">
+
+    <!-- Clear button (X) when there's text -->
+    <button
+      *ngIf="searchTerm.trim()"
+      class="btn btn-outline-secondary clear-btn"
+      type="button"
+      (click)="clearSearch()">
+      <i class="fa fa-times"></i>
+    </button>
+
     <button
       class="btn btn-outline-light"
       type="button"

@@ -4,10 +4,10 @@
 import { Component, inject, OnInit, OnDestroy, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, NavigationEnd } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
-import { Subject, debounceTime, distinctUntilChanged, switchMap, of, catchError } from 'rxjs';
+import { Subject, debounceTime, distinctUntilChanged, switchMap, of, catchError, filter } from 'rxjs';
 
 interface SearchResult {
   id: number;
@@ -78,6 +78,13 @@ export class SearchDropdownComponent implements OnInit, OnDestroy {
 
     // Close dropdown when clicking outside
     document.addEventListener('click', this.handleOutsideClick.bind(this));
+
+    // Clear search when navigating away
+    this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe(() => {
+      this.clearSearch();
+    });
   }
 
   ngOnDestroy(): void {
@@ -170,9 +177,7 @@ export class SearchDropdownComponent implements OnInit, OnDestroy {
 
   selectResult(result: SearchResult): void {
     console.log('Selected prediction:', result);
-    this.showDropdown = false;
-    this.searchTerm = '';
-    this.selectedIndex = -1;
+    this.clearSearch();
 
     // Navigate to prediction details
     this.router.navigate(['/prediction-details', result.id]);
@@ -184,16 +189,27 @@ export class SearchDropdownComponent implements OnInit, OnDestroy {
     }
 
     console.log('Performing full search for:', this.searchTerm);
-    this.showDropdown = false;
+    const searchTerm = this.searchTerm.trim();
+    this.clearSearch();
 
     // Navigate to published posts with search query
     this.router.navigate(['/published-posts'], {
-      queryParams: { search: this.searchTerm.trim() }
+      queryParams: { search: searchTerm }
     });
   }
 
   viewAllResults(): void {
     this.performSearch();
+  }
+
+  // Clear search method
+  clearSearch(): void {
+    this.searchTerm = '';
+    this.searchResults = [];
+    this.showDropdown = false;
+    this.selectedIndex = -1;
+    this.isSearching = false;
+    this.noResults = false;
   }
 
   highlightMatch(text: string): string {
