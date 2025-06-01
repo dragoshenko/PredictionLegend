@@ -19,21 +19,20 @@ public class PostService : IPostService
     }
 
     #region PostRank
+
     public async Task<ActionResult<PostRankDTO>> CreatePostRankAsync(PostRankDTO postRank, int userId)
     {
         try
         {
             Console.WriteLine("=== CreatePostRankAsync called ===");
-            Console.WriteLine($"PostRank ID: {postRank.Id}");
-            Console.WriteLine($"TemplateId: {postRank.RankingTemplateId}");
-            Console.WriteLine($"PredictionId: {postRank.PredictionId}");
+            Console.WriteLine($"PostRank PredictionId: {postRank.PredictionId}");
+            Console.WriteLine($"PostRank RankingTemplateId: {postRank.RankingTemplateId}");
             Console.WriteLine($"UserId: {userId}");
 
-            var rankingTemplate = await _unitOfWork.TemplateRepository.GetRankingTemplate(postRank.RankingTemplateId);
-            if (rankingTemplate == null)
+            // Validate inputs
+            if (postRank.PredictionId <= 0)
             {
-                Console.WriteLine("Ranking template not found");
-                return new BadRequestObjectResult("Ranking template not found");
+                return new BadRequestObjectResult("Valid prediction ID is required");
             }
 
             var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId);
@@ -48,6 +47,14 @@ public class PostService : IPostService
             {
                 Console.WriteLine("Prediction not found");
                 return new BadRequestObjectResult("Prediction not found");
+            }
+
+            // For counter predictions, we may not have a specific ranking template
+            // so we'll create a basic template structure
+            int templateId = postRank.RankingTemplateId;
+            if (templateId <= 0)
+            {
+                templateId = 1; // Default template ID
             }
 
             // Create PostRank entity
@@ -69,7 +76,7 @@ public class PostService : IPostService
             {
                 NumberOfRows = postRank.RankTable.NumberOfRows,
                 NumberOfColumns = postRank.RankTable.NumberOfColumns,
-                PostRank = postRankEntity, // Set the relationship
+                PostRank = postRankEntity,
                 Rows = new List<Row>()
             };
 
@@ -82,7 +89,7 @@ public class PostService : IPostService
                 var row = new Row
                 {
                     Order = rowDto.Order,
-                    IsWrong = false,
+                    IsWrong = rowDto.IsWrong,
                     Columns = new List<Column>()
                 };
 
@@ -93,7 +100,7 @@ public class PostService : IPostService
                     {
                         Order = columnDto.Order,
                         OfficialScore = columnDto.OfficialScore,
-                        Team = null // Will be set below
+                        Team = null
                     };
 
                     // Handle team assignment
@@ -108,6 +115,10 @@ public class PostService : IPostService
                                 postRankEntity.Teams.Add(team);
                             }
                         }
+                        else
+                        {
+                            Console.WriteLine($"Warning: Team with ID {columnDto.Team.Id} not found");
+                        }
                     }
 
                     row.Columns.Add(column);
@@ -116,7 +127,9 @@ public class PostService : IPostService
                 rankTable.Rows.Add(row);
             }
 
-            // Save to database - Let EF Core handle the relationships through navigation properties
+            Console.WriteLine($"Created PostRank with {rankTable.Rows.Count} rows, {postRankEntity.Teams.Count} unique teams");
+
+            // Save to database
             var createdPostRank = await _unitOfWork.PostRepository.CreatePostRank(postRankEntity);
             var saveResult = await _unitOfWork.Complete();
 
@@ -134,11 +147,13 @@ public class PostService : IPostService
         {
             Console.WriteLine($"Error in CreatePostRankAsync: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+            }
             return new BadRequestObjectResult($"Error creating post rank: {ex.Message}");
         }
     }
-
-    // FIXED: PublishPostAsync with proper error handling and validation
     public async Task<ActionResult> PublishPostAsync(PublishPostRequestDTO request, int userId)
     {
         try
@@ -240,109 +255,109 @@ public class PostService : IPostService
         }
     }
 
-// Replace GetPublishedPostsAsync method in PostService.cs
-// This copies the logic from "My Predictions" but for ALL users
+    // Replace GetPublishedPostsAsync method in PostService.cs
+    // This copies the logic from "My Predictions" but for ALL users
 
-public async Task<ActionResult<List<PublishedPostDTO>>> GetPublishedPostsAsync(int pageNumber, int pageSize, string? predictionType, string? searchTerm)
-{
-    try
+    public async Task<ActionResult<List<PublishedPostDTO>>> GetPublishedPostsAsync(int pageNumber, int pageSize, string? predictionType, string? searchTerm)
     {
-        Console.WriteLine("=== PUBLISHED POSTS: Getting all public predictions ===");
-
-        // Get ALL predictions from ALL users (not just current user)
-        var allPredictions = await _unitOfWork.PredictionRepository.GetAllPublishedPredictionsAsync(
-            includeUser: true,
-            includePostRanks: true,
-            includePostBingos: true,
-            includePostBrackets: true
-        );
-
-        Console.WriteLine($"Found {allPredictions?.Count ?? 0} total predictions from database");
-
-        var publishedPosts = new List<PublishedPostDTO>();
-
-        if (allPredictions != null && allPredictions.Any())
+        try
         {
-            foreach (var prediction in allPredictions)
+            Console.WriteLine("=== PUBLISHED POSTS: Getting all public predictions ===");
+
+            // Get ALL predictions from ALL users (not just current user)
+            var allPredictions = await _unitOfWork.PredictionRepository.GetAllPublishedPredictionsAsync(
+                includeUser: true,
+                includePostRanks: true,
+                includePostBingos: true,
+                includePostBrackets: true
+            );
+
+            Console.WriteLine($"Found {allPredictions?.Count ?? 0} total predictions from database");
+
+            var publishedPosts = new List<PublishedPostDTO>();
+
+            if (allPredictions != null && allPredictions.Any())
             {
-                try
+                foreach (var prediction in allPredictions)
                 {
-                    // Only include predictions that are published (not drafts) and public
-                    if (prediction.IsDraft)
+                    try
                     {
-                        Console.WriteLine($"Skipping draft prediction: {prediction.Title} (ID: {prediction.Id})");
+                        // Only include predictions that are published (not drafts) and public
+                        if (prediction.IsDraft)
+                        {
+                            Console.WriteLine($"Skipping draft prediction: {prediction.Title} (ID: {prediction.Id})");
+                            continue;
+                        }
+
+                        if (prediction.PrivacyType != PrivacyType.Public)
+                        {
+                            Console.WriteLine($"Skipping non-public prediction: {prediction.Title} (ID: {prediction.Id})");
+                            continue;
+                        }
+
+                        // Get categories
+                        var categories = await _unitOfWork.CategoryRepository.GetPredictionCategoriesByIdsAsync(prediction.Id);
+
+                        var post = new PublishedPostDTO
+                        {
+                            Id = prediction.Id,
+                            Title = prediction.Title ?? "Untitled Prediction",
+                            Description = prediction.Description ?? "",
+                            PredictionType = prediction.PredictionType,
+                            CreatedAt = prediction.CreatedAt,
+                            EndDate = prediction.EndDate,
+                            IsActive = prediction.IsActive,
+                            Author = _mapper.Map<MemberDTO>(prediction.User),
+                            Categories = _mapper.Map<List<CategoryDTO>>(categories),
+                            CounterPredictionsCount = GetCounterPredictionsCount(prediction),
+                            CanCounterPredict = true, // Will be determined on frontend
+                            Notes = prediction.Description ?? ""
+                        };
+
+                        publishedPosts.Add(post);
+                        Console.WriteLine($"Added published post: {post.Title} (ID: {post.Id}) by {post.Author?.DisplayName}");
+                    }
+                    catch (Exception postEx)
+                    {
+                        Console.WriteLine($"Error processing prediction {prediction?.Id}: {postEx.Message}");
                         continue;
                     }
-
-                    if (prediction.PrivacyType != PrivacyType.Public)
-                    {
-                        Console.WriteLine($"Skipping non-public prediction: {prediction.Title} (ID: {prediction.Id})");
-                        continue;
-                    }
-
-                    // Get categories
-                    var categories = await _unitOfWork.CategoryRepository.GetPredictionCategoriesByIdsAsync(prediction.Id);
-
-                    var post = new PublishedPostDTO
-                    {
-                        Id = prediction.Id,
-                        Title = prediction.Title ?? "Untitled Prediction",
-                        Description = prediction.Description ?? "",
-                        PredictionType = prediction.PredictionType,
-                        CreatedAt = prediction.CreatedAt,
-                        EndDate = prediction.EndDate,
-                        IsActive = prediction.IsActive,
-                        Author = _mapper.Map<MemberDTO>(prediction.User),
-                        Categories = _mapper.Map<List<CategoryDTO>>(categories),
-                        CounterPredictionsCount = GetCounterPredictionsCount(prediction),
-                        CanCounterPredict = true, // Will be determined on frontend
-                        Notes = prediction.Description ?? ""
-                    };
-
-                    publishedPosts.Add(post);
-                    Console.WriteLine($"Added published post: {post.Title} (ID: {post.Id}) by {post.Author?.DisplayName}");
-                }
-                catch (Exception postEx)
-                {
-                    Console.WriteLine($"Error processing prediction {prediction?.Id}: {postEx.Message}");
-                    continue;
                 }
             }
-        }
 
-        // Apply filters if provided
-        if (!string.IsNullOrEmpty(predictionType))
+            // Apply filters if provided
+            if (!string.IsNullOrEmpty(predictionType))
+            {
+                publishedPosts = publishedPosts.Where(p => p.PredictionType.ToString().Equals(predictionType, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                var searchLower = searchTerm.ToLower();
+                publishedPosts = publishedPosts.Where(p =>
+                    p.Title.ToLower().Contains(searchLower) ||
+                    p.Description.ToLower().Contains(searchLower) ||
+                    (p.Author?.DisplayName?.ToLower().Contains(searchLower) ?? false)
+                ).ToList();
+            }
+
+            // Apply pagination
+            var pagedPosts = publishedPosts
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            Console.WriteLine($"Returning {pagedPosts.Count} published posts (filtered from {publishedPosts.Count} total)");
+            return new OkObjectResult(pagedPosts);
+        }
+        catch (Exception ex)
         {
-            publishedPosts = publishedPosts.Where(p => p.PredictionType.ToString().Equals(predictionType, StringComparison.OrdinalIgnoreCase)).ToList();
+            Console.WriteLine($"Error in GetPublishedPostsAsync: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return new BadRequestObjectResult($"Error fetching published posts: {ex.Message}");
+
         }
-
-        if (!string.IsNullOrEmpty(searchTerm))
-        {
-            var searchLower = searchTerm.ToLower();
-            publishedPosts = publishedPosts.Where(p => 
-                p.Title.ToLower().Contains(searchLower) ||
-                p.Description.ToLower().Contains(searchLower) ||
-                (p.Author?.DisplayName?.ToLower().Contains(searchLower) ?? false)
-            ).ToList();
-        }
-
-        // Apply pagination
-        var pagedPosts = publishedPosts
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToList();
-
-        Console.WriteLine($"Returning {pagedPosts.Count} published posts (filtered from {publishedPosts.Count} total)");
-        return new OkObjectResult(pagedPosts);
     }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Error in GetPublishedPostsAsync: {ex.Message}");
-        Console.WriteLine($"Stack trace: {ex.StackTrace}");
-        return new BadRequestObjectResult($"Error fetching published posts: {ex.Message}");
-    
-    }
-}
 
     public async Task<ActionResult<List<UserPostSummaryDTO>>> GetUserPostsAsync(int userId)
     {
@@ -405,158 +420,158 @@ public async Task<ActionResult<List<PublishedPostDTO>>> GetPublishedPostsAsync(i
     }
 
     public async Task<ActionResult<PostDetailDTO>> GetPostDetailsAsync(int predictionId, int currentUserId)
-{
-    try
     {
-        Console.WriteLine($"Getting post details for prediction {predictionId}");
-
-        // First get the prediction with all related data
-        var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(
-            predictionId,
-            includeUser: true,
-            includePostRanks: true,
-            includePostBingos: true,
-            includePostBrackets: true
-        );
-
-        if (prediction == null)
+        try
         {
-            return new NotFoundObjectResult("Prediction not found");
+            Console.WriteLine($"Getting post details for prediction {predictionId}");
+
+            // First get the prediction with all related data
+            var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(
+                predictionId,
+                includeUser: true,
+                includePostRanks: true,
+                includePostBingos: true,
+                includePostBrackets: true
+            );
+
+            if (prediction == null)
+            {
+                return new NotFoundObjectResult("Prediction not found");
+            }
+
+            // Get the author information
+            var author = await _unitOfWork.UserRepository.GetUserByIdAsync(prediction.UserId ?? 0, false, false, true);
+
+            // Get categories
+            var categories = await _unitOfWork.CategoryRepository.GetPredictionCategoriesByIdsAsync(predictionId);
+
+            // Build the response
+            var postDetail = new PostDetailDTO
+            {
+                Id = prediction.Id,
+                Title = prediction.Title,
+                Description = prediction.Description,
+                PredictionType = prediction.PredictionType,
+                CreatedAt = prediction.CreatedAt,
+                StartDate = prediction.StartDate,
+                EndDate = prediction.EndDate,
+                Author = _mapper.Map<MemberDTO>(author),
+                Categories = _mapper.Map<List<CategoryDTO>>(categories),
+                Notes = prediction.Description,
+                IsActive = prediction.IsActive,
+                CanCounterPredict = CanUserCounterPredict(prediction, currentUserId),
+                HasUserCounterPredicted = HasUserCounterPredicted(prediction, currentUserId),
+                CounterPredictionsCount = GetCounterPredictionsCount(prediction),
+                CounterPredictions = new List<CounterPredictionDTO>()
+            };
+
+            // Get the ORIGINAL post data based on prediction type
+            switch (prediction.PredictionType)
+            {
+                case PredictionType.Ranking:
+                    // Find the original post rank (created by the prediction owner)
+                    var originalPostRank = prediction.PostRanks
+                        .FirstOrDefault(pr => pr.UserId == prediction.UserId);
+
+                    if (originalPostRank != null)
+                    {
+                        postDetail.OriginalPostRank = _mapper.Map<PostRankDTO>(originalPostRank);
+                        Console.WriteLine($"Found original PostRank with {originalPostRank.RankTable?.Rows?.Count ?? 0} rows");
+                    }
+
+                    // Get counter predictions (posts by other users)
+                    var counterRanks = prediction.PostRanks
+                        .Where(pr => pr.UserId != prediction.UserId)
+                        .ToList();
+
+                    foreach (var counterRank in counterRanks)
+                    {
+                        var counterUser = await _unitOfWork.UserRepository.GetUserByIdAsync(counterRank.UserId, false, false, true);
+                        postDetail.CounterPredictions.Add(new CounterPredictionDTO
+                        {
+                            Id = counterRank.Id,
+                            Author = _mapper.Map<MemberDTO>(counterUser),
+                            CreatedAt = counterRank.CreatedAt,
+                            Notes = "", // Add notes field to PostRank if needed
+                            TotalScore = counterRank.TotalScore,
+                            PostRank = _mapper.Map<PostRankDTO>(counterRank)
+                        });
+                    }
+                    break;
+
+                case PredictionType.Bracket:
+                    // Find the original post bracket
+                    var originalPostBracket = prediction.PostBrackets
+                        .FirstOrDefault(pb => pb.UserId == prediction.UserId);
+
+                    if (originalPostBracket != null)
+                    {
+                        postDetail.OriginalPostBracket = _mapper.Map<PostBracketDTO>(originalPostBracket);
+                        Console.WriteLine($"Found original PostBracket");
+                    }
+
+                    // Get counter predictions for brackets
+                    var counterBrackets = prediction.PostBrackets
+                        .Where(pb => pb.UserId != prediction.UserId)
+                        .ToList();
+
+                    foreach (var counterBracket in counterBrackets)
+                    {
+                        var counterUser = await _unitOfWork.UserRepository.GetUserByIdAsync(counterBracket.UserId, false, false, true);
+                        postDetail.CounterPredictions.Add(new CounterPredictionDTO
+                        {
+                            Id = counterBracket.Id,
+                            Author = _mapper.Map<MemberDTO>(counterUser),
+                            CreatedAt = counterBracket.CreatedAt,
+                            Notes = "",
+                            TotalScore = counterBracket.TotalScore,
+                            PostBracket = _mapper.Map<PostBracketDTO>(counterBracket)
+                        });
+                    }
+                    break;
+
+                case PredictionType.Bingo:
+                    // Find the original post bingo
+                    var originalPostBingo = prediction.PostBingos
+                        .FirstOrDefault(pb => pb.UserId == prediction.UserId);
+
+                    if (originalPostBingo != null)
+                    {
+                        postDetail.OriginalPostBingo = _mapper.Map<PostBingoDTO>(originalPostBingo);
+                        Console.WriteLine($"Found original PostBingo with {originalPostBingo.BingoCells?.Count ?? 0} cells");
+                    }
+
+                    // Get counter predictions for bingo
+                    var counterBingos = prediction.PostBingos
+                        .Where(pb => pb.UserId != prediction.UserId)
+                        .ToList();
+
+                    foreach (var counterBingo in counterBingos)
+                    {
+                        var counterUser = await _unitOfWork.UserRepository.GetUserByIdAsync(counterBingo.UserId, false, false, true);
+                        postDetail.CounterPredictions.Add(new CounterPredictionDTO
+                        {
+                            Id = counterBingo.Id,
+                            Author = _mapper.Map<MemberDTO>(counterUser),
+                            CreatedAt = counterBingo.CreatedAt,
+                            Notes = "",
+                            TotalScore = counterBingo.TotalScore,
+                            PostBingo = _mapper.Map<PostBingoDTO>(counterBingo)
+                        });
+                    }
+                    break;
+            }
+
+            Console.WriteLine($"Returning post details with {postDetail.CounterPredictions.Count} counter predictions");
+            return new OkObjectResult(postDetail);
         }
-
-        // Get the author information
-        var author = await _unitOfWork.UserRepository.GetUserByIdAsync(prediction.UserId ?? 0, false, false, true);
-        
-        // Get categories
-        var categories = await _unitOfWork.CategoryRepository.GetPredictionCategoriesByIdsAsync(predictionId);
-
-        // Build the response
-        var postDetail = new PostDetailDTO
+        catch (Exception ex)
         {
-            Id = prediction.Id,
-            Title = prediction.Title,
-            Description = prediction.Description,
-            PredictionType = prediction.PredictionType,
-            CreatedAt = prediction.CreatedAt,
-            StartDate = prediction.StartDate,
-            EndDate = prediction.EndDate,
-            Author = _mapper.Map<MemberDTO>(author),
-            Categories = _mapper.Map<List<CategoryDTO>>(categories),
-            Notes = prediction.Description,
-            IsActive = prediction.IsActive,
-            CanCounterPredict = CanUserCounterPredict(prediction, currentUserId),
-            HasUserCounterPredicted = HasUserCounterPredicted(prediction, currentUserId),
-            CounterPredictionsCount = GetCounterPredictionsCount(prediction),
-            CounterPredictions = new List<CounterPredictionDTO>()
-        };
-
-        // Get the ORIGINAL post data based on prediction type
-        switch (prediction.PredictionType)
-        {
-            case PredictionType.Ranking:
-                // Find the original post rank (created by the prediction owner)
-                var originalPostRank = prediction.PostRanks
-                    .FirstOrDefault(pr => pr.UserId == prediction.UserId);
-                
-                if (originalPostRank != null)
-                {
-                    postDetail.OriginalPostRank = _mapper.Map<PostRankDTO>(originalPostRank);
-                    Console.WriteLine($"Found original PostRank with {originalPostRank.RankTable?.Rows?.Count ?? 0} rows");
-                }
-                
-                // Get counter predictions (posts by other users)
-                var counterRanks = prediction.PostRanks
-                    .Where(pr => pr.UserId != prediction.UserId)
-                    .ToList();
-                
-                foreach (var counterRank in counterRanks)
-                {
-                    var counterUser = await _unitOfWork.UserRepository.GetUserByIdAsync(counterRank.UserId, false, false, true);
-                    postDetail.CounterPredictions.Add(new CounterPredictionDTO
-                    {
-                        Id = counterRank.Id,
-                        Author = _mapper.Map<MemberDTO>(counterUser),
-                        CreatedAt = counterRank.CreatedAt,
-                        Notes = "", // Add notes field to PostRank if needed
-                        TotalScore = counterRank.TotalScore,
-                        PostRank = _mapper.Map<PostRankDTO>(counterRank)
-                    });
-                }
-                break;
-
-            case PredictionType.Bracket:
-                // Find the original post bracket
-                var originalPostBracket = prediction.PostBrackets
-                    .FirstOrDefault(pb => pb.UserId == prediction.UserId);
-                
-                if (originalPostBracket != null)
-                {
-                    postDetail.OriginalPostBracket = _mapper.Map<PostBracketDTO>(originalPostBracket);
-                    Console.WriteLine($"Found original PostBracket");
-                }
-                
-                // Get counter predictions for brackets
-                var counterBrackets = prediction.PostBrackets
-                    .Where(pb => pb.UserId != prediction.UserId)
-                    .ToList();
-                
-                foreach (var counterBracket in counterBrackets)
-                {
-                    var counterUser = await _unitOfWork.UserRepository.GetUserByIdAsync(counterBracket.UserId, false, false, true);
-                    postDetail.CounterPredictions.Add(new CounterPredictionDTO
-                    {
-                        Id = counterBracket.Id,
-                        Author = _mapper.Map<MemberDTO>(counterUser),
-                        CreatedAt = counterBracket.CreatedAt,
-                        Notes = "",
-                        TotalScore = counterBracket.TotalScore,
-                        PostBracket = _mapper.Map<PostBracketDTO>(counterBracket)
-                    });
-                }
-                break;
-
-            case PredictionType.Bingo:
-                // Find the original post bingo
-                var originalPostBingo = prediction.PostBingos
-                    .FirstOrDefault(pb => pb.UserId == prediction.UserId);
-                
-                if (originalPostBingo != null)
-                {
-                    postDetail.OriginalPostBingo = _mapper.Map<PostBingoDTO>(originalPostBingo);
-                    Console.WriteLine($"Found original PostBingo with {originalPostBingo.BingoCells?.Count ?? 0} cells");
-                }
-                
-                // Get counter predictions for bingo
-                var counterBingos = prediction.PostBingos
-                    .Where(pb => pb.UserId != prediction.UserId)
-                    .ToList();
-                
-                foreach (var counterBingo in counterBingos)
-                {
-                    var counterUser = await _unitOfWork.UserRepository.GetUserByIdAsync(counterBingo.UserId, false, false, true);
-                    postDetail.CounterPredictions.Add(new CounterPredictionDTO
-                    {
-                        Id = counterBingo.Id,
-                        Author = _mapper.Map<MemberDTO>(counterUser),
-                        CreatedAt = counterBingo.CreatedAt,
-                        Notes = "",
-                        TotalScore = counterBingo.TotalScore,
-                        PostBingo = _mapper.Map<PostBingoDTO>(counterBingo)
-                    });
-                }
-                break;
+            Console.WriteLine($"Error getting post details: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return new BadRequestObjectResult($"Error fetching post details: {ex.Message}");
         }
-
-        Console.WriteLine($"Returning post details with {postDetail.CounterPredictions.Count} counter predictions");
-        return new OkObjectResult(postDetail);
     }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Error getting post details: {ex.Message}");
-        Console.WriteLine($"Stack trace: {ex.StackTrace}");
-        return new BadRequestObjectResult($"Error fetching post details: {ex.Message}");
-    }
-}
 
     public async Task<ActionResult<PostRankDTO>> CreateCounterPredictionAsync(int originalPredictionId, CounterPredictionRequestDTO request, int userId)
     {
@@ -912,9 +927,10 @@ public async Task<ActionResult<List<PublishedPostDTO>>> GetPublishedPostsAsync(i
         try
         {
             Console.WriteLine("=== CreatePostBingoAsync called ===");
-            Console.WriteLine($"PostBingo ID: {postBingoDTO.Id}");
-            Console.WriteLine($"GridSize: {postBingoDTO.GridSize}");
+            Console.WriteLine($"PostBingo GridSize: {postBingoDTO.GridSize}");
+            Console.WriteLine($"PredictionId: {predictionId}");
             Console.WriteLine($"UserId: {userId}");
+            Console.WriteLine($"BingoCells count: {postBingoDTO.BingoCells?.Count ?? 0}");
 
             var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId);
             if (user == null)
@@ -923,12 +939,20 @@ public async Task<ActionResult<List<PublishedPostDTO>>> GetPublishedPostsAsync(i
                 return new BadRequestObjectResult("User not found");
             }
 
+            var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(predictionId);
+            if (prediction == null)
+            {
+                Console.WriteLine("Prediction not found");
+                return new BadRequestObjectResult("Prediction not found");
+            }
+
             // Create PostBingo entity
             var postBingoEntity = new PostBingo
             {
                 UserId = userId,
                 User = user,
                 PredictionId = predictionId,
+                Prediction = prediction,
                 GridSize = postBingoDTO.GridSize,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
@@ -958,15 +982,22 @@ public async Task<ActionResult<List<PublishedPostDTO>>> GetPublishedPostsAsync(i
                     if (team != null)
                     {
                         cell.Team = team;
+                        cell.TeamId = team.Id;
                         if (!postBingoEntity.Teams.Any(t => t.Id == team.Id))
                         {
                             postBingoEntity.Teams.Add(team);
                         }
                     }
+                    else
+                    {
+                        Console.WriteLine($"Warning: Team with ID {cellDto.Team.Id} not found");
+                    }
                 }
 
                 postBingoEntity.BingoCells.Add(cell);
             }
+
+            Console.WriteLine($"Created PostBingo with {postBingoEntity.BingoCells.Count} cells, {postBingoEntity.Teams.Count} unique teams");
 
             // Save to database
             var createdPostBingo = await _unitOfWork.PostRepository.CreatePostBingo(postBingoEntity);
@@ -986,9 +1017,14 @@ public async Task<ActionResult<List<PublishedPostDTO>>> GetPublishedPostsAsync(i
         {
             Console.WriteLine($"Error in CreatePostBingoAsync: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+            }
             return new BadRequestObjectResult($"Error creating post bingo: {ex.Message}");
         }
     }
+
 
     public async Task<ActionResult> UpdatePostBingoAsync(PostBingoDTO userPostBingo)
     {

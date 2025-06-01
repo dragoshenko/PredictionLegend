@@ -17,10 +17,11 @@ public class PostRank
     public ICollection<Team> Teams { get; set; } = [];
 
     public PostRank() { }
+    
+    // Constructor for creating with table structure
     public PostRank(int numberOfRows, int numberOfColumns)
     {
         RankTable = new RankTable(numberOfRows, numberOfColumns);
         TotalScore = 0;
     }
-
 }

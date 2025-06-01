@@ -778,7 +778,6 @@ export class CounterPredictionComponent implements OnInit {
     return 0;
   }
 
-  // SUBMIT COUNTER PREDICTION - Updated with 100% requirement
   async submitCounterPrediction(): Promise<void> {
     const completionPercentage = this.getCompletionPercentage();
 
@@ -800,18 +799,69 @@ export class CounterPredictionComponent implements OnInit {
     this.isSubmitting = true;
 
     try {
-      const counterPredictionData = {
-        notes: this.counterPredictionForm.get('notes')?.value || '',
-        postRank: (this.originalPrediction.predictionType === 'Ranking' || this.originalPrediction.predictionType === 0 || this.originalPrediction.predictionType === '0') ? this.postRank : null,
-        postBingo: (this.originalPrediction.predictionType === 'Bingo' || this.originalPrediction.predictionType === 2 || this.originalPrediction.predictionType === '2') ? this.postBingo : null
+      const predType = this.originalPrediction.predictionType;
+      let counterPredictionData: any = {
+        notes: this.counterPredictionForm.get('notes')?.value || ''
       };
 
-      console.log('Submitting counter prediction:', counterPredictionData);
+      // Add the appropriate post data based on prediction type
+      if (predType === 'Ranking' || predType === 0 || predType === '0') {
+        if (!this.postRank) {
+          throw new Error('PostRank data is missing');
+        }
+        counterPredictionData.postRank = this.postRank;
+      } else if (predType === 'Bingo' || predType === 2 || predType === '2') {
+        if (!this.postBingo) {
+          throw new Error('PostBingo data is missing');
+        }
+        counterPredictionData.postBingo = this.postBingo;
+      } else {
+        throw new Error(`Unsupported prediction type: ${predType}`);
+      }
 
+      console.log('=== SUBMITTING COUNTER PREDICTION ===');
+      console.log('Original prediction ID:', this.originalPrediction.id);
+      console.log('Prediction type:', predType);
+      console.log('Counter prediction data:', JSON.stringify(counterPredictionData, null, 2));
+
+      // Validate the data structure before sending
+      if (counterPredictionData.postRank) {
+        console.log('PostRank validation:');
+        console.log('- PredictionId:', counterPredictionData.postRank.predictionId);
+        console.log('- UserId:', counterPredictionData.postRank.userId);
+        console.log('- RankTable rows:', counterPredictionData.postRank.rankTable?.rows?.length);
+        console.log('- Teams count:', counterPredictionData.postRank.teams?.length);
+
+        // Count assigned teams
+        let assignedCount = 0;
+        if (counterPredictionData.postRank.rankTable?.rows) {
+          counterPredictionData.postRank.rankTable.rows.forEach((row: any) => {
+            row.columns?.forEach((col: any) => {
+              if (col.team) assignedCount++;
+            });
+          });
+        }
+        console.log('- Assigned teams in table:', assignedCount);
+      }
+
+      if (counterPredictionData.postBingo) {
+        console.log('PostBingo validation:');
+        console.log('- UserId:', counterPredictionData.postBingo.userId);
+        console.log('- GridSize:', counterPredictionData.postBingo.gridSize);
+        console.log('- BingoCells count:', counterPredictionData.postBingo.bingoCells?.length);
+        console.log('- Teams count:', counterPredictionData.postBingo.teams?.length);
+
+        // Count assigned teams
+        const assignedCells = counterPredictionData.postBingo.bingoCells?.filter((cell: any) => cell.team) || [];
+        console.log('- Assigned cells:', assignedCells.length);
+      }
+
+      // Make the API call
       const result = await this.counterPredictionService
         .createCounterPrediction(this.originalPrediction.id, counterPredictionData)
         .toPromise();
 
+      console.log('Counter prediction created successfully:', result);
       this.toastr.success('Counter prediction created successfully!');
       this.showForm.set(false);
       this.resetForm();
@@ -820,24 +870,49 @@ export class CounterPredictionComponent implements OnInit {
       this.canCounterPredict.set(false);
       this.hasExistingCounterPrediction.set(true);
 
-      // Emit event to parent component to refresh
+      // Refresh the page to show the new counter prediction
       window.location.reload();
 
     } catch (error: any) {
-      console.error('Error creating counter prediction:', error);
+      console.error('=== ERROR CREATING COUNTER PREDICTION ===');
+      console.error('Error object:', error);
+      console.error('Error status:', error?.status);
+      console.error('Error message:', error?.message);
+      console.error('Error response:', error?.error);
 
       let errorMessage = 'Failed to create counter prediction';
+
+      // Enhanced error handling
       if (error?.error?.message) {
         errorMessage = error.error.message;
+      } else if (error?.error && typeof error.error === 'string') {
+        errorMessage = error.error;
       } else if (error?.message) {
         errorMessage = error.message;
+      } else if (error?.status === 400) {
+        errorMessage = 'Invalid data provided. Please check your selections.';
+      } else if (error?.status === 401) {
+        errorMessage = 'You are not authorized to create this counter prediction.';
+      } else if (error?.status === 500) {
+        errorMessage = 'Server error. Please try again later.';
       }
 
       this.toastr.error(errorMessage);
+
+      // Show debug info in console for troubleshooting
+      console.log('=== DEBUG INFO FOR TROUBLESHOOTING ===');
+      console.log('Original prediction:', this.originalPrediction);
+      console.log('PostRank:', this.postRank);
+      console.log('PostBingo:', this.postBingo);
+      console.log('Available teams:', this.availableTeams);
+      console.log('Selected teams:', this.selectedTeams);
+      console.log('Form data:', this.counterPredictionForm.value);
+
     } finally {
       this.isSubmitting = false;
     }
   }
+
 
   // UI HELPERS
   toggleForm(): void {

@@ -10,14 +10,16 @@ public class PostBingo
     public int UserId { get; set; }
     public int GridSize { get; set; } = 0;
     public AppUser User { get; set; } = null!;
-    public int PredictionId { get; set; } // Added this property
-    public Prediction Prediction { get; set; } = null!; // Added this navigation property
+    public int PredictionId { get; set; }
+    public Prediction Prediction { get; set; } = null!;
     public ICollection<BingoCell> BingoCells { get; set; } = [];
     public ICollection<Team> Teams { get; set; } = [];
     public int TotalScore { get; set; }
     public bool IsOfficialResult { get; set; } = false;
 
     public PostBingo() { }
+    
+    // Constructor for creating with grid structure
     public PostBingo(int gridSize)
     {
         GridSize = gridSize;
