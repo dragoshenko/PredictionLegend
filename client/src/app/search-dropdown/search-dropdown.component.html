@@ -1,0 +1,140 @@
+<!-- client/src/app/search-dropdown/search-dropdown.component.html -->
+<div class="search-container position-relative">
+  <div class="input-group">
+    <input
+      #searchInput
+      type="search"
+      class="form-control bg-dark text-light border-secondary"
+      placeholder="Search predictions..."
+      [(ngModel)]="searchTerm"
+      (input)="onSearchInput($event)"
+      (focus)="onFocus()"
+      (blur)="onBlur()"
+      (keydown)="onKeyDown($event)"
+      autocomplete="off">
+    <button
+      class="btn btn-outline-light"
+      type="button"
+      (click)="performSearch()"
+      [disabled]="!searchTerm.trim()">
+      <i class="fa fa-search"></i>
+    </button>
+  </div>
+
+  <!-- Search Dropdown Results -->
+  <div
+    class="search-dropdown position-absolute w-100 mt-1"
+    *ngIf="showDropdown && (searchResults.length > 0 || isSearching || noResults)"
+    style="z-index: 1050;">
+
+    <div class="card bg-dark border-secondary shadow-lg">
+      <div class="card-body p-0">
+
+        <!-- Loading State -->
+        <div *ngIf="isSearching" class="p-3 text-center">
+          <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+          <span class="text-light">Searching...</span>
+        </div>
+
+        <!-- Search Results -->
+        <div *ngIf="!isSearching && searchResults.length > 0">
+          <div class="px-3 py-2 border-bottom border-secondary">
+            <small class="text-muted">
+              Found {{ searchResults.length }} prediction{{ searchResults.length === 1 ? '' : 's' }}
+            </small>
+          </div>
+
+          <div class="search-results-list" style="max-height: 500px; overflow-y: auto;"> <!-- Increased height -->
+            <div
+              *ngFor="let result of searchResults; let i = index; trackBy: trackByResultId"
+              class="search-result-item p-3 border-bottom border-secondary"
+              [class.highlighted]="i === selectedIndex"
+              (mousedown)="selectResult(result)"
+              (mouseenter)="selectedIndex = i"
+              style="cursor: pointer;">
+
+              <div class="d-flex align-items-start">
+                <!-- Prediction Type Icon -->
+                <div class="me-3 mt-1">
+                  <i class="fa text-primary"
+                     [ngClass]="{
+                       'fa-list-ol': result.predictionType === 'Ranking',
+                       'fa-sitemap': result.predictionType === 'Bracket',
+                       'fa-th': result.predictionType === 'Bingo'
+                     }"></i>
+                </div>
+
+                <!-- Main Content -->
+                <div class="flex-grow-1">
+                  <div class="d-flex justify-content-between align-items-start mb-1">
+                    <h6 class="text-light mb-0" [innerHTML]="highlightMatch(result.title)"></h6>
+                    <div class="d-flex gap-1">
+                      <span class="badge bg-primary small">{{ result.predictionType }}</span>
+                      <span class="badge bg-success small" *ngIf="result.isActive">Active</span>
+                      <span class="badge bg-warning text-dark small" *ngIf="result.isDraft">Draft</span>
+                    </div>
+                  </div>
+
+                  <p class="text-muted small mb-2"
+                     [innerHTML]="highlightMatch(result.description.slice(0, 100) + (result.description.length > 100 ? '...' : ''))">
+                  </p>
+
+                  <div class="d-flex justify-content-between align-items-center">
+                    <!-- Author -->
+                    <div class="d-flex align-items-center">
+                      <img *ngIf="result.author.photoUrl"
+                           [src]="result.author.photoUrl"
+                           class="rounded-circle me-2"
+                           width="20" height="20"
+                           alt="Author">
+                      <div class="bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center"
+                           *ngIf="!result.author.photoUrl"
+                           style="width: 20px; height: 20px;">
+                        <i class="fa fa-user text-white" style="font-size: 10px;"></i>
+                      </div>
+                      <span class="text-light small">{{ result.author.displayName }}</span>
+                    </div>
+
+                    <!-- Categories -->
+                    <div class="d-flex gap-1" *ngIf="result.categories.length > 0">
+                      <span *ngFor="let category of result.categories.slice(0, 2)"
+                            class="badge very-small"
+                            [style.background-color]="category.colorCode || '#6c757d'">
+                        {{ category.name }}
+                      </span>
+                      <span *ngIf="result.categories.length > 2"
+                            class="badge bg-secondary very-small">
+                        +{{ result.categories.length - 2 }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Show All Results Link -->
+          <div class="p-3 text-center border-top border-secondary" *ngIf="searchResults.length >= maxResults">
+            <button class="btn btn-sm btn-outline-primary" (click)="viewAllResults()">
+              <i class="fa fa-list me-1"></i>View all results for "{{ searchTerm }}"
+            </button>
+          </div>
+        </div>
+
+        <!-- No Results -->
+        <div *ngIf="!isSearching && noResults && searchTerm.trim()" class="p-3 text-center">
+          <i class="fa fa-search text-muted mb-2"></i>
+          <p class="text-muted mb-2">No predictions found for "{{ searchTerm }}"</p>
+          <small class="text-muted">Try a different search term</small>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="border-top border-secondary p-2" *ngIf="searchTerm.trim() && !isSearching">
+          <button class="btn btn-sm btn-outline-primary w-100" (click)="viewAllResults()">
+            <i class="fa fa-search me-1"></i>Search all results for "{{ searchTerm }}"
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

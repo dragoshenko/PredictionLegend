@@ -1,0 +1,154 @@
+.search-container {
+  width: 100%;
+  max-width: 500px; /* Slightly smaller to fit better in center */
+}
+
+.search-dropdown {
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 500px; /* Ensure minimum width */
+}
+
+/* Make the dropdown properly centered on desktop */
+@media (min-width: 992px) {
+  .search-container {
+    max-width: 500px;
+  }
+
+  .search-dropdown {
+    min-width: 500px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+.search-result-item {
+  transition: background-color 0.2s ease;
+}
+
+.search-result-item:hover,
+.search-result-item.highlighted {
+  background-color: rgba(13, 110, 253, 0.1) !important;
+}
+
+.search-result-item:last-child {
+  border-bottom: none !important;
+}
+
+.very-small {
+  font-size: 0.7rem;
+}
+
+.form-control:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.highlighted-text {
+  background-color: rgba(255, 255, 0, 0.3);
+  color: inherit;
+  font-weight: bold;
+}
+
+/* Scrollbar styling for search results */
+.search-results-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.search-results-list::-webkit-scrollbar-track {
+  background: #2d3436;
+}
+
+.search-results-list::-webkit-scrollbar-thumb {
+  background: #636e72;
+  border-radius: 3px;
+}
+
+.search-results-list::-webkit-scrollbar-thumb:hover {
+  background: #0d6efd;
+}
+
+@media (max-width: 991.98px) {
+  .search-container {
+    max-width: 100%;
+  }
+
+  .search-dropdown {
+    left: 0;
+    right: 0;
+    transform: none;
+    min-width: auto;
+    width: 100%;
+  }
+}
+
+/* Animation for dropdown appearance */
+.search-dropdown {
+  animation: fadeInDown 0.15s ease-out;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Improve button styling */
+.btn-outline-light:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Search input styling */
+.form-control::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Badge styling for categories */
+.badge.very-small {
+  padding: 0.25em 0.4em;
+  font-size: 0.65rem;
+}
+
+/* Ensure proper spacing for icons */
+.fa {
+  min-width: 16px;
+  text-align: center;
+}
+
+/* Card shadow for dropdown */
+.shadow-lg {
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Loading spinner positioning */
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Result item hover effect */
+.search-result-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.search-result-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(13, 110, 253, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.search-result-item:hover::before {
+  left: 100%;
+}

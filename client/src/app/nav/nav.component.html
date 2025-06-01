@@ -1,26 +1,27 @@
-<!-- nav.component.html - CLEANED VERSION -->
 <nav class="navbar navbar-expand-lg bg-dark" data-bs-theme="dark">
   <div class="container-fluid">
-    <a class="navbar-brand" routerLink="/">PredictionMaker</a>
+    <a class="navbar-brand brand-logo" routerLink="/">
+      Prediction<span class="neon-text">Maker</span>
+    </a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarColor02" aria-controls="navbarColor02" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navbarColor02">
+
+      <!-- Left side navigation -->
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
         <li class="nav-item">
           <a class="nav-link" routerLink="/published-posts" routerLinkActive="active">Published Posts</a>
         </li>
-        <li class="nav-item">
-          <a class="nav-link" routerLink="/discussions" routerLinkActive="active">Discussions</a>
-        </li>
       </ul>
-      <form class="d-flex me-2">
-        <div class="input-group">
-          <input class="form-control" type="search" placeholder="Search" aria-label="Search">
-          <button class="btn btn-outline-light" type="submit">Search</button>
-        </div>
-      </form>
-      <ul class="navbar-nav">
+
+      <!-- Centered Search Only -->
+      <div class="d-none d-lg-flex justify-content-center flex-grow-1 mx-4">
+        <app-search-dropdown></app-search-dropdown>
+      </div>
+
+      <!-- Right side items -->
+      <ul class="navbar-nav ms-auto">
         <li class="nav-item me-2">
           <a [routerLink]="['/create-prediction']" class="nav-link btn btn-primary text-white px-3">Create Prediction</a>
         </li>
@@ -50,14 +51,30 @@
             </a></li>
           </ul>
         </li>
+        <!-- Desktop-only login button -->
+        <li class="nav-item" *ngIf="!(accountService.currentUser())">
+          <a class="nav-link btn btn-outline-light" routerLink="/auth">Login</a>
+        </li>
       </ul>
-      <!-- Login button in its own div for better mobile centering -->
-      <div class="d-lg-none w-100 text-center mt-3">
-        <a *ngIf="!(accountService.currentUser())" class="btn btn-outline-light" routerLink="/auth">Login</a>
-      </div>
-      <!-- Desktop-only login button -->
-      <div class="d-none d-lg-block">
-        <a *ngIf="!(accountService.currentUser())" class="btn btn-outline-light" routerLink="/auth">Login</a>
+
+      <!-- Mobile Navigation -->
+      <div class="d-lg-none w-100 mt-3">
+        <!-- Mobile Published Posts -->
+        <div class="mb-3 text-center">
+          <a class="btn btn-outline-secondary w-100" routerLink="/published-posts" routerLinkActive="active">
+            <i class="fa fa-globe me-2"></i>Published Posts
+          </a>
+        </div>
+
+        <!-- Mobile Search -->
+        <div class="mb-3">
+          <app-search-dropdown></app-search-dropdown>
+        </div>
+
+        <!-- Mobile Login Button -->
+        <div class="text-center">
+          <a *ngIf="!(accountService.currentUser())" class="btn btn-outline-light" routerLink="/auth">Login</a>
+        </div>
       </div>
     </div>
   </div>
