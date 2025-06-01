@@ -1,0 +1,175 @@
+/* my-prediction-view.component.css */
+
+.table-dark th,
+.table-dark td {
+  border-color: #495057;
+}
+
+.card {
+  border-radius: 8px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.badge {
+  font-size: 0.875rem;
+}
+
+.bingo-grid {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.bingo-cell {
+  border-radius: 8px;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.bingo-cell.has-team {
+  background-color: #28a745;
+  border-color: #1e7e34;
+}
+
+.bingo-cell.empty-cell {
+  background-color: #6c757d;
+  border-color: #495057;
+}
+
+.very-small {
+  font-size: 0.7rem;
+}
+
+pre {
+  max-height: 300px;
+  overflow-y: auto;
+  font-size: 0.8rem;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  padding: 0.75rem;
+}
+
+.list-group-item {
+  padding: 0.5rem 0;
+}
+
+/* Dropdown styling */
+.dropdown-menu {
+  background-color: #343a40;
+  border-color: #495057;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.dropdown-item {
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  margin: 0.1rem;
+}
+
+.dropdown-item:hover {
+  background-color: #495057;
+  color: #fff;
+}
+
+.dropdown-item.text-danger:hover {
+  background-color: #dc3545;
+  color: #fff;
+}
+
+/* Alert styling */
+.alert {
+  border-radius: 8px;
+  border: none;
+}
+
+.alert-warning {
+  background: linear-gradient(135deg, #ffc107, #fd7e14);
+  color: #000;
+}
+
+.alert-info {
+  background: linear-gradient(135deg, #17a2b8, #6f42c1);
+  color: #fff;
+}
+
+/* Code styling */
+code {
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 0.2em 0.4em;
+  border-radius: 0.25rem;
+  color: #fff;
+}
+
+/* Button improvements */
+.btn {
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+/* Header card styling */
+.bg-primary {
+  background: linear-gradient(135deg, #007bff, #0056b3) !important;
+}
+
+/* Stats cards */
+.card.bg-info {
+  background: linear-gradient(135deg, #17a2b8, #138496) !important;
+}
+
+.card.bg-success {
+  background: linear-gradient(135deg, #28a745, #1e7e34) !important;
+}
+
+.card.bg-warning {
+  background: linear-gradient(135deg, #ffc107, #e0a800) !important;
+}
+
+.card.bg-secondary {
+  background: linear-gradient(135deg, #6c757d, #545b62) !important;
+}
+
+/* Table hover effects */
+.table-dark tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.075);
+}
+
+/* Image fallback styling */
+.bg-primary.rounded-circle {
+  background: linear-gradient(135deg, #007bff, #0056b3) !important;
+}
+
+/* Progress and status indicators */
+.text-success {
+  color: #28a745 !important;
+}
+
+.text-warning {
+  color: #ffc107 !important;
+}
+
+.text-danger {
+  color: #dc3545 !important;
+}
+
+.text-info {
+  color: #17a2b8 !important;
+}

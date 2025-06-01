@@ -1,4 +1,4 @@
-// client/src/app/app.routes.ts - UPDATED VERSION with Counter Prediction Support
+// client/src/app/app.routes.ts - UPDATED VERSION with My Prediction View
 import { Routes } from '@angular/router';
 import { HomeComponent } from './home/home.component';
 import { CategoriesComponent } from './categories/categories.component';
@@ -23,6 +23,7 @@ import { MyPredictionsComponent } from './my-predictions/my-predictions.componen
 import { PredictionDetailsComponent } from './prediction-details/prediction-details.component';
 import { PublishedPostsComponent } from './published-posts/published-posts.component';
 import { PostViewComponent } from './post-view/post-view.component';
+import { MyPredictionViewComponent } from './my-prediction-view/my-prediction-view.component';
 
 export const routes: Routes = [
   // Public routes (no authentication required)
@@ -65,6 +66,7 @@ export const routes: Routes = [
     component: PostViewComponent,
     data: { title: 'Post View' }
   },
+
   // Protected routes (require authentication)
   {
     path: '',
@@ -81,6 +83,11 @@ export const routes: Routes = [
         path: 'my-predictions',
         component: MyPredictionsComponent,
         data: { title: 'My Predictions' }
+      },
+      {
+        path: 'my-prediction/:id',
+        component: MyPredictionViewComponent,
+        data: { title: 'My Prediction View' }
       },
       {
         path: 'password-change-warning',
@@ -109,10 +116,6 @@ export const routes: Routes = [
         component: CreatePostComponent,
         data: { title: 'Create Post' }
       },
-
-      // Counter prediction routes (protected - require login to create)
-      // Note: Viewing counter predictions is handled in prediction-details (public)
-      // Creating counter predictions requires authentication
     ]
   },
 
@@ -157,35 +160,41 @@ PUBLIC ROUTES (No Auth Required):
 - /site-predictions - Browse site predictions
 - /trending-predictions - Trending content
 - /published-posts - All published predictions (main discovery page)
-- /prediction-details/:id - View prediction details + counter predictions
+- /prediction-details/:id - View prediction details + counter predictions (PUBLIC)
 - /post-view/:id - Alternative post view
 
 PROTECTED ROUTES (Auth Required):
 - /profile - User profile management
-- /my-predictions - User's own predictions
+- /my-predictions - User's own predictions list
+- /my-prediction/:id - View own prediction details (PRIVATE - no counter prediction)
 - /password-change-warning - Security notifications
 - /create-prediction - Start prediction creation flow
 - /edit-template/:id/:type - Step 2: Template editing
 - /select-teams/:predictionId/:templateId/:type - Step 3: Team selection
 - /create-post/:predictionId/:templateId/:type - Step 4: Post creation
-- /discussions/create - Create new discussions
-- /discussions/edit/:id - Edit discussions
-- /my-discussions - User's discussions
 
 ADMIN ROUTES (Admin Role Required):
 - /admin - Admin dashboard
 - /admin/users/:id - User management
 
-COUNTER PREDICTION FLOW:
-1. User visits /published-posts (public)
-2. Clicks "Counter Predict" on a post
-3. Navigates to /prediction-details/:id?action=counter-predict
-4. If not logged in, redirected to /auth with return URL
-5. If logged in, can create counter prediction on details page
-6. Counter predictions are submitted via API from PredictionDetailsComponent
-7. Results are displayed on the same page
+ROUTE DIFFERENCES:
+1. /prediction-details/:id - PUBLIC view with counter-prediction functionality
+   - Anyone can view (if public)
+   - Shows counter predictions from other users
+   - Allows creating counter predictions
+   - Full social interaction features
 
-The counter prediction functionality is integrated into the existing
-prediction-details page rather than having separate routes, making
-the user experience smoother and keeping related content together.
+2. /my-prediction/:id - PRIVATE view for prediction owners
+   - Only the owner can view
+   - Shows only their own prediction data
+   - No counter prediction interface
+   - Management actions (edit, publish, delete, duplicate)
+   - Detailed stats and analytics
+   - Privacy settings display
+
+This separation ensures:
+- Clear distinction between public and private views
+- Better security (owners can't accidentally see others' drafts)
+- Optimized UI for different use cases
+- Cleaner URL structure (/my-prediction/ vs /prediction-details/)
 */

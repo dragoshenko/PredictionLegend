@@ -720,11 +720,11 @@ export class MyPredictionsComponent implements OnInit {
     }
   }
 
-  // NAVIGATION AND ACTION METHODS
   async viewPrediction(predictionId: number): Promise<void> {
     try {
-      console.log('Viewing prediction:', predictionId);
-      this.router.navigate(['/prediction-details', predictionId]);
+      console.log('Viewing my prediction:', predictionId);
+      // Use the new my-prediction route for viewing own predictions
+      this.router.navigate(['/my-prediction', predictionId]);
     } catch (error) {
       console.error('Error viewing prediction:', error);
       this.toastr.error('Failed to load prediction');
@@ -744,6 +744,7 @@ export class MyPredictionsComponent implements OnInit {
   }
 
   viewCounterPredictions(predictionId: number): void {
+    // For viewing counter predictions, use the public route
     this.router.navigate(['/prediction-details', predictionId], {
       fragment: 'counter-predictions'
     });
@@ -795,6 +796,7 @@ export class MyPredictionsComponent implements OnInit {
   }
 
   sharePost(predictionId: number): void {
+    // For sharing, use the public prediction-details route
     const url = `${window.location.origin}/prediction-details/${predictionId}`;
 
     if (navigator.share) {

@@ -1,0 +1,65 @@
+<div class="card-footer bg-transparent border-dark">
+    <div class="d-flex justify-content-between align-items-center">
+      <!-- Updated button to use my-prediction route -->
+      <button class="btn btn-outline-primary btn-sm" (click)="viewPrediction(post.id)">
+        <i class="fa fa-eye me-1"></i>
+        {{ post.isDraft ? 'Preview' : 'View Details' }}
+      </button>
+
+      <div class="btn-group">
+        <button *ngIf="post.isDraft"
+                class="btn btn-success btn-sm"
+                (click)="editPrediction(post.id)">
+          <i class="fa fa-edit me-1"></i>Continue Editing
+        </button>
+        <button *ngIf="!post.isDraft && post.counterPredictionsCount > 0"
+                class="btn btn-info btn-sm"
+                (click)="viewCounterPredictions(post.id)">
+          <i class="fa fa-users me-1"></i>View Responses
+        </button>
+        <button *ngIf="!post.isDraft"
+                class="btn btn-outline-secondary btn-sm"
+                (click)="sharePost(post.id)">
+          <i class="fa fa-share me-1"></i>Share
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Also update the dropdown menu items -->
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li>
+      <!-- Updated to use my-prediction route -->
+      <button class="dropdown-item" (click)="viewPrediction(post.id)">
+        <i class="fa fa-eye me-2"></i>View Details
+      </button>
+    </li>
+    <li *ngIf="post.isDraft">
+      <button class="dropdown-item" (click)="editPrediction(post.id)">
+        <i class="fa fa-edit me-2"></i>Continue Editing
+      </button>
+    </li>
+    <li *ngIf="post.isDraft">
+      <button class="dropdown-item" (click)="publishPrediction(post.id)">
+        <i class="fa fa-globe me-2"></i>Publish
+      </button>
+    </li>
+    <li *ngIf="!post.isDraft">
+      <button class="dropdown-item" (click)="duplicatePrediction(post.id)">
+        <i class="fa fa-copy me-2"></i>Duplicate
+      </button>
+    </li>
+    <li *ngIf="!post.isDraft && post.counterPredictionsCount > 0">
+      <button class="dropdown-item" (click)="viewCounterPredictions(post.id)">
+        <i class="fa fa-users me-2"></i>View {{ post.counterPredictionsCount }} Responses
+      </button>
+    </li>
+    <li>
+      <hr class="dropdown-divider">
+    </li>
+    <li>
+      <button class="dropdown-item text-danger" (click)="deletePrediction(post.id)">
+        <i class="fa fa-trash me-2"></i>Delete
+      </button>
+    </li>
+  </ul>
