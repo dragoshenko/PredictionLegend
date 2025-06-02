@@ -14,6 +14,14 @@ import { Router } from '@angular/router';
 import { take } from 'rxjs/operators';
 import { HttpHeaders } from '@angular/common/http';
 
+interface UserPredictionStats {
+  rankingCount: number;
+  bracketCount: number;
+  bingoCount: number;
+  totalCount: number;
+  publishedCount: number;
+  draftCount: number;
+}
 
 @Component({
   selector: 'app-profile',
@@ -39,8 +47,8 @@ export class ProfileComponent implements OnInit {
   passwordEditMode = false;
   verificationMode = false;
   loading = false;
-  userStats: { created: number, completed: number, answered: number } | null = null;
-  isGoogleAuthenticatedWithoutPassword = false; // New flag
+  predictionStats: UserPredictionStats | null = null;
+  isGoogleAuthenticatedWithoutPassword = false;
 
   ngOnInit(): void {
     // Initialize the form first
@@ -51,7 +59,7 @@ export class ProfileComponent implements OnInit {
 
     // Then load user data
     this.loadUser();
-    this.loadUserStats();
+    this.loadPredictionStats();
   }
 
   initializeForm() {
@@ -119,20 +127,96 @@ export class ProfileComponent implements OnInit {
     };
   }
 
-  loadUserStats() {
-    this.userService.getUserStats().subscribe({
-      next: stats => {
-        this.userStats = stats;
-      },
-      error: error => {
-        console.error('Failed to load user stats', error);
-        this.userStats = {
-          created: 0,
-          completed: 0,
-          answered: 0
+  async loadPredictionStats(): Promise<void> {
+    try {
+      console.log('Loading user prediction stats...');
+
+      // Fetch user's predictions from the my-posts endpoint
+      const response = await this.http.get<any[]>(
+        `${environment.apiUrl}post/my-posts`
+      ).toPromise();
+
+      if (response && Array.isArray(response)) {
+        console.log('User posts loaded:', response);
+
+        // Count predictions by type
+        const stats: UserPredictionStats = {
+          rankingCount: 0,
+          bracketCount: 0,
+          bingoCount: 0,
+          totalCount: response.length,
+          publishedCount: 0,
+          draftCount: 0
+        };
+
+        response.forEach(post => {
+          // Count by prediction type
+          const predictionType = this.getPredictionTypeDisplayName(post.predictionType);
+          switch (predictionType) {
+            case 'Ranking':
+              stats.rankingCount++;
+              break;
+            case 'Bracket':
+              stats.bracketCount++;
+              break;
+            case 'Bingo':
+              stats.bingoCount++;
+              break;
+          }
+
+          // Count by status
+          if (post.isDraft) {
+            stats.draftCount++;
+          } else {
+            stats.publishedCount++;
+          }
+        });
+
+        this.predictionStats = stats;
+        console.log('Prediction stats calculated:', stats);
+      } else {
+        console.log('No predictions found or invalid response');
+        this.predictionStats = {
+          rankingCount: 0,
+          bracketCount: 0,
+          bingoCount: 0,
+          totalCount: 0,
+          publishedCount: 0,
+          draftCount: 0
         };
       }
-    });
+    } catch (error) {
+      console.error('Failed to load prediction stats:', error);
+      this.predictionStats = {
+        rankingCount: 0,
+        bracketCount: 0,
+        bingoCount: 0,
+        totalCount: 0,
+        publishedCount: 0,
+        draftCount: 0
+      };
+    }
+  }
+
+  private getPredictionTypeDisplayName(predictionType: any): string {
+    if (typeof predictionType === 'string') {
+      return predictionType;
+    }
+
+    // Convert numeric values to string names
+    switch (predictionType) {
+      case 0:
+      case '0':
+        return 'Ranking';
+      case 1:
+      case '1':
+        return 'Bracket';
+      case 2:
+      case '2':
+        return 'Bingo';
+      default:
+        return 'Unknown';
+    }
   }
 
   toggleEditMode() {
@@ -442,7 +526,7 @@ export class ProfileComponent implements OnInit {
 
           // Force nav component reload by updating the source with preserved flags
           this.accountService.setCurrentUser(this.user, true);
-          this.loadUserStats();
+          this.loadPredictionStats();
         }
       },
       error: error => {
@@ -510,5 +594,4 @@ export class ProfileComponent implements OnInit {
       }
     });
   }
-
 }

@@ -209,39 +209,60 @@
                   </button>
                 </div>
 
-                <!-- User Stats -->
+                <!-- Prediction Stats -->
                 <div>
-                  <h5>Activity Stats</h5>
-                  <div class="row g-3 text-center">
-                    <div class="col-sm-4">
-                      <div class="card border-primary">
-                        <div class="card-body">
-                          <h6 class="card-title text-primary">Predictions Created</h6>
-                          <p class="card-text display-6">{{ userStats?.created || 0 }}</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="col-sm-4">
-                      <div class="card border-success">
-                        <div class="card-body">
-                          <h6 class="card-title text-success">Predictions Completed</h6>
-                          <p class="card-text display-6">{{ userStats?.completed || 0 }}</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="col-sm-4">
+                  <h5>My Predictions</h5>
+                  <div class="row g-3 text-center" *ngIf="predictionStats">
+                    <div class="col-sm-6 col-md-4">
                       <div class="card border-warning">
                         <div class="card-body">
-                          <h6 class="card-title text-warning">Predictions Answered</h6>
-                          <p class="card-text display-6">{{ userStats?.answered || 0 }}</p>
+                          <i class="fa fa-list-ol fa-2x text-warning mb-2"></i>
+                          <h6 class="card-title text-warning">Ranking</h6>
+                          <p class="card-text display-6">{{ predictionStats.rankingCount }}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                      <div class="card border-info">
+                        <div class="card-body">
+                          <i class="fa fa-sitemap fa-2x text-info mb-2"></i>
+                          <h6 class="card-title text-info">Bracket</h6>
+                          <p class="card-text display-6">{{ predictionStats.bracketCount }}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                      <div class="card border-success">
+                        <div class="card-body">
+                          <i class="fa fa-th fa-2x text-success mb-2"></i>
+                          <h6 class="card-title text-success">Bingo</h6>
+                          <p class="card-text display-6">{{ predictionStats.bingoCount }}</p>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
+
+                  <!-- Additional Stats Row -->
+                  <div class="row g-3 text-center mt-2" *ngIf="predictionStats">
+                    <div class="col-sm-6">
+                      <div class="card border-primary">
+                        <div class="card-body">
+                          <i class="fa fa-check-circle fa-2x text-primary mb-2"></i>
+                          <h6 class="card-title text-primary">Published</h6>
+                          <p class="card-text display-6">{{ predictionStats.publishedCount }}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-sm-6">
+                      <div class="card border-secondary">
+                        <div class="card-body">
+                          <i class="fa fa-edit fa-2x text-secondary mb-2"></i>
+                          <h6 class="card-title text-secondary">Drafts</h6>
+                          <p class="card-text display-6">{{ predictionStats.draftCount }}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
           <!-- Loading spinner when user data is not loaded -->
           <div *ngIf="!user" class="text-center py-4">

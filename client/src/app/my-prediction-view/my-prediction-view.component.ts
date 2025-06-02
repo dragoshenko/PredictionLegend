@@ -289,7 +289,7 @@ interface MyPredictionDetail {
                         <strong>Grid Size:</strong> {{ getOriginalBingoData()?.gridSize }}x{{ getOriginalBingoData()?.gridSize }}
                       </p>
                       <p class="text-light mb-1 small">
-                        <strong>Total Cells:</strong> {{ getOriginalBingoCells()?.length || 0 }}
+                        <strong>Total Cells:</strong> {{ getOriginalBingoCells().length || 0 }}
                       </p>
                       <p class="text-light mb-0 small">
                         <strong>Filled Cells:</strong> {{ getFilledBingoCellsCount() }}
