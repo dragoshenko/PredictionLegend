@@ -48,7 +48,7 @@ interface MyPredictionDetail {
                   {{ getStatusText() }}
                 </span>
                 <span class="badge bg-info me-2">{{ getPredictionTypeDisplayName() }}</span>
-                <span class="badge bg-secondary">{{ predictionDetail.privacyType || 'Public' }}</span>
+                <span class="badge bg-secondary">{{ getPrivacyTypeDisplayName(predictionDetail.privacyType) }}</span>
               </div>
             </div>
             <div class="d-flex gap-2">
@@ -1027,6 +1027,27 @@ export class MyPredictionViewComponent implements OnInit {
     }
   }
 
+  getPrivacyTypeDisplayName(privacyType: any): string {
+    // Handle string values (already correct)
+    if (typeof privacyType === 'string') {
+      return privacyType;
+    }
+
+    // Convert numeric enum values to string names
+    switch (privacyType) {
+      case 0:
+      case '0':
+        return 'Public';
+      case 1:
+      case '1':
+        return 'Private';
+      case 2:
+      case '2':
+        return 'Link Only';
+      default:
+        return 'Public';
+    }
+  }
   sharePost(): void {
     if (!this.predictionDetail) return;
 
@@ -1060,4 +1081,5 @@ export class MyPredictionViewComponent implements OnInit {
   goBack(): void {
     this.router.navigate(['/my-predictions']);
   }
+
 }

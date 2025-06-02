@@ -854,4 +854,23 @@ export class MyPredictionsComponent implements OnInit {
         return 'Create your first prediction to get started!';
     }
   }
+  getPrivacyTypeDisplayName(privacyType: any): string {
+    if (typeof privacyType === 'string') {
+      return privacyType;
+    }
+
+    switch (privacyType) {
+      case 0:
+      case '0':
+        return 'Public';
+      case 1:
+      case '1':
+        return 'Private';
+      case 2:
+      case '2':
+        return 'Link Only';
+      default:
+        return 'Public';
+    }
+  }
 }
