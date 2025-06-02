@@ -544,21 +544,18 @@ public class PostController : BaseAPIController
             });
         }
     }
-    [HttpPost("{id}/counter-predict")]
-    public async Task<ActionResult> CreateCounterPrediction(int id, [FromBody] CounterPredictionRequestDTO request)
+    [HttpPost("counter-prediction")]
+    public async Task<ActionResult> CreateCounterPrediction([FromBody] CounterPredictionRequestDTO request)
     {
         try
         {
-            Console.WriteLine($"=== CREATE COUNTER PREDICTION ===");
-            Console.WriteLine($"Original Prediction ID: {id}");
-            Console.WriteLine($"User ID: {User.GetUserId()}");
-            Console.WriteLine($"Request: {System.Text.Json.JsonSerializer.Serialize(request)}");
+
 
             var userId = User.GetUserId();
 
             // Get the original prediction with all related data
             var originalPrediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(
-                id,
+                request.Id,
                 includeUser: true,
                 includePostRanks: true,
                 includePostBingos: true,
@@ -627,7 +624,7 @@ public class PostController : BaseAPIController
                     }
 
                     // Set required fields
-                    request.PostRank.PredictionId = id;
+                    request.PostRank.PredictionId = request.Id;
                     request.PostRank.UserId = userId;
 
                     // Validate rank table structure
@@ -683,7 +680,7 @@ public class PostController : BaseAPIController
                     }
 
                     Console.WriteLine($"Creating PostBingo with {request.PostBingo.BingoCells.Count} cells");
-                    var bingoResult = await _postService.CreatePostBingoAsync(request.PostBingo, id, userId);
+                    var bingoResult = await _postService.CreatePostBingoAsync(request.PostBingo, request.Id, userId);
 
                     if (bingoResult.Result is BadRequestObjectResult badBingoResult)
                     {
@@ -725,7 +722,7 @@ public class PostController : BaseAPIController
         }
     }
 
-    [HttpGet("{id}/can-counter-predict")]
+    [HttpGet("can-counter-predict/{id}")]
     public async Task<ActionResult<bool>> CanUserCounterPredict(int id)
     {
         try
@@ -779,7 +776,7 @@ public class PostController : BaseAPIController
         return false;
     }
 
-    [HttpGet("{id}/debug")]
+    [HttpGet("debug/{id}")]
     public async Task<ActionResult> DebugPrediction(int id)
     {
         try

@@ -545,7 +545,6 @@ export class PredictionDetailsComponent implements OnInit {
   async loadPredictionDetails(predictionId: number): Promise<void> {
     this.isLoading = true;
     try {
-      console.log('Loading prediction details for ID:', predictionId);
 
       const response = await this.http.get<PredictionDetail>(
         `${environment.apiUrl}post/prediction/${predictionId}/with-posts`
@@ -553,22 +552,8 @@ export class PredictionDetailsComponent implements OnInit {
 
       if (response) {
         this.predictionDetail = response;
-        console.log('Prediction details loaded:', this.predictionDetail);
-        console.log('PostRanks:', this.predictionDetail.postRanks);
-        console.log('PostBingos:', this.predictionDetail.postBingos);
-        console.log('PostBrackets:', this.predictionDetail.postBrackets);
-
-        // Log type checking results
-        console.log('Type checks:');
-        console.log('- predictionType:', this.predictionDetail.predictionType);
-        console.log('- isRankingType:', this.isRankingType());
-        console.log('- isBingoType:', this.isBingoType());
-        console.log('- hasOriginalRankingData:', this.hasOriginalRankingData());
-        console.log('- hasOriginalBingoData:', this.hasOriginalBingoData());
-        console.log('- availableTeams:', this.getAvailableTeams().length);
       }
     } catch (error) {
-      console.error('Error loading prediction details:', error);
       this.toastr.error('Failed to load prediction details');
     } finally {
       this.isLoading = false;
@@ -579,25 +564,21 @@ export class PredictionDetailsComponent implements OnInit {
   canShowCounterPrediction(): boolean {
     const currentUser = this.accountService.currentUser();
     if (!currentUser || !this.predictionDetail) {
-      console.log('No user or prediction detail');
       return false;
     }
 
     // Don't show for own predictions
     if (this.predictionDetail.userId === currentUser.id) {
-      console.log('Own prediction - cannot counter predict');
       return false;
     }
 
     // Don't show for draft predictions
     if (this.predictionDetail.isDraft) {
-      console.log('Draft prediction - cannot counter predict');
       return false;
     }
 
     // Only show for active predictions
     if (!this.predictionDetail.isActive) {
-      console.log('Inactive prediction - cannot counter predict');
       return false;
     }
 
@@ -605,13 +586,6 @@ export class PredictionDetailsComponent implements OnInit {
     const hasPostData = this.hasOriginalPostData();
     const availableTeams = this.getAvailableTeams();
     const hasTeams = availableTeams.length > 0;
-
-    console.log('Counter prediction eligibility check:', {
-      hasPostData,
-      hasTeams,
-      teamsCount: availableTeams.length,
-      canShow: hasPostData && hasTeams
-    });
 
     return hasPostData && hasTeams;
   }
@@ -641,12 +615,12 @@ export class PredictionDetailsComponent implements OnInit {
   }
 
   getAvailableTeams(): TeamData[] {
-    console.log('=== Getting Available Teams ===');
+
 
     // For ranking predictions, extract teams from the rank table
     if (this.isRankingType() && this.hasOriginalRankingData()) {
       const originalRankingData = this.getOriginalRankingData();
-      console.log('Original ranking data:', originalRankingData);
+
 
       const teams: TeamData[] = [];
       const seenTeamIds = new Set<number>();
@@ -673,14 +647,12 @@ export class PredictionDetailsComponent implements OnInit {
         });
       }
 
-      console.log('Teams extracted from ranking table:', teams);
       return teams;
     }
 
     // For bingo predictions, extract teams from bingo cells
     if (this.isBingoType() && this.hasOriginalBingoData()) {
       const originalBingoData = this.getOriginalBingoData();
-      console.log('Original bingo data:', originalBingoData);
 
       const teams: TeamData[] = [];
       const seenTeamIds = new Set<number>();
@@ -703,7 +675,6 @@ export class PredictionDetailsComponent implements OnInit {
         });
       }
 
-      console.log('Teams extracted from bingo cells:', teams);
       return teams;
     }
 
@@ -720,13 +691,8 @@ export class PredictionDetailsComponent implements OnInit {
         createdAt: team.createdAt ? new Date(team.createdAt) : new Date()
       }));
 
-      console.log('Teams extracted from teams array:', teams);
       return teams;
     }
-
-    console.warn('No teams found in prediction data');
-    console.log('Prediction detail:', this.predictionDetail);
-    console.log('Original post data:', this.getOriginalPostData());
 
     return [];
   }
@@ -737,14 +703,6 @@ export class PredictionDetailsComponent implements OnInit {
     const hasPostRanks = this.predictionDetail?.postRanks && this.predictionDetail.postRanks.length > 0;
     const originalData = this.getOriginalRankingData();
     const hasRankTable = originalData?.rankTable?.rows && originalData.rankTable.rows.length > 0;
-
-    console.log('hasOriginalRankingData check:', {
-      isRanking,
-      hasPostRanks,
-      originalData: !!originalData,
-      hasRankTable,
-      finalResult: isRanking && hasPostRanks && hasRankTable
-    });
 
     return isRanking && hasPostRanks && hasRankTable;
   }
@@ -797,15 +755,6 @@ export class PredictionDetailsComponent implements OnInit {
     const hasPostBingos = this.predictionDetail?.postBingos && this.predictionDetail.postBingos.length > 0;
     const originalData = this.getOriginalBingoData();
     const hasBingoCells = originalData?.bingoCells && originalData.bingoCells.length > 0;
-
-    console.log('hasOriginalBingoData check:', {
-      isBingo,
-      hasPostBingos,
-      originalData: !!originalData,
-      hasBingoCells,
-      finalResult: isBingo && hasPostBingos && hasBingoCells
-    });
-
     return isBingo && hasPostBingos && hasBingoCells;
   }
 
@@ -893,9 +842,6 @@ export class PredictionDetailsComponent implements OnInit {
 
   // Auto-show counter prediction when coming from "counter predict" button
   autoShowCounterPrediction(): void {
-    console.log('Auto-showing counter prediction...');
-    console.log('Can show counter prediction:', this.canShowCounterPrediction());
-    console.log('Available teams:', this.getAvailableTeams().length);
 
     if (this.canShowCounterPrediction()) {
       // Force the counter prediction component to show its form

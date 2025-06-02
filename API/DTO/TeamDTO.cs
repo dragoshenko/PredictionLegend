@@ -15,7 +15,6 @@ public class TeamDTO
     [StringLength(500)]
     public string? Description { get; set; }
     
-    [Url]
     public string? PhotoUrl { get; set; }
     
     public float? Score { get; set; }
