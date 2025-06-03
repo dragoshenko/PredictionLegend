@@ -11,7 +11,7 @@ public class PostBingoDTO
     public int UserId { get; set; }
     public int GridSize { get; set; }
     public List<BingoCellDTO> BingoCells { get; set; } = [];
-    public List<Team> Teams { get; set; } = [];
+    public List<TeamDTO> Teams { get; set; } = [];
     public int TotalScore { get; set; }
     public bool IsOfficialResult { get; set; } = false;
 }

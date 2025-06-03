@@ -12,7 +12,7 @@ public class BingoCellDTO
     public int BingoId { get; set; }
     public int Row { get; set; }
     public int Column { get; set; }
-    public Team? Team { get; set; }
+    public TeamDTO? Team { get; set; }
     public int OfficialScore { get; set; } = 0;
     public bool IsWrong { get; set; } = false;
 }

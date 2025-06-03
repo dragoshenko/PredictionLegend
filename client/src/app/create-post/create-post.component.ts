@@ -623,9 +623,49 @@ export class CreatePostComponent implements OnInit {
         };
       }
 
-      console.log('Request payload:', JSON.stringify(publishRequest, null, 2));
+      if( this.predictionType === PredictionType.Bingo && this.postBingo) {
+        publishRequest.postBingo = {
+          bingoTemplateId: this.templateId,
+          predictionId: this.predictionId,
+          gridSize: this.postBingo.gridSize,
+          bingoCells: this.postBingo.bingoCells.map((cell, index) => ({
+            row: cell.row,
+            column: cell.column,
+            team: cell.team ? {
+              id: cell.team.id,
+              name: cell.team.name,
+              description: cell.team.description || '',
+              score: cell.team.score || 0,
+              createdByUserId: cell.team.createdByUserId,
+              createdAt: cell.team.createdAt
+            } : null,
+            score: cell.score || 0,
+            officialScore: cell.officialScore || 0,
+            isWrong: cell.isWrong || false
+          })),
+          teams: this.selectedTeams.map(team => ({
+            id: team.id,
+            name: team.name,
+            description: team.description || '',
+            score: team.score || 0,
+            createdByUserId: team.createdByUserId,
+            createdAt: team.createdAt
+          })),
+          isOfficialResult: false,
+          totalScore: 0
+        };
+      }
 
-      const apiUrl = `${environment.apiUrl}post/rank/publish`;
+      console.log('Publish request:', publishRequest);
+
+      let apiUrl = `${environment.apiUrl}post`;
+      if (this.predictionType === PredictionType.Ranking) {
+        apiUrl += '/rank/publish';
+      } else if (this.predictionType === PredictionType.Bingo) {
+        apiUrl += '/bingo/publish';
+      } else {
+        apiUrl += '/bracket/publish';
+      }
 
       this.http.post(apiUrl, publishRequest).subscribe({
         next: (res) => {

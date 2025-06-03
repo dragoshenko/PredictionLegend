@@ -1,6 +1,7 @@
 // API/DTO/BracketTemplateDTO.cs - ENHANCED VERSION
 
 using System;
+using System.Text.Json.Serialization;
 using API.Entities;
 
 namespace API.DTO;
@@ -14,6 +15,9 @@ public class BracketTemplateDTO
     public int NumberOfBrackets { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    // json enum deserialization
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    [JsonPropertyName("bracketType")]
     public BracketType BracketType { get; set; } = BracketType.SingleTeam;
     public ICollection<TeamDTO> Teams { get; set; } = [];
     public int UserId { get; set; }
