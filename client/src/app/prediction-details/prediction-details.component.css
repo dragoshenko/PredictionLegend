@@ -1,0 +1,425 @@
+.prediction-details-container {
+  --primary-color: #007bff;
+  --success-color: #28a745;
+  --warning-color: #ffc107;
+  --info-color: #17a2b8;
+  --secondary-color: #6c757d;
+  --dark-color: #343a40;
+  --border-radius: 8px;
+  --transition: all 0.2s ease;
+}
+
+/* Original prediction styling */
+.original-prediction {
+  position: relative;
+}
+
+.original-prediction::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #ffc107, #e0a800);
+  border-radius: var(--border-radius);
+  z-index: -1;
+}
+
+/* Counter predictions section */
+.counter-predictions-section {
+  scroll-margin-top: 100px;
+}
+
+.counter-prediction-card {
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.counter-prediction-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0, 123, 255, 0.1), transparent);
+  transition: left 0.5s ease;
+}
+
+.counter-prediction-card:hover::before {
+  left: 100%;
+}
+
+.counter-prediction-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 123, 255, 0.2);
+}
+
+/* Table enhancements */
+.table-dark th,
+.table-dark td {
+  border-color: #495057;
+  vertical-align: middle;
+}
+
+.table-sm td {
+  padding: 0.25rem;
+}
+
+.table-responsive {
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+/* Enhanced bingo grid */
+.bingo-grid {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+}
+
+.bingo-cell {
+  border-radius: var(--border-radius);
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.bingo-cell.has-team {
+  background-color: var(--success-color);
+  border-color: #1e7e34;
+  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+}
+
+.bingo-cell.empty-cell {
+  background-color: var(--secondary-color);
+  border-color: #495057;
+  opacity: 0.7;
+}
+
+.original-cell.has-team {
+  background: linear-gradient(135deg, var(--warning-color), #e0a800);
+  border-color: #d39e00;
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.4);
+}
+
+.counter-cell.has-team {
+  background: linear-gradient(135deg, var(--primary-color), #0056b3);
+  border-color: #004085;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.4);
+}
+
+/* Team display enhancements */
+.team-display {
+  transition: var(--transition);
+  border-radius: 6px;
+  padding: 0.5rem;
+}
+
+.team-display:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.02);
+}
+
+.team-image {
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  transition: var(--transition);
+}
+
+.team-image:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+/* Badge enhancements */
+.badge {
+  font-size: 0.875rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 20px;
+  font-weight: 500;
+  transition: var(--transition);
+}
+
+.badge:hover {
+  transform: scale(1.05);
+}
+
+/* Author display */
+.author-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.author-info:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.author-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  transition: var(--transition);
+}
+
+.author-avatar:hover {
+  border-color: var(--primary-color);
+  transform: scale(1.1);
+}
+
+/* Progress indicators */
+.progress-ring {
+  width: 40px;
+  height: 40px;
+  position: relative;
+}
+
+.progress-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.progress-ring circle {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.progress-ring .bg {
+  stroke: rgba(255, 255, 255, 0.1);
+}
+
+.progress-ring .progress {
+  stroke: var(--primary-color);
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+/* Statistics cards */
+.stats-card {
+  background: linear-gradient(135deg, rgba(0, 123, 255, 0.1), rgba(0, 123, 255, 0.05));
+  border: 1px solid rgba(0, 123, 255, 0.2);
+  border-radius: 12px;
+  padding: 1rem;
+  transition: var(--transition);
+}
+
+.stats-card:hover {
+  background: linear-gradient(135deg, rgba(0, 123, 255, 0.15), rgba(0, 123, 255, 0.08));
+  border-color: rgba(0, 123, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.slide-in-right {
+  animation: slideInRight 0.3s ease-out;
+}
+
+/* Staggered animations for counter predictions */
+.counter-prediction-card:nth-child(1) { animation-delay: 0.1s; }
+.counter-prediction-card:nth-child(2) { animation-delay: 0.2s; }
+.counter-prediction-card:nth-child(3) { animation-delay: 0.3s; }
+.counter-prediction-card:nth-child(4) { animation-delay: 0.4s; }
+.counter-prediction-card:nth-child(5) { animation-delay: 0.5s; }
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .bingo-grid {
+    max-width: 280px;
+    padding: 0.5rem;
+  }
+
+  .bingo-cell {
+    min-height: 60px;
+    padding: 0.25rem;
+  }
+
+  .counter-prediction-card {
+    margin-bottom: 1rem;
+  }
+
+  .table-responsive {
+    font-size: 0.875rem;
+  }
+
+  .author-info {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .bingo-grid {
+    max-width: 250px;
+  }
+
+  .bingo-cell {
+    min-height: 50px;
+    padding: 0.125rem;
+  }
+
+  .very-small {
+    font-size: 0.6rem;
+  }
+
+  .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+  }
+}
+
+/* Typography enhancements */
+.very-small {
+  font-size: 0.7rem;
+  line-height: 1.2;
+}
+
+.text-shadow {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Scroll indicators */
+.scroll-indicator {
+  position: sticky;
+  top: 0;
+  background: linear-gradient(90deg, var(--primary-color), #0056b3);
+  color: white;
+  padding: 0.5rem 1rem;
+  margin: -1rem -1rem 1rem -1rem;
+  z-index: 10;
+  border-radius: 0 0 var(--border-radius) var(--border-radius);
+}
+
+/* Loading states */
+.loading-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.loading-shimmer.dark {
+  background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
+  background-size: 200% 100%;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Enhanced card effects */
+.card-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-glow::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.card-glow:hover::after {
+  transform: translateX(100%);
+}
+
+/* Focus states for accessibility */
+.focusable:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+  border-radius: var(--border-radius);
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .bingo-cell,
+  .team-display,
+  .counter-prediction-card {
+    border-width: 2px;
+    border-style: solid;
+  }
+
+  .badge {
+    border: 1px solid currentColor;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .counter-prediction-card,
+  .stats-card {
+    break-inside: avoid;
+    margin-bottom: 1rem;
+  }
+
+  .bingo-grid {
+    print-color-adjust: exact;
+  }
+
+  .badge {
+    border: 1px solid #000;
+  }
+}
