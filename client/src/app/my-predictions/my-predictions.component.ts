@@ -1,7 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { ToastrService } from 'ngx-toastr';
@@ -38,6 +38,15 @@ interface CounterPrediction {
   totalScore: number;
   isCounterPrediction: boolean;
   counterPredictionType: string;
+}
+
+interface PaginationInfo {
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
 }
 
 @Component({
@@ -213,26 +222,90 @@ interface CounterPrediction {
         </div>
       </div>
 
-      <!-- Results counter -->
+      <!-- Results counter and pagination info -->
       <div class="d-flex justify-content-between align-items-center mb-3" *ngIf="!isLoading">
         <div class="text-light">
           <span *ngIf="!hasActiveFilters()">
-            Showing {{ filteredPosts.length }} posts ({{ originalPredictionsCount }} predictions + {{ counterPredictionsCount }} counter predictions)
+            Showing {{ getDisplayRange() }} of {{ pagination.totalItems }} posts
+            ({{ originalPredictionsCount }} predictions + {{ counterPredictionsCount }} counter predictions)
           </span>
           <span *ngIf="hasActiveFilters()">
-            Showing {{ filteredPosts.length }} of {{ userPosts.length }} posts
+            Showing {{ getDisplayRange() }} of {{ pagination.totalItems }} filtered posts
+            <span class="text-muted">({{ allPosts.length }} total)</span>
           </span>
         </div>
-        <div class="text-muted small" *ngIf="hasActiveFilters()">
-          <button class="btn btn-sm btn-outline-secondary" (click)="clearFilters()">
-            <i class="fa fa-times me-1"></i>Clear all filters
-          </button>
+        <div class="d-flex align-items-center gap-2">
+          <!-- Page size selector -->
+          <select
+            class="form-select form-select-sm bg-dark text-light border-secondary"
+            [(ngModel)]="pagination.pageSize"
+            (change)="onPageSizeChange()"
+            style="width: auto;">
+            <option value="5">5 per page</option>
+            <option value="10">10 per page</option>
+            <option value="20">20 per page</option>
+            <option value="50">50 per page</option>
+          </select>
         </div>
       </div>
 
+      <!-- Pagination Controls - Top -->
+      <div class="d-flex justify-content-center mb-4" *ngIf="pagination.totalPages > 1">
+        <nav aria-label="My predictions pagination">
+          <ul class="pagination pagination-sm">
+            <!-- First and Previous -->
+            <li class="page-item" [class.disabled]="!pagination.hasPrevious">
+              <button class="page-link bg-dark text-light border-secondary"
+                      (click)="goToPage(1)"
+                      [disabled]="!pagination.hasPrevious">
+                <i class="fa fa-angle-double-left"></i>
+              </button>
+            </li>
+            <li class="page-item" [class.disabled]="!pagination.hasPrevious">
+              <button class="page-link bg-dark text-light border-secondary"
+                      (click)="goToPage(pagination.currentPage - 1)"
+                      [disabled]="!pagination.hasPrevious">
+                <i class="fa fa-angle-left"></i>
+              </button>
+            </li>
+
+            <!-- Page Numbers -->
+            <li *ngFor="let page of getVisiblePages()"
+                class="page-item"
+                [class.active]="page === pagination.currentPage">
+              <button class="page-link"
+                      [class.bg-primary]="page === pagination.currentPage"
+                      [class.bg-dark]="page !== pagination.currentPage"
+                      [class.text-white]="true"
+                      [class.border-secondary]="page !== pagination.currentPage"
+                      [class.border-primary]="page === pagination.currentPage"
+                      (click)="goToPage(page)">
+                {{ page }}
+              </button>
+            </li>
+
+            <!-- Next and Last -->
+            <li class="page-item" [class.disabled]="!pagination.hasNext">
+              <button class="page-link bg-dark text-light border-secondary"
+                      (click)="goToPage(pagination.currentPage + 1)"
+                      [disabled]="!pagination.hasNext">
+                <i class="fa fa-angle-right"></i>
+              </button>
+            </li>
+            <li class="page-item" [class.disabled]="!pagination.hasNext">
+              <button class="page-link bg-dark text-light border-secondary"
+                      (click)="goToPage(pagination.totalPages)"
+                      [disabled]="!pagination.hasNext">
+                <i class="fa fa-angle-double-right"></i>
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
       <!-- Enhanced Predictions List -->
-      <div class="row" *ngIf="filteredPosts.length > 0">
-        <div class="col-lg-6 mb-4" *ngFor="let post of filteredPosts">
+      <div class="row" *ngIf="paginatedPosts.length > 0">
+        <div class="col-lg-6 mb-4" *ngFor="let post of paginatedPosts">
           <div class="card bg-dark border-dark h-100"
                [class.border-primary]="post.isCounterPrediction">
             <div class="card-header bg-dark border-dark">
@@ -423,6 +496,60 @@ interface CounterPrediction {
         </div>
       </div>
 
+      <!-- Pagination Controls - Bottom -->
+      <div class="d-flex justify-content-center mb-4" *ngIf="pagination.totalPages > 1">
+        <nav aria-label="My predictions pagination">
+          <ul class="pagination">
+            <!-- First and Previous -->
+            <li class="page-item" [class.disabled]="!pagination.hasPrevious">
+              <button class="page-link bg-dark text-light border-secondary"
+                      (click)="goToPage(1)"
+                      [disabled]="!pagination.hasPrevious">
+                <i class="fa fa-angle-double-left"></i> First
+              </button>
+            </li>
+            <li class="page-item" [class.disabled]="!pagination.hasPrevious">
+              <button class="page-link bg-dark text-light border-secondary"
+                      (click)="goToPage(pagination.currentPage - 1)"
+                      [disabled]="!pagination.hasPrevious">
+                <i class="fa fa-angle-left"></i> Previous
+              </button>
+            </li>
+
+            <!-- Page Numbers -->
+            <li *ngFor="let page of getVisiblePages()"
+                class="page-item"
+                [class.active]="page === pagination.currentPage">
+              <button class="page-link"
+                      [class.bg-primary]="page === pagination.currentPage"
+                      [class.bg-dark]="page !== pagination.currentPage"
+                      [class.text-white]="true"
+                      [class.border-secondary]="page !== pagination.currentPage"
+                      [class.border-primary]="page === pagination.currentPage"
+                      (click)="goToPage(page)">
+                {{ page }}
+              </button>
+            </li>
+
+            <!-- Next and Last -->
+            <li class="page-item" [class.disabled]="!pagination.hasNext">
+              <button class="page-link bg-dark text-light border-secondary"
+                      (click)="goToPage(pagination.currentPage + 1)"
+                      [disabled]="!pagination.hasNext">
+                Next <i class="fa fa-angle-right"></i>
+              </button>
+            </li>
+            <li class="page-item" [class.disabled]="!pagination.hasNext">
+              <button class="page-link bg-dark text-light border-secondary"
+                      (click)="goToPage(pagination.totalPages)"
+                      [disabled]="!pagination.hasNext">
+                Last <i class="fa fa-angle-double-right"></i>
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
       <!-- Loading State -->
       <div *ngIf="isLoading" class="text-center py-5">
         <div class="spinner-border text-primary" role="status">
@@ -432,7 +559,7 @@ interface CounterPrediction {
       </div>
 
       <!-- Empty State -->
-      <div *ngIf="filteredPosts.length === 0 && !isLoading" class="text-center py-5">
+      <div *ngIf="paginatedPosts.length === 0 && !isLoading" class="text-center py-5">
         <i class="fa fa-lightbulb-o fa-3x text-muted mb-3"></i>
         <h5 class="text-muted">{{ getEmptyStateTitle() }}</h5>
         <p class="text-muted">{{ getEmptyStateMessage() }}</p>
@@ -449,16 +576,29 @@ interface CounterPrediction {
 })
 export class MyPredictionsComponent implements OnInit {
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
   private toastr = inject(ToastrService);
   private accountService = inject(AccountService);
 
-  userPosts: UserPost[] = [];
+  // All data
+  allPosts: UserPost[] = [];
   filteredPosts: UserPost[] = [];
+  paginatedPosts: UserPost[] = [];
   counterPredictions: CounterPrediction[] = [];
   isLoading = false;
   showDebugInfo = false;
   debugInfo: any = null;
+
+  // Pagination
+  pagination: PaginationInfo = {
+    currentPage: 1,
+    pageSize: 10,
+    totalItems: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrevious: false
+  };
 
   // Enhanced Filters
   searchTerm = '';
@@ -470,36 +610,162 @@ export class MyPredictionsComponent implements OnInit {
   private searchTimeout: any;
 
   // Enhanced computed properties
+  get userPosts(): UserPost[] {
+    return this.allPosts;
+  }
+
   get publishedCount(): number {
-    return this.userPosts.filter(p => !p.isDraft && !p.isCounterPrediction).length;
+    return this.allPosts.filter(p => !p.isDraft && !p.isCounterPrediction).length;
   }
 
   get draftCount(): number {
-    return this.userPosts.filter(p => p.isDraft && !p.isCounterPrediction).length;
+    return this.allPosts.filter(p => p.isDraft && !p.isCounterPrediction).length;
   }
 
   get activeCount(): number {
-    return this.userPosts.filter(p => !p.isDraft && p.isActive && !p.isCounterPrediction).length;
+    return this.allPosts.filter(p => !p.isDraft && p.isActive && !p.isCounterPrediction).length;
   }
 
   get totalCounterPredictions(): number {
-    return this.userPosts.filter(p => !p.isCounterPrediction).reduce((sum, p) => sum + p.counterPredictionsCount, 0);
+    return this.allPosts.filter(p => !p.isCounterPrediction).reduce((sum, p) => sum + p.counterPredictionsCount, 0);
   }
 
   get counterPredictionsCount(): number {
-    return this.userPosts.filter(p => p.isCounterPrediction).length;
+    return this.allPosts.filter(p => p.isCounterPrediction).length;
   }
 
   get originalPredictionsCount(): number {
-    return this.userPosts.filter(p => !p.isCounterPrediction).length;
+    return this.allPosts.filter(p => !p.isCounterPrediction).length;
   }
 
   get totalPosts(): number {
-    return this.userPosts.length;
+    return this.allPosts.length;
   }
 
   ngOnInit(): void {
+    this.checkRouteParams();
     this.loadUserPosts();
+  }
+
+  private checkRouteParams(): void {
+    this.route.queryParams.subscribe(params => {
+      if (params['search']) {
+        this.searchTerm = params['search'];
+      }
+      if (params['type']) {
+        this.selectedType = params['type'];
+      }
+      if (params['status']) {
+        this.selectedStatus = params['status'];
+      }
+      if (params['postType']) {
+        this.selectedPostType = params['postType'];
+      }
+      if (params['sort']) {
+        this.sortBy = params['sort'];
+      }
+      if (params['page']) {
+        this.pagination.currentPage = +params['page'];
+      }
+      if (params['size']) {
+        this.pagination.pageSize = +params['size'];
+      }
+    });
+  }
+
+  // Pagination Methods
+  goToPage(page: number): void {
+    if (page < 1 || page > this.pagination.totalPages) return;
+
+    this.pagination.currentPage = page;
+    this.updateUrlParams();
+    this.applyPagination();
+
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  onPageSizeChange(): void {
+    this.pagination.currentPage = 1; // Reset to first page
+    this.updateUrlParams();
+    this.applyFiltersAndPagination();
+  }
+
+  getVisiblePages(): number[] {
+    const totalPages = this.pagination.totalPages;
+    const currentPage = this.pagination.currentPage;
+    const pages: number[] = [];
+
+    if (totalPages <= 7) {
+      // Show all pages if 7 or fewer
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Always show first page
+      pages.push(1);
+
+      if (currentPage > 4) {
+        pages.push(-1); // Ellipsis indicator
+      }
+
+      // Show pages around current page
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+
+      if (currentPage < totalPages - 3) {
+        pages.push(-1); // Ellipsis indicator
+      }
+
+      // Always show last page
+      if (totalPages > 1) {
+        pages.push(totalPages);
+      }
+    }
+
+    return pages.filter(page => page !== -1); // Remove ellipsis for now
+  }
+
+  getDisplayRange(): string {
+    if (this.pagination.totalItems === 0) return '0';
+
+    const start = (this.pagination.currentPage - 1) * this.pagination.pageSize + 1;
+    const end = Math.min(this.pagination.currentPage * this.pagination.pageSize, this.pagination.totalItems);
+
+    return `${start}-${end}`;
+  }
+
+  private updatePaginationInfo(): void {
+    this.pagination.totalItems = this.filteredPosts.length;
+    this.pagination.totalPages = Math.ceil(this.pagination.totalItems / this.pagination.pageSize);
+    this.pagination.hasNext = this.pagination.currentPage < this.pagination.totalPages;
+    this.pagination.hasPrevious = this.pagination.currentPage > 1;
+
+    // Adjust current page if it's out of bounds
+    if (this.pagination.currentPage > this.pagination.totalPages && this.pagination.totalPages > 0) {
+      this.pagination.currentPage = this.pagination.totalPages;
+    }
+    if (this.pagination.currentPage < 1) {
+      this.pagination.currentPage = 1;
+    }
+  }
+
+  private applyPagination(): void {
+    this.updatePaginationInfo();
+
+    const startIndex = (this.pagination.currentPage - 1) * this.pagination.pageSize;
+    const endIndex = startIndex + this.pagination.pageSize;
+
+    this.paginatedPosts = this.filteredPosts.slice(startIndex, endIndex);
+  }
+
+  private applyFiltersAndPagination(): void {
+    this.applyFiltersAndSorting();
+    this.applyPagination();
   }
 
   async loadUserPosts(): Promise<void> {
@@ -520,11 +786,13 @@ export class MyPredictionsComponent implements OnInit {
         this.loadCounterPredictions()
       ]);
 
+      this.applyFiltersAndPagination();
+
     } catch (error) {
       console.error('Error loading user posts:', error);
       this.toastr.error('Failed to load your predictions');
-      this.userPosts = [];
-      this.applyFiltersAndSorting();
+      this.allPosts = [];
+      this.applyFiltersAndPagination();
     } finally {
       this.isLoading = false;
     }
@@ -565,7 +833,7 @@ export class MyPredictionsComponent implements OnInit {
           isCounterPrediction: false
         }));
 
-        this.userPosts = [...originalPosts];
+        this.allPosts = [...originalPosts];
         console.log('Loaded original predictions:', originalPosts.length);
       }
     } catch (error) {
@@ -605,7 +873,7 @@ export class MyPredictionsComponent implements OnInit {
         }));
 
         // Merge with original posts
-        this.userPosts = [...this.userPosts, ...counterPosts];
+        this.allPosts = [...this.allPosts, ...counterPosts];
         console.log('Loaded counter predictions:', counterPosts.length);
       }
     } catch (error) {
@@ -622,13 +890,17 @@ export class MyPredictionsComponent implements OnInit {
 
     this.searchTimeout = setTimeout(() => {
       console.log('Search term changed to:', this.searchTerm);
-      this.applyFiltersAndSorting();
+      this.pagination.currentPage = 1; // Reset to first page
+      this.updateUrlParams();
+      this.applyFiltersAndPagination();
     }, 300);
   }
 
   onFilterChange(): void {
     console.log('Filter changed - PostType:', this.selectedPostType, 'Type:', this.selectedType, 'Status:', this.selectedStatus, 'Sort:', this.sortBy);
-    this.applyFiltersAndSorting();
+    this.pagination.currentPage = 1; // Reset to first page
+    this.updateUrlParams();
+    this.applyFiltersAndPagination();
   }
 
   clearFilters(): void {
@@ -638,14 +910,34 @@ export class MyPredictionsComponent implements OnInit {
     this.selectedStatus = '';
     this.selectedPostType = '';
     this.sortBy = 'newest';
-    this.applyFiltersAndSorting();
+    this.pagination.currentPage = 1;
+    this.updateUrlParams();
+    this.applyFiltersAndPagination();
+  }
+
+  private updateUrlParams(): void {
+    const queryParams: any = {};
+
+    if (this.searchTerm) queryParams.search = this.searchTerm;
+    if (this.selectedType) queryParams.type = this.selectedType;
+    if (this.selectedStatus) queryParams.status = this.selectedStatus;
+    if (this.selectedPostType) queryParams.postType = this.selectedPostType;
+    if (this.sortBy && this.sortBy !== 'newest') queryParams.sort = this.sortBy;
+    if (this.pagination.currentPage > 1) queryParams.page = this.pagination.currentPage;
+    if (this.pagination.pageSize !== 10) queryParams.size = this.pagination.pageSize;
+
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams,
+      queryParamsHandling: 'merge'
+    });
   }
 
   applyFiltersAndSorting(): void {
     console.log('=== Applying Enhanced Filters and Sorting ===');
-    console.log('Original posts count:', this.userPosts.length);
+    console.log('Original posts count:', this.allPosts.length);
 
-    let filtered = [...this.userPosts];
+    let filtered = [...this.allPosts];
 
     // Apply search filter
     if (this.searchTerm && this.searchTerm.trim() !== '') {
@@ -987,7 +1279,7 @@ export class MyPredictionsComponent implements OnInit {
       return 'No posts match your filters';
     }
 
-    if (this.userPosts.length === 0) {
+    if (this.allPosts.length === 0) {
       return 'No Predictions Yet';
     }
 
@@ -1005,7 +1297,7 @@ export class MyPredictionsComponent implements OnInit {
       return 'Try adjusting your search filters to find what you\'re looking for.';
     }
 
-    if (this.userPosts.length === 0) {
+    if (this.allPosts.length === 0) {
       return 'Start by creating your first prediction and see how others respond!';
     }
 

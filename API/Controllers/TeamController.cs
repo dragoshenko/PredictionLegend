@@ -24,7 +24,6 @@ public class TeamController : BaseAPIController
         {
             var userId = User.GetUserId();
             
-            // FIXED: Validate input more thoroughly
             if (teamRequest == null)
             {
                 return BadRequest("Team data is required");
@@ -40,13 +39,11 @@ public class TeamController : BaseAPIController
                 return BadRequest("Team name must be between 2 and 100 characters");
             }
 
-            // FIXED: Validate description length if provided
             if (!string.IsNullOrEmpty(teamRequest.Description) && teamRequest.Description.Length > 500)
             {
                 return BadRequest("Description must be less than 500 characters");
             }
 
-            // FIXED: Create a proper TeamDTO with validated data
             var teamDTO = new TeamDTO
             {
                 Name = teamRequest.Name.Trim(),

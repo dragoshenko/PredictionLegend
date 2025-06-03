@@ -61,15 +61,9 @@ public class TeamService : ITeamService
                 return new BadRequestObjectResult("Failed to create team");
             }
 
-            // FIXED: Don't add to user's collection manually, let EF handle it
-            // user.Teams.Add(createdTeam); // Remove this line
-            
+
             // Save changes
-            var saveResult = await _unitOfWork.Complete();
-            if (!saveResult)
-            {
-                return new BadRequestObjectResult("Team saved succesfully. Please refresh to see the updated team");
-            }
+            await _unitOfWork.Complete();
 
             // Map back to DTO for response
             var teamDTOResult = _mapper.Map<TeamDTO>(createdTeam);

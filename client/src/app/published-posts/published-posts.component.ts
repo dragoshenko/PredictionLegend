@@ -36,6 +36,15 @@ interface PublishedPost {
   userId: number;
 }
 
+interface PaginationInfo {
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+}
+
 @Component({
   selector: 'app-published-posts',
   standalone: true,
@@ -67,8 +76,8 @@ interface PublishedPost {
           <div class="card bg-success border-success">
             <div class="card-body text-center">
               <i class="fa fa-globe fa-2x text-light mb-2"></i>
-              <h4 class="text-light">{{ publishedPosts.length }}</h4>
-              <p class="text-light mb-0">Active Posts</p>
+              <h4 class="text-light">{{ allPosts.length }}</h4>
+              <p class="text-light mb-0">Total Posts</p>
             </div>
           </div>
         </div>
@@ -176,24 +185,131 @@ interface PublishedPost {
               </button>
             </div>
           </div>
+
+          <!-- Active filters indicator -->
+          <div class="mt-3" *ngIf="hasActiveFilters()">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+              <small class="text-light opacity-75 me-2">Active filters:</small>
+
+              <span *ngIf="searchTerm" class="badge bg-info d-flex align-items-center">
+                <i class="fa fa-search me-1"></i>
+                Search: "{{ searchTerm }}"
+                <button class="btn btn-sm ms-1 p-0" (click)="clearSearch()" style="background: none; border: none; color: white;">
+                  <i class="fa fa-times"></i>
+                </button>
+              </span>
+
+              <span *ngIf="selectedCategoryId" class="badge bg-success d-flex align-items-center">
+                <i class="fa fa-tag me-1"></i>
+                Category: {{ getCategoryName(selectedCategoryId) }}
+                <button class="btn btn-sm ms-1 p-0" (click)="clearCategoryFilter()" style="background: none; border: none; color: white;">
+                  <i class="fa fa-times"></i>
+                </button>
+              </span>
+
+              <span *ngIf="selectedType" class="badge bg-warning text-dark d-flex align-items-center">
+                <i class="fa fa-filter me-1"></i>
+                Type: {{ selectedType }}
+                <button class="btn btn-sm ms-1 p-0" (click)="clearTypeFilter()" style="background: none; border: none; color: black;">
+                  <i class="fa fa-times"></i>
+                </button>
+              </span>
+
+              <span *ngIf="sortBy !== 'newest'" class="badge bg-secondary d-flex align-items-center">
+                <i class="fa fa-sort me-1"></i>
+                Sort: {{ getSortDisplayName() }}
+                <button class="btn btn-sm ms-1 p-0" (click)="clearSortFilter()" style="background: none; border: none; color: white;">
+                  <i class="fa fa-times"></i>
+                </button>
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Results counter -->
+      <!-- Results counter and pagination info -->
       <div class="d-flex justify-content-between align-items-center mb-3" *ngIf="!isLoading">
         <div class="text-light">
           <span *ngIf="!hasActiveFilters()">
-            Showing {{ filteredPosts.length }} published predictions
+            Showing {{ getDisplayRange() }} of {{ pagination.totalItems }} predictions
           </span>
           <span *ngIf="hasActiveFilters()">
-            Showing {{ filteredPosts.length }} of {{ publishedPosts.length }} predictions
+            Showing {{ getDisplayRange() }} of {{ pagination.totalItems }} filtered predictions
+            <span class="text-muted">({{ allPosts.length }} total)</span>
           </span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <!-- Page size selector -->
+          <select
+            class="form-select form-select-sm bg-dark text-light border-secondary"
+            [(ngModel)]="pagination.pageSize"
+            (change)="onPageSizeChange()"
+            style="width: auto;">
+            <option value="5">5 per page</option>
+            <option value="10">10 per page</option>
+            <option value="20">20 per page</option>
+            <option value="50">50 per page</option>
+          </select>
         </div>
       </div>
 
+      <!-- Pagination Controls - Top -->
+      <div class="d-flex justify-content-center mb-4" *ngIf="pagination.totalPages > 1">
+        <nav aria-label="Predictions pagination">
+          <ul class="pagination pagination-sm">
+            <!-- First and Previous -->
+            <li class="page-item" [class.disabled]="!pagination.hasPrevious">
+              <button class="page-link bg-dark text-light border-secondary"
+                      (click)="goToPage(1)"
+                      [disabled]="!pagination.hasPrevious">
+                <i class="fa fa-angle-double-left"></i>
+              </button>
+            </li>
+            <li class="page-item" [class.disabled]="!pagination.hasPrevious">
+              <button class="page-link bg-dark text-light border-secondary"
+                      (click)="goToPage(pagination.currentPage - 1)"
+                      [disabled]="!pagination.hasPrevious">
+                <i class="fa fa-angle-left"></i>
+              </button>
+            </li>
+
+            <!-- Page Numbers -->
+            <li *ngFor="let page of getVisiblePages()"
+                class="page-item"
+                [class.active]="page === pagination.currentPage">
+              <button class="page-link"
+                      [class.bg-primary]="page === pagination.currentPage"
+                      [class.bg-dark]="page !== pagination.currentPage"
+                      [class.text-white]="true"
+                      [class.border-secondary]="page !== pagination.currentPage"
+                      [class.border-primary]="page === pagination.currentPage"
+                      (click)="goToPage(page)">
+                {{ page }}
+              </button>
+            </li>
+
+            <!-- Next and Last -->
+            <li class="page-item" [class.disabled]="!pagination.hasNext">
+              <button class="page-link bg-dark text-light border-secondary"
+                      (click)="goToPage(pagination.currentPage + 1)"
+                      [disabled]="!pagination.hasNext">
+                <i class="fa fa-angle-right"></i>
+              </button>
+            </li>
+            <li class="page-item" [class.disabled]="!pagination.hasNext">
+              <button class="page-link bg-dark text-light border-secondary"
+                      (click)="goToPage(pagination.totalPages)"
+                      [disabled]="!pagination.hasNext">
+                <i class="fa fa-angle-double-right"></i>
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
       <!-- Predictions List -->
-      <div class="row" *ngIf="filteredPosts.length > 0">
-        <div class="col-lg-6 mb-4" *ngFor="let post of filteredPosts">
+      <div class="row" *ngIf="paginatedPosts.length > 0">
+        <div class="col-lg-6 mb-4" *ngFor="let post of paginatedPosts">
           <div class="card bg-dark border-dark h-100 prediction-card">
             <div class="card-header bg-dark border-dark">
               <div class="d-flex justify-content-between align-items-start">
@@ -377,6 +493,60 @@ interface PublishedPost {
         </div>
       </div>
 
+      <!-- Pagination Controls - Bottom -->
+      <div class="d-flex justify-content-center mb-4" *ngIf="pagination.totalPages > 1">
+        <nav aria-label="Predictions pagination">
+          <ul class="pagination">
+            <!-- First and Previous -->
+            <li class="page-item" [class.disabled]="!pagination.hasPrevious">
+              <button class="page-link bg-dark text-light border-secondary"
+                      (click)="goToPage(1)"
+                      [disabled]="!pagination.hasPrevious">
+                <i class="fa fa-angle-double-left"></i> First
+              </button>
+            </li>
+            <li class="page-item" [class.disabled]="!pagination.hasPrevious">
+              <button class="page-link bg-dark text-light border-secondary"
+                      (click)="goToPage(pagination.currentPage - 1)"
+                      [disabled]="!pagination.hasPrevious">
+                <i class="fa fa-angle-left"></i> Previous
+              </button>
+            </li>
+
+            <!-- Page Numbers -->
+            <li *ngFor="let page of getVisiblePages()"
+                class="page-item"
+                [class.active]="page === pagination.currentPage">
+              <button class="page-link"
+                      [class.bg-primary]="page === pagination.currentPage"
+                      [class.bg-dark]="page !== pagination.currentPage"
+                      [class.text-white]="true"
+                      [class.border-secondary]="page !== pagination.currentPage"
+                      [class.border-primary]="page === pagination.currentPage"
+                      (click)="goToPage(page)">
+                {{ page }}
+              </button>
+            </li>
+
+            <!-- Next and Last -->
+            <li class="page-item" [class.disabled]="!pagination.hasNext">
+              <button class="page-link bg-dark text-light border-secondary"
+                      (click)="goToPage(pagination.currentPage + 1)"
+                      [disabled]="!pagination.hasNext">
+                Next <i class="fa fa-angle-right"></i>
+              </button>
+            </li>
+            <li class="page-item" [class.disabled]="!pagination.hasNext">
+              <button class="page-link bg-dark text-light border-secondary"
+                      (click)="goToPage(pagination.totalPages)"
+                      [disabled]="!pagination.hasNext">
+                Last <i class="fa fa-angle-double-right"></i>
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
       <!-- Loading State -->
       <div *ngIf="isLoading" class="text-center py-5">
         <div class="spinner-border text-primary" role="status">
@@ -386,7 +556,7 @@ interface PublishedPost {
       </div>
 
       <!-- Empty State -->
-      <div *ngIf="filteredPosts.length === 0 && !isLoading" class="text-center py-5">
+      <div *ngIf="paginatedPosts.length === 0 && !isLoading" class="text-center py-5">
         <i class="fa fa-globe fa-3x text-muted mb-3"></i>
         <h5 class="text-muted">
           <span *ngIf="hasActiveFilters()">No predictions match your filters</span>
@@ -440,6 +610,20 @@ interface PublishedPost {
       background-color: #495057;
       color: #fff;
     }
+
+    .pagination .page-link {
+      border-radius: 0.375rem;
+      margin: 0 2px;
+    }
+
+    .pagination .page-item.active .page-link {
+      background-color: #0d6efd;
+      border-color: #0d6efd;
+    }
+
+    .form-select-sm {
+      font-size: 0.875rem;
+    }
   `]
 })
 export class PublishedPostsComponent implements OnInit {
@@ -450,9 +634,21 @@ export class PublishedPostsComponent implements OnInit {
   private accountService = inject(AccountService);
   private categoryService = inject(CategoryService);
 
-  publishedPosts: PublishedPost[] = [];
+  // All data
+  allPosts: PublishedPost[] = [];
   filteredPosts: PublishedPost[] = [];
+  paginatedPosts: PublishedPost[] = [];
   isLoading = false;
+
+  // Pagination
+  pagination: PaginationInfo = {
+    currentPage: 1,
+    pageSize: 10,
+    totalItems: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrevious: false
+  };
 
   // Category data
   rootCategories: Category[] = [];
@@ -462,13 +658,13 @@ export class PublishedPostsComponent implements OnInit {
   searchTerm = '';
   selectedType = '';
   selectedCategoryId: number | string = '';
-  sortBy = 'endingSoon';
+  sortBy = 'newest';
 
   private searchTimeout: any;
 
   // Computed properties
   get totalCounterPredictions(): number {
-    return this.publishedPosts.reduce((sum, p) => sum + p.counterPredictionsCount, 0);
+    return this.allPosts.reduce((sum, p) => sum + p.counterPredictionsCount, 0);
   }
 
   ngOnInit(): void {
@@ -487,6 +683,12 @@ export class PublishedPostsComponent implements OnInit {
       }
       if (params['search']) {
         this.searchTerm = params['search'];
+      }
+      if (params['page']) {
+        this.pagination.currentPage = +params['page'];
+      }
+      if (params['size']) {
+        this.pagination.pageSize = +params['size'];
       }
     });
   }
@@ -519,28 +721,12 @@ export class PublishedPostsComponent implements OnInit {
     try {
       console.log('=== Loading Published Posts ===');
 
-      const params = new URLSearchParams({
-        pageNumber: '1',
-        pageSize: '50'
-      });
-
-      if (this.searchTerm) {
-        params.append('searchTerm', this.searchTerm);
-      }
-      if (this.selectedType) {
-        params.append('predictionType', this.selectedType);
-      }
-      if (this.selectedCategoryId) {
-        params.append('categoryId', this.selectedCategoryId.toString());
-      }
-
-      const apiUrl = `${environment.apiUrl}post/published?${params.toString()}`;
-      console.log('Calling API:', apiUrl);
-
-      const response = await this.http.get<PublishedPost[]>(apiUrl).toPromise();
+      const response = await this.http.get<PublishedPost[]>(
+        `${environment.apiUrl}post/published`
+      ).toPromise();
 
       if (response && Array.isArray(response)) {
-        this.publishedPosts = response.map(post => ({
+        this.allPosts = response.map(post => ({
           id: post.id,
           title: post.title || 'Untitled',
           description: post.description || '',
@@ -562,28 +748,123 @@ export class PublishedPostsComponent implements OnInit {
           userId: post.userId || post.author?.id || 0
         }));
 
-        console.log('Processed published posts:', this.publishedPosts);
-        this.applyFiltersAndSorting();
+        console.log('Processed published posts:', this.allPosts);
+        this.applyFiltersAndPagination();
 
-        if (this.publishedPosts.length > 0) {
-          this.toastr.success(`Loaded ${this.publishedPosts.length} published predictions`);
+        if (this.allPosts.length > 0) {
+          this.toastr.success(`Loaded ${this.allPosts.length} published predictions`);
         } else {
           this.toastr.info('No published predictions found');
         }
       } else {
-        this.publishedPosts = [];
-        this.applyFiltersAndSorting();
+        this.allPosts = [];
+        this.applyFiltersAndPagination();
         this.toastr.warning('No published predictions available');
       }
 
     } catch (error) {
       console.error('Error loading published posts:', error);
       this.toastr.error('Failed to load published predictions');
-      this.publishedPosts = [];
-      this.applyFiltersAndSorting();
+      this.allPosts = [];
+      this.applyFiltersAndPagination();
     } finally {
       this.isLoading = false;
     }
+  }
+
+  // Pagination Methods
+  goToPage(page: number): void {
+    if (page < 1 || page > this.pagination.totalPages) return;
+
+    this.pagination.currentPage = page;
+    this.updateUrlParams();
+    this.applyPagination();
+
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  onPageSizeChange(): void {
+    this.pagination.currentPage = 1; // Reset to first page
+    this.updateUrlParams();
+    this.applyFiltersAndPagination();
+  }
+
+  getVisiblePages(): number[] {
+    const totalPages = this.pagination.totalPages;
+    const currentPage = this.pagination.currentPage;
+    const pages: number[] = [];
+
+    if (totalPages <= 7) {
+      // Show all pages if 7 or fewer
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Always show first page
+      pages.push(1);
+
+      if (currentPage > 4) {
+        pages.push(-1); // Ellipsis indicator
+      }
+
+      // Show pages around current page
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+
+      if (currentPage < totalPages - 3) {
+        pages.push(-1); // Ellipsis indicator
+      }
+
+      // Always show last page
+      if (totalPages > 1) {
+        pages.push(totalPages);
+      }
+    }
+
+    return pages.filter(page => page !== -1); // Remove ellipsis for now
+  }
+
+  getDisplayRange(): string {
+    if (this.pagination.totalItems === 0) return '0';
+
+    const start = (this.pagination.currentPage - 1) * this.pagination.pageSize + 1;
+    const end = Math.min(this.pagination.currentPage * this.pagination.pageSize, this.pagination.totalItems);
+
+    return `${start}-${end}`;
+  }
+
+  private updatePaginationInfo(): void {
+    this.pagination.totalItems = this.filteredPosts.length;
+    this.pagination.totalPages = Math.ceil(this.pagination.totalItems / this.pagination.pageSize);
+    this.pagination.hasNext = this.pagination.currentPage < this.pagination.totalPages;
+    this.pagination.hasPrevious = this.pagination.currentPage > 1;
+
+    // Adjust current page if it's out of bounds
+    if (this.pagination.currentPage > this.pagination.totalPages && this.pagination.totalPages > 0) {
+      this.pagination.currentPage = this.pagination.totalPages;
+    }
+    if (this.pagination.currentPage < 1) {
+      this.pagination.currentPage = 1;
+    }
+  }
+
+  private applyPagination(): void {
+    this.updatePaginationInfo();
+
+    const startIndex = (this.pagination.currentPage - 1) * this.pagination.pageSize;
+    const endIndex = startIndex + this.pagination.pageSize;
+
+    this.paginatedPosts = this.filteredPosts.slice(startIndex, endIndex);
+  }
+
+  private applyFiltersAndPagination(): void {
+    this.applyFilters();
+    this.applyPagination();
   }
 
   // User interaction methods
@@ -659,11 +940,12 @@ export class PublishedPostsComponent implements OnInit {
     }
   }
 
-  // Filter and sort methods
+  // Filter methods
   filterByCategory(categoryId: number): void {
     this.selectedCategoryId = categoryId;
+    this.pagination.currentPage = 1; // Reset to first page
     this.updateUrlParams();
-    this.applyFiltersAndSorting();
+    this.applyFiltersAndPagination();
 
     const categoryName = this.getCategoryName(categoryId);
     this.toastr.info(`Filtering by category: ${categoryName}`);
@@ -675,14 +957,16 @@ export class PublishedPostsComponent implements OnInit {
     }
 
     this.searchTimeout = setTimeout(() => {
+      this.pagination.currentPage = 1; // Reset to first page
       this.updateUrlParams();
-      this.applyFiltersAndSorting();
+      this.applyFiltersAndPagination();
     }, 300);
   }
 
   onFilterChange(): void {
+    this.pagination.currentPage = 1; // Reset to first page
     this.updateUrlParams();
-    this.applyFiltersAndSorting();
+    this.applyFiltersAndPagination();
   }
 
   clearFilters(): void {
@@ -690,8 +974,48 @@ export class PublishedPostsComponent implements OnInit {
     this.selectedType = '';
     this.selectedCategoryId = '';
     this.sortBy = 'newest';
+    this.pagination.currentPage = 1;
     this.updateUrlParams();
-    this.applyFiltersAndSorting();
+    this.applyFiltersAndPagination();
+  }
+
+  clearSearch(): void {
+    this.searchTerm = '';
+    this.pagination.currentPage = 1;
+    this.updateUrlParams();
+    this.applyFiltersAndPagination();
+  }
+
+  clearCategoryFilter(): void {
+    this.selectedCategoryId = '';
+    this.pagination.currentPage = 1;
+    this.updateUrlParams();
+    this.applyFiltersAndPagination();
+  }
+
+  clearTypeFilter(): void {
+    this.selectedType = '';
+    this.pagination.currentPage = 1;
+    this.updateUrlParams();
+    this.applyFiltersAndPagination();
+  }
+
+  clearSortFilter(): void {
+    this.sortBy = 'newest';
+    this.pagination.currentPage = 1;
+    this.updateUrlParams();
+    this.applyFiltersAndPagination();
+  }
+
+  getSortDisplayName(): string {
+    switch (this.sortBy) {
+      case 'oldest': return 'Oldest First';
+      case 'mostResponses': return 'Most Responses';
+      case 'endingSoon': return 'Ending Soon';
+      case 'alphabetical': return 'A-Z';
+      case 'newest':
+      default: return 'Newest First';
+    }
   }
 
   private updateUrlParams(): void {
@@ -701,6 +1025,8 @@ export class PublishedPostsComponent implements OnInit {
     if (this.selectedCategoryId) queryParams.category = this.selectedCategoryId;
     if (this.selectedType) queryParams.type = this.selectedType;
     if (this.sortBy && this.sortBy !== 'newest') queryParams.sort = this.sortBy;
+    if (this.pagination.currentPage > 1) queryParams.page = this.pagination.currentPage;
+    if (this.pagination.pageSize !== 10) queryParams.size = this.pagination.pageSize;
 
     this.router.navigate([], {
       relativeTo: this.route,
@@ -709,8 +1035,8 @@ export class PublishedPostsComponent implements OnInit {
     });
   }
 
-  applyFiltersAndSorting(): void {
-    let filtered = [...this.publishedPosts];
+  private applyFilters(): void {
+    let filtered = [...this.allPosts];
 
     // Apply search filter
     if (this.searchTerm && this.searchTerm.trim() !== '') {
@@ -796,11 +1122,11 @@ export class PublishedPostsComponent implements OnInit {
   }
 
   getRankingCount(): number {
-    return this.publishedPosts.filter(p => p.predictionType === 'Ranking').length;
+    return this.allPosts.filter(p => p.predictionType === 'Ranking').length;
   }
 
   getBingoCount(): number {
-    return this.publishedPosts.filter(p => p.predictionType === 'Bingo').length;
+    return this.allPosts.filter(p => p.predictionType === 'Bingo').length;
   }
 
   private getPredictionTypeDisplayName(predictionType: any): string {
