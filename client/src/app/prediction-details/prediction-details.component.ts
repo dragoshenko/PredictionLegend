@@ -451,7 +451,7 @@ PostBingos: {{ predictionDetail.postBingos?.length || 0 }}
                   <strong>Type:</strong> {{ getPredictionTypeDisplayName() }}
                 </li>
                 <li class="list-group-item bg-transparent border-secondary text-light">
-                  <strong>Created:</strong> {{ formatDate(predictionDetail.createdAt) }}
+                  <strong>Created:</strong> {{ formatDate(getOriginalRankingData()?.createdAt) }}
                 </li>
                 <li class="list-group-item bg-transparent border-secondary text-light" *ngIf="predictionDetail.endDate">
                   <strong>Ends:</strong> {{ formatDate(predictionDetail.endDate) }}

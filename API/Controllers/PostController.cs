@@ -958,136 +958,347 @@ public class PostController : BaseAPIController
         return "Eligible for counter prediction";
     }
     [HttpGet("my-prediction/{predictionId}")]
-public async Task<ActionResult<PredictionWithPostsDTO>> GetMyPredictionDetails(int predictionId)
+    public async Task<ActionResult<PredictionWithPostsDTO>> GetMyPredictionDetails(int predictionId)
+    {
+        try
+        {
+            var userId = User.GetUserId();
+            Console.WriteLine($"Getting my prediction {predictionId} details for user {userId}");
+
+            // Get prediction with all associated posts
+            var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(
+                predictionId,
+                includeUser: true,
+                includePostRanks: true,
+                includePostBingos: true,
+                includePostBrackets: true
+            );
+
+            if (prediction == null)
+            {
+                return NotFound(new { message = "Prediction not found" });
+            }
+
+            // Verify ownership - user can only view their own predictions through this endpoint
+
+
+            var response = new PredictionWithPostsDTO
+            {
+                Id = prediction.Id,
+                Title = prediction.Title,
+                Description = prediction.Description,
+                PredictionType = prediction.PredictionType,
+                CreatedAt = prediction.CreatedAt,
+                EndDate = prediction.EndDate,
+                IsActive = prediction.IsActive,
+                IsDraft = prediction.IsDraft,
+                UserId = prediction.UserId ?? 0,
+                Author = _mapper.Map<MemberDTO>(prediction.User),
+                Categories = new List<CategoryDTO>(),
+                CounterPredictionsCount = GetCounterPredictionsCount(prediction),
+                PrivacyType = prediction.PrivacyType,
+                AccessCode = prediction.AccessCode
+            };
+
+            // Get categories
+            try
+            {
+                var categories = await _unitOfWork.CategoryRepository.GetPredictionCategoriesByIdsAsync(predictionId);
+                response.Categories = _mapper.Map<List<CategoryDTO>>(categories);
+            }
+            catch (Exception catEx)
+            {
+                Console.WriteLine($"Error loading categories: {catEx.Message}");
+            }
+
+            // Get only the user's own posts (no counter predictions)
+            switch (prediction.PredictionType)
+            {
+                case PredictionType.Ranking:
+                    var userPostRanks = prediction.PostRanks.Where(pr => pr.UserId == userId).ToList();
+                    Console.WriteLine($"Found {userPostRanks.Count} user PostRanks for prediction {predictionId}");
+
+                    response.PostRanks = new List<PostRankDTO>();
+                    foreach (var postRank in userPostRanks)
+                    {
+                        try
+                        {
+                            var postRankDTO = _mapper.Map<PostRankDTO>(postRank);
+                            response.PostRanks.Add(postRankDTO);
+                        }
+                        catch (Exception prEx)
+                        {
+                            Console.WriteLine($"Error mapping user PostRank {postRank.Id}: {prEx.Message}");
+                        }
+                    }
+                    break;
+
+                case PredictionType.Bracket:
+                    var userPostBrackets = prediction.PostBrackets.Where(pb => pb.UserId == userId).ToList();
+                    Console.WriteLine($"Found {userPostBrackets.Count} user PostBrackets for prediction {predictionId}");
+
+                    response.PostBrackets = new List<PostBracketDTO>();
+                    foreach (var postBracket in userPostBrackets)
+                    {
+                        try
+                        {
+                            var postBracketDTO = _mapper.Map<PostBracketDTO>(postBracket);
+                            response.PostBrackets.Add(postBracketDTO);
+                        }
+                        catch (Exception pbEx)
+                        {
+                            Console.WriteLine($"Error mapping user PostBracket {postBracket.Id}: {pbEx.Message}");
+                        }
+                    }
+                    break;
+
+                case PredictionType.Bingo:
+                    var userPostBingos = prediction.PostBingos.Where(pb => pb.UserId == userId).ToList();
+                    Console.WriteLine($"Found {userPostBingos.Count} user PostBingos for prediction {predictionId}");
+
+                    response.PostBingos = new List<PostBingoDTO>();
+                    foreach (var postBingo in userPostBingos)
+                    {
+                        try
+                        {
+                            var postBingoDTO = _mapper.Map<PostBingoDTO>(postBingo);
+                            response.PostBingos.Add(postBingoDTO);
+                        }
+                        catch (Exception pbEx)
+                        {
+                            Console.WriteLine($"Error mapping user PostBingo {postBingo.Id}: {pbEx.Message}");
+                        }
+                    }
+                    break;
+            }
+
+            // Add counter predictions count for statistics
+            var counterPredictionsCount = GetCounterPredictionsCount(prediction);
+
+            // You might want to add this to the DTO if it doesn't exist
+            // For now, we'll add it as additional data
+            Console.WriteLine($"Returning my prediction details with counter predictions count: {counterPredictionsCount}");
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting my prediction details: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return StatusCode(500, new
+            {
+                message = "Error fetching my prediction details",
+                error = ex.Message
+            });
+        }
+    }
+    // Add this new endpoint to API/Controllers/PostController.cs
+
+[HttpGet("my-counter-predictions")]
+public async Task<ActionResult<List<UserCounterPredictionSummaryDTO>>> GetMyCounterPredictions()
 {
     try
     {
         var userId = User.GetUserId();
-        Console.WriteLine($"Getting my prediction {predictionId} details for user {userId}");
 
-        // Get prediction with all associated posts
-        var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(
-            predictionId,
-            includeUser: true,
-            includePostRanks: true,
-            includePostBingos: true,
-            includePostBrackets: true
-        );
-
-        if (prediction == null)
+        if (userId <= 0)
         {
-            return NotFound(new { message = "Prediction not found" });
+            Console.WriteLine("Invalid user ID");
+            return Unauthorized(new { message = "Invalid user authentication", error = "User ID must be valid" });
         }
 
-        // Verify ownership - user can only view their own predictions through this endpoint
+        Console.WriteLine($"Getting counter predictions for user ID: {userId}");
 
+        var counterPredictions = new List<UserCounterPredictionSummaryDTO>();
 
-        var response = new PredictionWithPostsDTO
-        {
-            Id = prediction.Id,
-            Title = prediction.Title,
-            Description = prediction.Description,
-            PredictionType = prediction.PredictionType,
-            CreatedAt = prediction.CreatedAt,
-            EndDate = prediction.EndDate,
-            IsActive = prediction.IsActive,
-            IsDraft = prediction.IsDraft,
-            UserId = prediction.UserId ?? 0,
-            Author = _mapper.Map<MemberDTO>(prediction.User),
-            Categories = new List<CategoryDTO>(),
-            CounterPredictionsCount = GetCounterPredictionsCount(prediction),
-            PrivacyType = prediction.PrivacyType,
-            AccessCode = prediction.AccessCode
-        };
-
-        // Get categories
-        try
-        {
-            var categories = await _unitOfWork.CategoryRepository.GetPredictionCategoriesByIdsAsync(predictionId);
-            response.Categories = _mapper.Map<List<CategoryDTO>>(categories);
-        }
-        catch (Exception catEx)
-        {
-            Console.WriteLine($"Error loading categories: {catEx.Message}");
-        }
-
-        // Get only the user's own posts (no counter predictions)
-        switch (prediction.PredictionType)
-        {
-            case PredictionType.Ranking:
-                var userPostRanks = prediction.PostRanks.Where(pr => pr.UserId == userId).ToList();
-                Console.WriteLine($"Found {userPostRanks.Count} user PostRanks for prediction {predictionId}");
-
-                response.PostRanks = new List<PostRankDTO>();
-                foreach (var postRank in userPostRanks)
-                {
-                    try
-                    {
-                        var postRankDTO = _mapper.Map<PostRankDTO>(postRank);
-                        response.PostRanks.Add(postRankDTO);
-                    }
-                    catch (Exception prEx)
-                    {
-                        Console.WriteLine($"Error mapping user PostRank {postRank.Id}: {prEx.Message}");
-                    }
-                }
-                break;
-
-            case PredictionType.Bracket:
-                var userPostBrackets = prediction.PostBrackets.Where(pb => pb.UserId == userId).ToList();
-                Console.WriteLine($"Found {userPostBrackets.Count} user PostBrackets for prediction {predictionId}");
-
-                response.PostBrackets = new List<PostBracketDTO>();
-                foreach (var postBracket in userPostBrackets)
-                {
-                    try
-                    {
-                        var postBracketDTO = _mapper.Map<PostBracketDTO>(postBracket);
-                        response.PostBrackets.Add(postBracketDTO);
-                    }
-                    catch (Exception pbEx)
-                    {
-                        Console.WriteLine($"Error mapping user PostBracket {postBracket.Id}: {pbEx.Message}");
-                    }
-                }
-                break;
-
-            case PredictionType.Bingo:
-                var userPostBingos = prediction.PostBingos.Where(pb => pb.UserId == userId).ToList();
-                Console.WriteLine($"Found {userPostBingos.Count} user PostBingos for prediction {predictionId}");
-
-                response.PostBingos = new List<PostBingoDTO>();
-                foreach (var postBingo in userPostBingos)
-                {
-                    try
-                    {
-                        var postBingoDTO = _mapper.Map<PostBingoDTO>(postBingo);
-                        response.PostBingos.Add(postBingoDTO);
-                    }
-                    catch (Exception pbEx)
-                    {
-                        Console.WriteLine($"Error mapping user PostBingo {postBingo.Id}: {pbEx.Message}");
-                    }
-                }
-                break;
-        }
-
-        // Add counter predictions count for statistics
-        var counterPredictionsCount = GetCounterPredictionsCount(prediction);
+        // Get all PostRanks where user is NOT the original author
+        var userPostRanks = await _unitOfWork.PostRepository.GetPostRanksByUserIdAsync(userId);
         
-        // You might want to add this to the DTO if it doesn't exist
-        // For now, we'll add it as additional data
-        Console.WriteLine($"Returning my prediction details with counter predictions count: {counterPredictionsCount}");
+        foreach (var postRank in userPostRanks)
+        {
+            // Skip if this is the user's original prediction
+            if (postRank.Prediction?.UserId == userId) continue;
+
+            var originalPrediction = postRank.Prediction;
+            if (originalPrediction != null)
+            {
+                counterPredictions.Add(new UserCounterPredictionSummaryDTO
+                {
+                    Id = postRank.Id,
+                    OriginalPredictionId = originalPrediction.Id,
+                    OriginalTitle = originalPrediction.Title,
+                    OriginalAuthor = _mapper.Map<MemberDTO>(originalPrediction.User),
+                    PredictionType = originalPrediction.PredictionType,
+                    CreatedAt = postRank.CreatedAt,
+                    TotalScore = postRank.TotalScore,
+                    IsCounterPrediction = true,
+                    CounterPredictionType = "Ranking"
+                });
+            }
+        }
+
+        // Get all PostBingos where user is NOT the original author
+        var userPostBingos = await _unitOfWork.PostRepository.GetPostBingosByUserIdAsync(userId);
         
-        return Ok(response);
+        foreach (var postBingo in userPostBingos)
+        {
+            // Skip if this is the user's original prediction
+            if (postBingo.Prediction?.UserId == userId) continue;
+
+            var originalPrediction = postBingo.Prediction;
+            if (originalPrediction != null)
+            {
+                counterPredictions.Add(new UserCounterPredictionSummaryDTO
+                {
+                    Id = postBingo.Id,
+                    OriginalPredictionId = originalPrediction.Id,
+                    OriginalTitle = originalPrediction.Title,
+                    OriginalAuthor = _mapper.Map<MemberDTO>(originalPrediction.User),
+                    PredictionType = originalPrediction.PredictionType,
+                    CreatedAt = postBingo.CreatedAt,
+                    TotalScore = postBingo.TotalScore,
+                    IsCounterPrediction = true,
+                    CounterPredictionType = "Bingo"
+                });
+            }
+        }
+
+        // Get all PostBrackets where user is NOT the original author (when implemented)
+        var userPostBrackets = await _unitOfWork.PostRepository.GetPostBracketsByUserIdAsync(userId);
+        
+        foreach (var postBracket in userPostBrackets)
+        {
+            // Skip if this is the user's original prediction
+            if (postBracket.Prediction?.UserId == userId) continue;
+
+            var originalPrediction = postBracket.Prediction;
+            if (originalPrediction != null)
+            {
+                counterPredictions.Add(new UserCounterPredictionSummaryDTO
+                {
+                    Id = postBracket.Id,
+                    OriginalPredictionId = originalPrediction.Id,
+                    OriginalTitle = originalPrediction.Title,
+                    OriginalAuthor = _mapper.Map<MemberDTO>(originalPrediction.User),
+                    PredictionType = originalPrediction.PredictionType,
+                    CreatedAt = postBracket.CreatedAt,
+                    TotalScore = postBracket.TotalScore,
+                    IsCounterPrediction = true,
+                    CounterPredictionType = "Bracket"
+                });
+            }
+        }
+
+        // Sort by creation date (newest first)
+        counterPredictions = counterPredictions
+            .OrderByDescending(cp => cp.CreatedAt)
+            .ToList();
+
+        Console.WriteLine($"Returning {counterPredictions.Count} counter predictions");
+        return Ok(counterPredictions);
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Error getting my prediction details: {ex.Message}");
+        Console.WriteLine($"Error getting user counter predictions: {ex.Message}");
         Console.WriteLine($"Stack trace: {ex.StackTrace}");
         return StatusCode(500, new
         {
-            message = "Error fetching my prediction details",
+            message = "An error occurred while retrieving your counter predictions",
+            error = ex.Message,
+            details = "Please try again later or contact support if the problem persists"
+        });
+    }
+}
+
+[HttpGet("my-counter-prediction/{counterPredictionId}/{type}")]
+public async Task<ActionResult<UserCounterPredictionDetailDTO>> GetMyCounterPredictionDetails(int counterPredictionId, string type)
+{
+    try
+    {
+        var userId = User.GetUserId();
+        Console.WriteLine($"Getting counter prediction details: ID={counterPredictionId}, Type={type}, User={userId}");
+
+        UserCounterPredictionDetailDTO result = null;
+
+        switch (type.ToLower())
+        {
+            case "ranking":
+                var postRank = await _unitOfWork.PostRepository.GetPostRankWithDetailsAsync(counterPredictionId);
+                if (postRank != null && postRank.UserId == userId)
+                {
+                    result = new UserCounterPredictionDetailDTO
+                    {
+                        Id = postRank.Id,
+                        OriginalPredictionId = postRank.PredictionId,
+                        OriginalTitle = postRank.Prediction?.Title,
+                        OriginalAuthor = _mapper.Map<MemberDTO>(postRank.Prediction?.User),
+                        PredictionType = postRank.Prediction?.PredictionType ?? PredictionType.Ranking,
+                        CreatedAt = postRank.CreatedAt,
+                        TotalScore = postRank.TotalScore,
+                        IsCounterPrediction = true,
+                        CounterPredictionType = "Ranking",
+                        PostRank = _mapper.Map<PostRankDTO>(postRank)
+                    };
+                }
+                break;
+
+            case "bingo":
+                var postBingo = await _unitOfWork.PostRepository.GetPostBingoWithDetailsAsync(counterPredictionId);
+                if (postBingo != null && postBingo.UserId == userId)
+                {
+                    result = new UserCounterPredictionDetailDTO
+                    {
+                        Id = postBingo.Id,
+                        OriginalPredictionId = postBingo.PredictionId,
+                        OriginalTitle = postBingo.Prediction?.Title,
+                        OriginalAuthor = _mapper.Map<MemberDTO>(postBingo.Prediction?.User),
+                        PredictionType = postBingo.Prediction?.PredictionType ?? PredictionType.Bingo,
+                        CreatedAt = postBingo.CreatedAt,
+                        TotalScore = postBingo.TotalScore,
+                        IsCounterPrediction = true,
+                        CounterPredictionType = "Bingo",
+                        PostBingo = _mapper.Map<PostBingoDTO>(postBingo)
+                    };
+                }
+                break;
+
+            case "bracket":
+                var postBracket = await _unitOfWork.PostRepository.GetPostBracketWithDetailsAsync(counterPredictionId);
+                if (postBracket != null && postBracket.UserId == userId)
+                {
+                    result = new UserCounterPredictionDetailDTO
+                    {
+                        Id = postBracket.Id,
+                        OriginalPredictionId = postBracket.PredictionId,
+                        OriginalTitle = postBracket.Prediction?.Title,
+                        OriginalAuthor = _mapper.Map<MemberDTO>(postBracket.Prediction?.User),
+                        PredictionType = postBracket.Prediction?.PredictionType ?? PredictionType.Bracket,
+                        CreatedAt = postBracket.CreatedAt,
+                        TotalScore = postBracket.TotalScore,
+                        IsCounterPrediction = true,
+                        CounterPredictionType = "Bracket",
+                        PostBracket = _mapper.Map<PostBracketDTO>(postBracket)
+                    };
+                }
+                break;
+
+            default:
+                return BadRequest(new { message = "Invalid counter prediction type", error = $"Type '{type}' is not supported" });
+        }
+
+        if (result == null)
+        {
+            return NotFound(new { message = "Counter prediction not found or access denied" });
+        }
+
+        return Ok(result);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error getting counter prediction details: {ex.Message}");
+        return StatusCode(500, new
+        {
+            message = "Error fetching counter prediction details",
             error = ex.Message
         });
     }

@@ -1,4 +1,5 @@
-// client/src/app/app.routes.ts - UPDATED VERSION with My Prediction View
+// client/src/app/app.routes.ts - UPDATED with Counter Prediction View
+
 import { Routes } from '@angular/router';
 import { HomeComponent } from './home/home.component';
 import { CategoriesComponent } from './categories/categories.component';
@@ -24,6 +25,7 @@ import { PredictionDetailsComponent } from './prediction-details/prediction-deta
 import { PublishedPostsComponent } from './published-posts/published-posts.component';
 import { PostViewComponent } from './post-view/post-view.component';
 import { MyPredictionViewComponent } from './my-prediction-view/my-prediction-view.component';
+import { MyCounterPredictionViewComponent } from './my-counter-prediction-view/my-counter-prediction-view.component';
 
 export const routes: Routes = [
   // Public routes (no authentication required)
@@ -89,6 +91,12 @@ export const routes: Routes = [
         component: MyPredictionViewComponent,
         data: { title: 'My Prediction View' }
       },
+      // NEW: Counter Prediction View Route
+      {
+        path: 'my-counter-prediction/:id/:type',
+        component: MyCounterPredictionViewComponent,
+        data: { title: 'My Counter Prediction' }
+      },
       {
         path: 'password-change-warning',
         component: PasswordChangeWarningComponent,
@@ -148,7 +156,7 @@ export const routes: Routes = [
 ];
 
 /*
-Route Structure Explanation:
+UPDATED Route Structure with Counter Predictions:
 
 PUBLIC ROUTES (No Auth Required):
 - / - Home page
@@ -165,8 +173,9 @@ PUBLIC ROUTES (No Auth Required):
 
 PROTECTED ROUTES (Auth Required):
 - /profile - User profile management
-- /my-predictions - User's own predictions list
-- /my-prediction/:id - View own prediction details (PRIVATE - no counter prediction)
+- /my-predictions - User's own predictions AND counter predictions list
+- /my-prediction/:id - View own original prediction details (PRIVATE - owner only)
+- /my-counter-prediction/:id/:type - View own counter prediction details (NEW!)
 - /password-change-warning - Security notifications
 - /create-prediction - Start prediction creation flow
 - /edit-template/:id/:type - Step 2: Template editing
@@ -177,24 +186,38 @@ ADMIN ROUTES (Admin Role Required):
 - /admin - Admin dashboard
 - /admin/users/:id - User management
 
-ROUTE DIFFERENCES:
-1. /prediction-details/:id - PUBLIC view with counter-prediction functionality
-   - Anyone can view (if public)
-   - Shows counter predictions from other users
-   - Allows creating counter predictions
-   - Full social interaction features
+NEW COUNTER PREDICTION FEATURES:
 
-2. /my-prediction/:id - PRIVATE view for prediction owners
-   - Only the owner can view
-   - Shows only their own prediction data
-   - No counter prediction interface
-   - Management actions (edit, publish, delete, duplicate)
-   - Detailed stats and analytics
-   - Privacy settings display
+1. Enhanced "My Predictions" Page:
+   - Shows both original predictions AND counter predictions
+   - Counter predictions have special badges and styling
+   - Clear distinction between "My Prediction" vs "Counter to: Original Title"
+   - Separate stats for original predictions vs counter predictions
+   - Filter by post type (original vs counter)
 
-This separation ensures:
-- Clear distinction between public and private views
-- Better security (owners can't accidentally see others' drafts)
-- Optimized UI for different use cases
-- Cleaner URL structure (/my-prediction/ vs /prediction-details/)
+2. My Counter Prediction View (/my-counter-prediction/:id/:type):
+   - Shows ONLY the user's counter prediction data
+   - Displays original prediction info at the top
+   - "View Original" button that redirects to /prediction-details/:originalId
+   - Shows performance stats for the counter prediction
+   - Compare, share, and delete options
+
+3. Route Parameters:
+   - :id - The counter prediction post ID (PostRank.Id, PostBingo.Id, etc.)
+   - :type - The type of counter prediction ("ranking", "bingo", "bracket")
+
+4. Navigation Flow:
+   - My Predictions → Click counter prediction → My Counter Prediction View
+   - My Counter Prediction View → "View Original" → Public Prediction Details
+   - Public Prediction Details shows all counter predictions including yours
+
+5. Data Separation:
+   - /my-prediction/:id - Shows only YOUR original prediction data (private view)
+   - /my-counter-prediction/:id/:type - Shows only YOUR counter prediction (private view)
+   - /prediction-details/:id - Shows original + ALL counter predictions (public view)
+
+This ensures clean separation between:
+- Private management of your own content
+- Public discovery and interaction with others' content
+- Clear identification of counter predictions vs original predictions
 */

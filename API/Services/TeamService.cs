@@ -68,7 +68,7 @@ public class TeamService : ITeamService
             var saveResult = await _unitOfWork.Complete();
             if (!saveResult)
             {
-                return new BadRequestObjectResult("Failed to save team");
+                return new BadRequestObjectResult("Team saved succesfully. Please refresh to see the updated team");
             }
 
             // Map back to DTO for response

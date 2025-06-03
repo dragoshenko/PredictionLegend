@@ -113,4 +113,86 @@ public class PostRepository : IPostRepository
         return await _context.SaveChangesAsync() > 0;
     }
     #endregion
+    public async Task<List<PostRank>> GetPostRanksByUserIdAsync(int userId)
+    {
+        return await _context.PostRanks
+            .Include(pr => pr.User)
+            .Include(pr => pr.Prediction)
+                .ThenInclude(p => p.User)
+            .Include(pr => pr.RankTable)
+                .ThenInclude(rt => rt.Rows)
+                    .ThenInclude(r => r.Columns)
+                        .ThenInclude(c => c.Team)
+            .Include(pr => pr.Teams)
+            .Where(pr => pr.UserId == userId)
+            .OrderByDescending(pr => pr.CreatedAt)
+            .ToListAsync();
+    }
+    
+    public async Task<List<PostBingo>> GetPostBingosByUserIdAsync(int userId)
+    {
+        return await _context.PostBingos
+            .Include(pb => pb.User)
+            .Include(pb => pb.Prediction)
+                .ThenInclude(p => p.User)
+            .Include(pb => pb.BingoCells)
+                .ThenInclude(bc => bc.Team)
+            .Include(pb => pb.Teams)
+            .Where(pb => pb.UserId == userId)
+            .OrderByDescending(pb => pb.CreatedAt)
+            .ToListAsync();
+    }
+    
+    public async Task<List<PostBracket>> GetPostBracketsByUserIdAsync(int userId)
+    {
+        return await _context.PostBrackets
+            .Include(pb => pb.User)
+            .Include(pb => pb.Prediction)
+                .ThenInclude(p => p.User)
+            .Include(pb => pb.RootBracket)
+                .ThenInclude(rb => rb.Brackets)
+            .Include(pb => pb.Teams)
+            .Where(pb => pb.UserId == userId)
+            .OrderByDescending(pb => pb.CreatedAt)
+            .ToListAsync();
+    }
+    
+    public async Task<PostRank?> GetPostRankWithDetailsAsync(int postRankId)
+    {
+        return await _context.PostRanks
+            .Include(pr => pr.User)
+            .Include(pr => pr.Prediction)
+                .ThenInclude(p => p.User)
+            .Include(pr => pr.RankTable)
+                .ThenInclude(rt => rt.Rows)
+                    .ThenInclude(r => r.Columns)
+                        .ThenInclude(c => c.Team)
+            .Include(pr => pr.Teams)
+            .FirstOrDefaultAsync(pr => pr.Id == postRankId);
+    }
+    
+    public async Task<PostBingo?> GetPostBingoWithDetailsAsync(int postBingoId)
+    {
+        return await _context.PostBingos
+            .Include(pb => pb.User)
+            .Include(pb => pb.Prediction)
+                .ThenInclude(p => p.User)
+            .Include(pb => pb.BingoCells)
+                .ThenInclude(bc => bc.Team)
+            .Include(pb => pb.Teams)
+            .FirstOrDefaultAsync(pb => pb.Id == postBingoId);
+    }
+    
+    public async Task<PostBracket?> GetPostBracketWithDetailsAsync(int postBracketId)
+    {
+        return await _context.PostBrackets
+            .Include(pb => pb.User)
+            .Include(pb => pb.Prediction)
+                .ThenInclude(p => p.User)
+            .Include(pb => pb.RootBracket)
+                .ThenInclude(rb => rb.Brackets)
+            .Include(pb => pb.Teams)
+            .FirstOrDefaultAsync(pb => pb.Id == postBracketId);
+    }
 }
+

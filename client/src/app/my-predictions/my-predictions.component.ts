@@ -21,6 +21,23 @@ interface UserPost {
   privacyType: string;
   author?: any;
   categories?: any[];
+  isCounterPrediction: boolean;
+  originalPredictionId?: number;
+  originalTitle?: string;
+  originalAuthor?: any;
+  counterPredictionType?: string;
+}
+
+interface CounterPrediction {
+  id: number;
+  originalPredictionId: number;
+  originalTitle: string;
+  originalAuthor: any;
+  predictionType: string;
+  createdAt: Date;
+  totalScore: number;
+  isCounterPrediction: boolean;
+  counterPredictionType: string;
 }
 
 @Component({
@@ -38,7 +55,7 @@ interface UserPost {
                 <i class="fa fa-user me-2"></i>My Predictions
               </h2>
               <p class="text-light mb-0 opacity-75">
-                Manage your predictions and see how others are counter-predicting
+                Manage your predictions and counter predictions
               </p>
             </div>
             <button class="btn btn-outline-light" routerLink="/create-prediction">
@@ -48,9 +65,9 @@ interface UserPost {
         </div>
       </div>
 
-      <!-- Stats Cards -->
+      <!-- Enhanced Stats Cards -->
       <div class="row mb-4">
-        <div class="col-md-3 mb-3">
+        <div class="col-md-2 mb-3">
           <div class="card bg-success border-success">
             <div class="card-body text-center">
               <i class="fa fa-check-circle fa-2x text-light mb-2"></i>
@@ -59,7 +76,7 @@ interface UserPost {
             </div>
           </div>
         </div>
-        <div class="col-md-3 mb-3">
+        <div class="col-md-2 mb-3">
           <div class="card bg-warning border-warning">
             <div class="card-body text-center">
               <i class="fa fa-edit fa-2x text-dark mb-2"></i>
@@ -68,16 +85,16 @@ interface UserPost {
             </div>
           </div>
         </div>
-        <div class="col-md-3 mb-3">
+        <div class="col-md-2 mb-3">
           <div class="card bg-info border-info">
             <div class="card-body text-center">
               <i class="fa fa-users fa-2x text-light mb-2"></i>
               <h4 class="text-light">{{ totalCounterPredictions }}</h4>
-              <p class="text-light mb-0">Total Counter Predictions</p>
+              <p class="text-light mb-0">Total Responses</p>
             </div>
           </div>
         </div>
-        <div class="col-md-3 mb-3">
+        <div class="col-md-2 mb-3">
           <div class="card bg-secondary border-secondary">
             <div class="card-body text-center">
               <i class="fa fa-clock-o fa-2x text-light mb-2"></i>
@@ -86,13 +103,32 @@ interface UserPost {
             </div>
           </div>
         </div>
+        <!-- NEW: Counter Predictions Stats -->
+        <div class="col-md-2 mb-3">
+          <div class="card bg-primary border-primary">
+            <div class="card-body text-center">
+              <i class="fa fa-reply fa-2x text-light mb-2"></i>
+              <h4 class="text-light">{{ counterPredictionsCount }}</h4>
+              <p class="text-light mb-0 small">Counter Predictions</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-2 mb-3">
+          <div class="card bg-dark border-dark">
+            <div class="card-body text-center">
+              <i class="fa fa-chart-bar fa-2x text-light mb-2"></i>
+              <h4 class="text-light">{{ totalPosts }}</h4>
+              <p class="text-light mb-0">Total Posts</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Filters -->
+      <!-- Enhanced Filters -->
       <div class="card bg-secondary border-secondary mb-4">
         <div class="card-body">
           <div class="row g-3">
-            <div class="col-md-4">
+            <div class="col-md-3">
               <label class="form-label text-light">Search</label>
               <input
                 type="text"
@@ -102,6 +138,20 @@ interface UserPost {
                 placeholder="Search your predictions..."
                 [value]="searchTerm">
             </div>
+
+            <!-- NEW: Post Type Filter -->
+            <div class="col-md-2">
+              <label class="form-label text-light">Post Type</label>
+              <select
+                class="form-select bg-dark text-light border-secondary"
+                [(ngModel)]="selectedPostType"
+                (change)="onFilterChange()">
+                <option value="">All Posts</option>
+                <option value="original">My Predictions</option>
+                <option value="counter">Counter Predictions</option>
+              </select>
+            </div>
+
             <div class="col-md-2">
               <label class="form-label text-light">Type</label>
               <select
@@ -140,7 +190,7 @@ interface UserPost {
                 <option value="alphabetical">A-Z</option>
               </select>
             </div>
-            <div class="col-md-2 d-flex align-items-end">
+            <div class="col-md-1 d-flex align-items-end">
               <button
                 class="btn btn-outline-light w-100"
                 (click)="clearFilters()">
@@ -154,6 +204,7 @@ interface UserPost {
             <small class="text-light opacity-75">
               Active filters:
               <span *ngIf="searchTerm" class="badge bg-info me-1">Search: "{{ searchTerm }}"</span>
+              <span *ngIf="selectedPostType" class="badge bg-info me-1">Post Type: {{ getPostTypeDisplayName() }}</span>
               <span *ngIf="selectedType" class="badge bg-info me-1">Type: {{ selectedType }}</span>
               <span *ngIf="selectedStatus" class="badge bg-info me-1">Status: {{ selectedStatus }}</span>
               <span *ngIf="sortBy !== 'newest'" class="badge bg-info me-1">Sort: {{ getSortDisplayName() }}</span>
@@ -166,10 +217,10 @@ interface UserPost {
       <div class="d-flex justify-content-between align-items-center mb-3" *ngIf="!isLoading">
         <div class="text-light">
           <span *ngIf="!hasActiveFilters()">
-            Showing {{ filteredPosts.length }} of your predictions
+            Showing {{ filteredPosts.length }} posts ({{ originalPredictionsCount }} predictions + {{ counterPredictionsCount }} counter predictions)
           </span>
           <span *ngIf="hasActiveFilters()">
-            Showing {{ filteredPosts.length }} of {{ userPosts.length }} predictions
+            Showing {{ filteredPosts.length }} of {{ userPosts.length }} posts
           </span>
         </div>
         <div class="text-muted small" *ngIf="hasActiveFilters()">
@@ -179,31 +230,56 @@ interface UserPost {
         </div>
       </div>
 
-      <!-- Predictions List -->
+      <!-- Enhanced Predictions List -->
       <div class="row" *ngIf="filteredPosts.length > 0">
         <div class="col-lg-6 mb-4" *ngFor="let post of filteredPosts">
-          <div class="card bg-dark border-dark h-100">
+          <div class="card bg-dark border-dark h-100"
+               [class.border-primary]="post.isCounterPrediction">
             <div class="card-header bg-dark border-dark">
               <div class="d-flex justify-content-between align-items-start">
                 <div>
-                  <h6 class="card-title text-light mb-1">{{ post.title }}</h6>
+                  <!-- Enhanced title for counter predictions -->
+                  <h6 class="card-title text-light mb-1">
+                    <span *ngIf="!post.isCounterPrediction">{{ post.title }}</span>
+                    <span *ngIf="post.isCounterPrediction">
+                      <i class="fa fa-reply text-primary me-1"></i>
+                      Counter to: "{{ post.originalTitle }}"
+                    </span>
+                  </h6>
+
                   <div class="d-flex align-items-center gap-2">
                     <i class="fa"
                        [ngClass]="{
-                         'fa-list-ol': post.predictionType === 'Ranking',
-                         'fa-sitemap': post.predictionType === 'Bracket',
-                         'fa-th': post.predictionType === 'Bingo'
+                         'fa-list-ol': getPredictionType(post) === 'Ranking',
+                         'fa-sitemap': getPredictionType(post) === 'Bracket',
+                         'fa-th': getPredictionType(post) === 'Bingo'
                        }" class="text-primary me-1"></i>
-                    <span class="badge bg-primary">{{ post.predictionType }}</span>
-                    <span class="badge"
+                    <span class="badge bg-primary">{{ getPredictionType(post) }}</span>
+
+                    <!-- Counter prediction badge -->
+                    <span *ngIf="post.isCounterPrediction" class="badge bg-info">
+                      <i class="fa fa-reply me-1"></i>Counter Prediction
+                    </span>
+
+                    <!-- Status badges for original predictions -->
+                    <span *ngIf="!post.isCounterPrediction" class="badge"
                           [class.bg-success]="!post.isDraft && post.isActive"
                           [class.bg-warning]="post.isDraft"
                           [class.bg-secondary]="!post.isDraft && !post.isActive">
                       {{ getStatusText(post) }}
                     </span>
-                    <span class="badge bg-info">{{ post.privacyType || 'Public' }}</span>
+
+                    <span *ngIf="!post.isCounterPrediction" class="badge bg-info">{{ post.privacyType || 'Public' }}</span>
+                  </div>
+
+                  <!-- Original author for counter predictions -->
+                  <div *ngIf="post.isCounterPrediction" class="mt-1">
+                    <small class="text-muted">
+                      Original by: {{ post.originalAuthor?.displayName || 'Unknown' }}
+                    </small>
                   </div>
                 </div>
+
                 <div class="dropdown">
                   <button class="btn btn-sm btn-outline-light dropdown-toggle"
                           type="button"
@@ -213,30 +289,40 @@ interface UserPost {
                   </button>
                   <ul class="dropdown-menu dropdown-menu-end">
                     <li>
-                      <button class="dropdown-item" (click)="viewPrediction(post.id)">
+                      <button class="dropdown-item" (click)="viewPrediction(post)">
                         <i class="fa fa-eye me-2"></i>View Details
                       </button>
                     </li>
-                    <li *ngIf="post.isDraft">
+
+                    <!-- Counter prediction specific actions -->
+                    <li *ngIf="post.isCounterPrediction">
+                      <button class="dropdown-item" (click)="viewOriginalPrediction(post)">
+                        <i class="fa fa-external-link me-2"></i>View Original
+                      </button>
+                    </li>
+
+                    <!-- Original prediction specific actions -->
+                    <li *ngIf="!post.isCounterPrediction && post.isDraft">
                       <button class="dropdown-item" (click)="editPrediction(post.id)">
                         <i class="fa fa-edit me-2"></i>Continue Editing
                       </button>
                     </li>
-                    <li *ngIf="post.isDraft">
+                    <li *ngIf="!post.isCounterPrediction && post.isDraft">
                       <button class="dropdown-item" (click)="publishPrediction(post.id)">
                         <i class="fa fa-globe me-2"></i>Publish
                       </button>
                     </li>
-                    <li *ngIf="!post.isDraft">
+                    <li *ngIf="!post.isCounterPrediction && !post.isDraft">
                       <button class="dropdown-item" (click)="duplicatePrediction(post.id)">
                         <i class="fa fa-copy me-2"></i>Duplicate
                       </button>
                     </li>
+
                     <li>
                       <hr class="dropdown-divider">
                     </li>
                     <li>
-                      <button class="dropdown-item text-danger" (click)="deletePrediction(post.id)">
+                      <button class="dropdown-item text-danger" (click)="deletePrediction(post)">
                         <i class="fa fa-trash me-2"></i>Delete
                       </button>
                     </li>
@@ -251,8 +337,8 @@ interface UserPost {
                 {{ post.description | slice:0:120 }}{{ post.description.length > 120 ? '...' : '' }}
               </p>
 
-              <!-- Categories -->
-              <div class="mb-3" *ngIf="post.categories && post.categories.length > 0">
+              <!-- Categories for original predictions -->
+              <div class="mb-3" *ngIf="!post.isCounterPrediction && post.categories && post.categories.length > 0">
                 <div class="d-flex flex-wrap gap-1">
                   <span *ngFor="let category of post.categories.slice(0, 3)"
                         class="badge bg-secondary very-small">
@@ -270,7 +356,7 @@ interface UserPost {
                   <div class="small text-muted mb-2">
                     Created: {{ formatDate(post.createdAt) }}
                   </div>
-                  <div *ngIf="post.endDate" class="small text-muted mb-2">
+                  <div *ngIf="!post.isCounterPrediction && post.endDate" class="small text-muted mb-2">
                     <i class="fa fa-clock-o me-1"></i>
                     Ends: {{ formatDate(post.endDate) }}
                   </div>
@@ -280,14 +366,16 @@ interface UserPost {
                 </div>
                 <div class="col-4 text-end">
                   <div class="d-flex flex-column align-items-end">
-                    <div class="badge bg-info mb-2">
+                    <!-- Counter predictions count for original predictions -->
+                    <div *ngIf="!post.isCounterPrediction" class="badge bg-info mb-2">
                       <i class="fa fa-users me-1"></i>
                       {{ post.counterPredictionsCount }}
                     </div>
-                    <div class="small text-muted">
+                    <div *ngIf="!post.isCounterPrediction" class="small text-muted">
                       {{ post.counterPredictionsCount === 1 ? 'Response' : 'Responses' }}
                     </div>
-                    <div class="small text-muted mt-1" *ngIf="post.endDate">
+
+                    <div class="small text-muted mt-1" *ngIf="!post.isCounterPrediction && post.endDate">
                       {{ getDaysUntilEnd(post.endDate) }}
                     </div>
                   </div>
@@ -297,25 +385,35 @@ interface UserPost {
 
             <div class="card-footer bg-transparent border-dark">
               <div class="d-flex justify-content-between align-items-center">
-                <button class="btn btn-outline-primary btn-sm" (click)="viewPrediction(post.id)">
+                <button class="btn btn-outline-primary btn-sm" (click)="viewPrediction(post)">
                   <i class="fa fa-eye me-1"></i>
-                  {{ post.isDraft ? 'Preview' : 'View' }}
+                  {{ post.isCounterPrediction ? 'View My Response' : (post.isDraft ? 'Preview' : 'View') }}
                 </button>
 
                 <div class="btn-group">
-                  <button *ngIf="post.isDraft"
+                  <!-- Original prediction actions -->
+                  <button *ngIf="!post.isCounterPrediction && post.isDraft"
                           class="btn btn-success btn-sm"
                           (click)="editPrediction(post.id)">
                     <i class="fa fa-edit me-1"></i>Continue Editing
                   </button>
-                  <button *ngIf="!post.isDraft && post.counterPredictionsCount > 0"
+                  <button *ngIf="!post.isCounterPrediction && !post.isDraft && post.counterPredictionsCount > 0"
                           class="btn btn-info btn-sm"
                           (click)="viewCounterPredictions(post.id)">
                     <i class="fa fa-users me-1"></i>View Responses
                   </button>
+
+                  <!-- Counter prediction actions -->
+                  <button *ngIf="post.isCounterPrediction"
+                          class="btn btn-info btn-sm"
+                          (click)="viewOriginalPrediction(post)">
+                    <i class="fa fa-external-link me-1"></i>View Original
+                  </button>
+
+                  <!-- Share button -->
                   <button *ngIf="!post.isDraft"
                           class="btn btn-outline-secondary btn-sm"
-                          (click)="sharePost(post.id)">
+                          (click)="sharePost(post)">
                     <i class="fa fa-share me-1"></i>Share
                   </button>
                 </div>
@@ -345,35 +443,6 @@ interface UserPost {
           <i class="fa fa-times me-2"></i>Clear Filters
         </button>
       </div>
-
-      <!-- Debug Info -->
-      <div class="card bg-dark border-dark mb-4" *ngIf="showDebugInfo">
-        <div class="card-header bg-dark border-dark">
-          <h6 class="text-light mb-0">
-            <i class="fa fa-bug me-2"></i>Debug Information
-            <button class="btn btn-sm btn-outline-light float-end" (click)="showDebugInfo = false">Hide</button>
-          </h6>
-        </div>
-        <div class="card-body">
-          <div class="row">
-            <div class="col-md-6">
-              <h6 class="text-light">Raw Data Sources:</h6>
-              <pre class="text-light small">{{ debugInfo | json }}</pre>
-            </div>
-            <div class="col-md-6">
-              <h6 class="text-light">Processed Posts:</h6>
-              <pre class="text-light small">{{ userPosts.slice(0, 5) | json }}</pre>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Debug Toggle Button -->
-      <div class="fixed-bottom p-3" *ngIf="!showDebugInfo">
-        <button class="btn btn-sm btn-outline-secondary" (click)="showDebugInfo = true">
-          <i class="fa fa-bug me-1"></i>Debug
-        </button>
-      </div>
     </div>
   `,
   styleUrls: ['./my-predictions.component.css']
@@ -386,33 +455,47 @@ export class MyPredictionsComponent implements OnInit {
 
   userPosts: UserPost[] = [];
   filteredPosts: UserPost[] = [];
+  counterPredictions: CounterPrediction[] = [];
   isLoading = false;
   showDebugInfo = false;
   debugInfo: any = null;
 
-  // Filters
+  // Enhanced Filters
   searchTerm = '';
   selectedType = '';
   selectedStatus = '';
+  selectedPostType = ''; // NEW: Filter for original vs counter predictions
   sortBy = 'newest';
 
   private searchTimeout: any;
 
-  // Computed properties
+  // Enhanced computed properties
   get publishedCount(): number {
-    return this.userPosts.filter(p => !p.isDraft).length;
+    return this.userPosts.filter(p => !p.isDraft && !p.isCounterPrediction).length;
   }
 
   get draftCount(): number {
-    return this.userPosts.filter(p => p.isDraft).length;
+    return this.userPosts.filter(p => p.isDraft && !p.isCounterPrediction).length;
   }
 
   get activeCount(): number {
-    return this.userPosts.filter(p => !p.isDraft && p.isActive).length;
+    return this.userPosts.filter(p => !p.isDraft && p.isActive && !p.isCounterPrediction).length;
   }
 
   get totalCounterPredictions(): number {
-    return this.userPosts.reduce((sum, p) => sum + p.counterPredictionsCount, 0);
+    return this.userPosts.filter(p => !p.isCounterPrediction).reduce((sum, p) => sum + p.counterPredictionsCount, 0);
+  }
+
+  get counterPredictionsCount(): number {
+    return this.userPosts.filter(p => p.isCounterPrediction).length;
+  }
+
+  get originalPredictionsCount(): number {
+    return this.userPosts.filter(p => !p.isCounterPrediction).length;
+  }
+
+  get totalPosts(): number {
+    return this.userPosts.length;
   }
 
   ngOnInit(): void {
@@ -431,8 +514,11 @@ export class MyPredictionsComponent implements OnInit {
 
       console.log('Loading posts for user:', currentUser.id);
 
-      // FIXED: Only use one reliable endpoint to avoid duplicates
-      await this.loadFromMyPostsEndpoint();
+      // Load both original predictions and counter predictions
+      await Promise.all([
+        this.loadOriginalPredictions(),
+        this.loadCounterPredictions()
+      ]);
 
     } catch (error) {
       console.error('Error loading user posts:', error);
@@ -444,16 +530,14 @@ export class MyPredictionsComponent implements OnInit {
     }
   }
 
-  private async loadFromMyPostsEndpoint(): Promise<void> {
+  private async loadOriginalPredictions(): Promise<void> {
     try {
-      console.log('Loading user posts from my-posts endpoint...');
+      console.log('Loading original predictions...');
 
-      // Try the my-posts endpoint first
       let response = await this.http.get<any[]>(
         `${environment.apiUrl}post/my-posts`
       ).toPromise().catch(() => null);
 
-      // If that fails, try the user-specific endpoint
       if (!response) {
         const currentUser = this.accountService.currentUser();
         if (currentUser) {
@@ -463,11 +547,8 @@ export class MyPredictionsComponent implements OnInit {
         }
       }
 
-      console.log('My posts API response:', response);
-
-      if (response && Array.isArray(response) && response.length > 0) {
-        // Process each post and fix the prediction type display
-        this.userPosts = response.map(post => ({
+      if (response && Array.isArray(response)) {
+        const originalPosts = response.map(post => ({
           id: post.id,
           title: post.title || 'Untitled Prediction',
           description: post.description || '',
@@ -480,86 +561,60 @@ export class MyPredictionsComponent implements OnInit {
           notes: post.notes || post.description || '',
           privacyType: post.privacyType || 'Public',
           author: post.author,
-          categories: post.categories || []
+          categories: post.categories || [],
+          isCounterPrediction: false
         }));
 
-        this.debugInfo = {
-          endpoint: 'my-posts',
-          rawCount: response.length,
-          processedCount: this.userPosts.length,
-          sampleData: response.slice(0, 2)
-        };
-
-        console.log('Successfully processed user posts:', this.userPosts.length);
-        this.applyFiltersAndSorting();
-      } else {
-        console.log('No posts found or invalid response');
-        this.userPosts = [];
-        this.applyFiltersAndSorting();
+        this.userPosts = [...originalPosts];
+        console.log('Loaded original predictions:', originalPosts.length);
       }
     } catch (error) {
-      console.error('Error loading from my-posts endpoint:', error);
-      throw error;
+      console.error('Error loading original predictions:', error);
     }
   }
 
-  // HELPER METHODS
-  private getPredictionTypeDisplayName(predictionType: any): string {
-    if (typeof predictionType === 'string') {
-      return predictionType;
-    }
-
-    // Convert numeric values to string names
-    switch (predictionType) {
-      case 0:
-      case '0':
-        return 'Ranking';
-      case 1:
-      case '1':
-        return 'Bracket';
-      case 2:
-      case '2':
-        return 'Bingo';
-      default:
-        return 'Unknown';
-    }
-  }
-
-  private parseDate(dateValue: any): Date | undefined {
-    if (!dateValue) return undefined;
-
+  private async loadCounterPredictions(): Promise<void> {
     try {
-      if (dateValue instanceof Date) {
-        return new Date(dateValue.getTime());
-      }
+      console.log('Loading counter predictions...');
 
-      if (typeof dateValue === 'string') {
-        let dateString = dateValue.trim();
-        if (dateString === '0001-01-01T00:00:00' || dateString.startsWith('0001-01-01')) {
-          return undefined;
-        }
-        const parsed = new Date(dateString);
-        if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 1900) {
-          return parsed;
-        }
-      }
+      const response = await this.http.get<CounterPrediction[]>(
+        `${environment.apiUrl}post/my-counter-predictions`
+      ).toPromise();
 
-      if (typeof dateValue === 'number' && dateValue > 0) {
-        const timestamp = dateValue > 1e10 ? dateValue : dateValue * 1000;
-        const parsed = new Date(timestamp);
-        if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 1900) {
-          return parsed;
-        }
-      }
+      if (response && Array.isArray(response)) {
+        const counterPosts = response.map(counter => ({
+          id: counter.id,
+          title: `Counter to: "${counter.originalTitle}"`,
+          description: `Your ${counter.counterPredictionType.toLowerCase()} counter prediction`,
+          predictionType: this.getPredictionTypeDisplayName(counter.predictionType),
+          createdAt: this.parseDate(counter.createdAt) || new Date(),
+          endDate: undefined,
+          isDraft: false,
+          isActive: true,
+          counterPredictionsCount: 0,
+          notes: `Counter prediction for "${counter.originalTitle}"`,
+          privacyType: 'Public',
+          author: undefined,
+          categories: [],
+          isCounterPrediction: true,
+          originalPredictionId: counter.originalPredictionId,
+          originalTitle: counter.originalTitle,
+          originalAuthor: counter.originalAuthor,
+          counterPredictionType: counter.counterPredictionType,
+          totalScore: counter.totalScore
+        }));
 
-      return undefined;
+        // Merge with original posts
+        this.userPosts = [...this.userPosts, ...counterPosts];
+        console.log('Loaded counter predictions:', counterPosts.length);
+      }
     } catch (error) {
-      console.error('Error parsing date:', dateValue, error);
-      return undefined;
+      console.error('Error loading counter predictions:', error);
+      // Don't fail the whole load if counter predictions fail
     }
   }
 
-  // FILTER AND SEARCH METHODS
+  // ENHANCED FILTER METHODS
   onSearchChange(): void {
     if (this.searchTimeout) {
       clearTimeout(this.searchTimeout);
@@ -572,7 +627,7 @@ export class MyPredictionsComponent implements OnInit {
   }
 
   onFilterChange(): void {
-    console.log('Filter changed - Type:', this.selectedType, 'Status:', this.selectedStatus, 'Sort:', this.sortBy);
+    console.log('Filter changed - PostType:', this.selectedPostType, 'Type:', this.selectedType, 'Status:', this.selectedStatus, 'Sort:', this.sortBy);
     this.applyFiltersAndSorting();
   }
 
@@ -581,12 +636,13 @@ export class MyPredictionsComponent implements OnInit {
     this.searchTerm = '';
     this.selectedType = '';
     this.selectedStatus = '';
+    this.selectedPostType = '';
     this.sortBy = 'newest';
     this.applyFiltersAndSorting();
   }
 
   applyFiltersAndSorting(): void {
-    console.log('=== Applying Filters and Sorting ===');
+    console.log('=== Applying Enhanced Filters and Sorting ===');
     console.log('Original posts count:', this.userPosts.length);
 
     let filtered = [...this.userPosts];
@@ -597,8 +653,21 @@ export class MyPredictionsComponent implements OnInit {
       filtered = filtered.filter(post =>
         post.title.toLowerCase().includes(searchLower) ||
         post.description.toLowerCase().includes(searchLower) ||
-        (post.notes && post.notes.toLowerCase().includes(searchLower))
+        (post.notes && post.notes.toLowerCase().includes(searchLower)) ||
+        (post.originalTitle && post.originalTitle.toLowerCase().includes(searchLower))
       );
+    }
+
+    // Apply post type filter (NEW)
+    if (this.selectedPostType && this.selectedPostType !== '') {
+      switch (this.selectedPostType) {
+        case 'original':
+          filtered = filtered.filter(post => !post.isCounterPrediction);
+          break;
+        case 'counter':
+          filtered = filtered.filter(post => post.isCounterPrediction);
+          break;
+      }
     }
 
     // Apply type filter
@@ -606,20 +675,20 @@ export class MyPredictionsComponent implements OnInit {
       filtered = filtered.filter(post => post.predictionType === this.selectedType);
     }
 
-    // Apply status filter
+    // Apply status filter (only for original predictions)
     if (this.selectedStatus && this.selectedStatus !== '') {
       switch (this.selectedStatus) {
         case 'published':
-          filtered = filtered.filter(post => !post.isDraft);
+          filtered = filtered.filter(post => !post.isDraft && !post.isCounterPrediction);
           break;
         case 'draft':
-          filtered = filtered.filter(post => post.isDraft);
+          filtered = filtered.filter(post => post.isDraft && !post.isCounterPrediction);
           break;
         case 'active':
-          filtered = filtered.filter(post => !post.isDraft && post.isActive);
+          filtered = filtered.filter(post => !post.isDraft && post.isActive && !post.isCounterPrediction);
           break;
         case 'ended':
-          filtered = filtered.filter(post => !post.isDraft && !post.isActive);
+          filtered = filtered.filter(post => !post.isDraft && !post.isActive && !post.isCounterPrediction);
           break;
       }
     }
@@ -658,8 +727,18 @@ export class MyPredictionsComponent implements OnInit {
       (this.searchTerm && this.searchTerm.trim() !== '') ||
       (this.selectedType && this.selectedType !== '') ||
       (this.selectedStatus && this.selectedStatus !== '') ||
+      (this.selectedPostType && this.selectedPostType !== '') ||
       (this.sortBy && this.sortBy !== 'newest')
     );
+  }
+
+  // NEW HELPER METHODS
+  getPostTypeDisplayName(): string {
+    switch (this.selectedPostType) {
+      case 'original': return 'My Predictions';
+      case 'counter': return 'Counter Predictions';
+      default: return this.selectedPostType;
+    }
   }
 
   getSortDisplayName(): string {
@@ -670,6 +749,140 @@ export class MyPredictionsComponent implements OnInit {
       case 'alphabetical': return 'A-Z';
       case 'newest': return 'Newest First';
       default: return this.sortBy;
+    }
+  }
+
+  getPredictionType(post: UserPost): string {
+    return post.counterPredictionType || post.predictionType;
+  }
+
+  // ENHANCED NAVIGATION METHODS
+  async viewPrediction(post: UserPost): Promise<void> {
+    try {
+      if (post.isCounterPrediction) {
+        // For counter predictions, navigate to counter prediction detail view
+        const type = post.counterPredictionType?.toLowerCase() || 'ranking';
+        this.router.navigate(['/my-counter-prediction', post.id, type]);
+      } else {
+        // For original predictions, use the existing my-prediction route
+        this.router.navigate(['/my-prediction', post.id]);
+      }
+    } catch (error) {
+      console.error('Error viewing prediction:', error);
+      this.toastr.error('Failed to load prediction');
+    }
+  }
+
+  viewOriginalPrediction(post: UserPost): void {
+    if (post.isCounterPrediction && post.originalPredictionId) {
+      // Navigate to the original prediction in the public view
+      this.router.navigate(['/prediction-details', post.originalPredictionId]);
+    }
+  }
+
+  sharePost(post: UserPost): void {
+    let url: string;
+
+    if (post.isCounterPrediction && post.originalPredictionId) {
+      // For counter predictions, share the original prediction
+      url = `${window.location.origin}/prediction-details/${post.originalPredictionId}`;
+    } else {
+      // For original predictions, share the prediction details
+      url = `${window.location.origin}/prediction-details/${post.id}`;
+    }
+
+    if (navigator.share) {
+      const title = post.isCounterPrediction ?
+        `Check out this prediction: "${post.originalTitle}"` :
+        `Check out my prediction: "${post.title}"`;
+
+      navigator.share({
+        title: title,
+        url: url
+      }).catch(console.error);
+    } else {
+      navigator.clipboard.writeText(url).then(() => {
+        this.toastr.success('Link copied to clipboard!');
+      }).catch(() => {
+        this.toastr.error('Failed to copy link');
+      });
+    }
+  }
+
+  async deletePrediction(post: UserPost): Promise<void> {
+    const confirmMessage = post.isCounterPrediction ?
+      'Are you sure you want to delete this counter prediction? This action cannot be undone.' :
+      'Are you sure you want to delete this prediction? This action cannot be undone.';
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      if (post.isCounterPrediction) {
+        // Delete counter prediction
+        const type = post.counterPredictionType?.toLowerCase() || 'ranking';
+        await this.http.delete(`${environment.apiUrl}post/counter-prediction/${post.id}/${type}`).toPromise();
+        this.toastr.success('Counter prediction deleted successfully');
+      } else {
+        // Delete original prediction
+        await this.http.delete(`${environment.apiUrl}prediction/${post.id}`).toPromise();
+        this.toastr.success('Prediction deleted successfully');
+      }
+
+      this.loadUserPosts(); // Reload to remove the deleted item
+    } catch (error) {
+      console.error('Error deleting:', error);
+      this.toastr.error('Failed to delete');
+    }
+  }
+
+  // EXISTING METHODS (keeping the ones that are still relevant)
+  async editPrediction(predictionId: number): Promise<void> {
+    try {
+      console.log('Loading prediction for editing:', predictionId);
+      this.router.navigate(['/create-prediction'], {
+        queryParams: { edit: predictionId }
+      });
+    } catch (error) {
+      console.error('Error loading prediction for editing:', error);
+      this.toastr.error('Failed to load prediction for editing');
+    }
+  }
+
+  viewCounterPredictions(predictionId: number): void {
+    this.router.navigate(['/prediction-details', predictionId], {
+      fragment: 'counter-predictions'
+    });
+  }
+
+  async publishPrediction(predictionId: number): Promise<void> {
+    if (!confirm('Are you sure you want to publish this prediction? Once published, other users will be able to see and counter-predict it.')) {
+      return;
+    }
+
+    try {
+      await this.http.put(`${environment.apiUrl}prediction/${predictionId}/publish`, {}).toPromise();
+      this.toastr.success('Prediction published successfully!');
+      this.loadUserPosts();
+    } catch (error) {
+      console.error('Error publishing prediction:', error);
+      this.toastr.error('Failed to publish prediction');
+    }
+  }
+
+  async duplicatePrediction(predictionId: number): Promise<void> {
+    if (!confirm('This will create a copy of your prediction as a new draft. Continue?')) {
+      return;
+    }
+
+    try {
+      const response = await this.http.post(`${environment.apiUrl}prediction/${predictionId}/duplicate`, {}).toPromise();
+      this.toastr.success('Prediction duplicated successfully!');
+      this.loadUserPosts();
+    } catch (error) {
+      console.error('Error duplicating prediction:', error);
+      this.toastr.error('Failed to duplicate prediction');
     }
   }
 
@@ -720,103 +933,58 @@ export class MyPredictionsComponent implements OnInit {
     }
   }
 
-  async viewPrediction(predictionId: number): Promise<void> {
-    try {
-      console.log('Viewing my prediction:', predictionId);
-      // Use the new my-prediction route for viewing own predictions
-      this.router.navigate(['/my-prediction', predictionId]);
-    } catch (error) {
-      console.error('Error viewing prediction:', error);
-      this.toastr.error('Failed to load prediction');
+  // HELPER METHODS
+  private getPredictionTypeDisplayName(predictionType: any): string {
+    if (typeof predictionType === 'string') {
+      return predictionType;
+    }
+
+    switch (predictionType) {
+      case 0: case '0': return 'Ranking';
+      case 1: case '1': return 'Bracket';
+      case 2: case '2': return 'Bingo';
+      default: return 'Unknown';
     }
   }
 
-  async editPrediction(predictionId: number): Promise<void> {
-    try {
-      console.log('Loading prediction for editing:', predictionId);
-      this.router.navigate(['/create-prediction'], {
-        queryParams: { edit: predictionId }
-      });
-    } catch (error) {
-      console.error('Error loading prediction for editing:', error);
-      this.toastr.error('Failed to load prediction for editing');
-    }
-  }
-
-  viewCounterPredictions(predictionId: number): void {
-    // For viewing counter predictions, use the public route
-    this.router.navigate(['/prediction-details', predictionId], {
-      fragment: 'counter-predictions'
-    });
-  }
-
-  async publishPrediction(predictionId: number): Promise<void> {
-    if (!confirm('Are you sure you want to publish this prediction? Once published, other users will be able to see and counter-predict it.')) {
-      return;
-    }
+  private parseDate(dateValue: any): Date | undefined {
+    if (!dateValue) return undefined;
 
     try {
-      await this.http.put(`${environment.apiUrl}prediction/${predictionId}/publish`, {}).toPromise();
-      this.toastr.success('Prediction published successfully!');
-      this.loadUserPosts(); // Reload to get updated status
+      if (dateValue instanceof Date) {
+        return new Date(dateValue.getTime());
+      }
+
+      if (typeof dateValue === 'string') {
+        let dateString = dateValue.trim();
+        if (dateString === '0001-01-01T00:00:00' || dateString.startsWith('0001-01-01')) {
+          return undefined;
+        }
+        const parsed = new Date(dateString);
+        if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 1900) {
+          return parsed;
+        }
+      }
+
+      if (typeof dateValue === 'number' && dateValue > 0) {
+        const timestamp = dateValue > 1e10 ? dateValue : dateValue * 1000;
+        const parsed = new Date(timestamp);
+        if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 1900) {
+          return parsed;
+        }
+      }
+
+      return undefined;
     } catch (error) {
-      console.error('Error publishing prediction:', error);
-      this.toastr.error('Failed to publish prediction');
-    }
-  }
-
-  async duplicatePrediction(predictionId: number): Promise<void> {
-    if (!confirm('This will create a copy of your prediction as a new draft. Continue?')) {
-      return;
-    }
-
-    try {
-      const response = await this.http.post(`${environment.apiUrl}prediction/${predictionId}/duplicate`, {}).toPromise();
-      this.toastr.success('Prediction duplicated successfully!');
-      this.loadUserPosts(); // Reload to show the new duplicate
-    } catch (error) {
-      console.error('Error duplicating prediction:', error);
-      this.toastr.error('Failed to duplicate prediction');
-    }
-  }
-
-  async deletePrediction(predictionId: number): Promise<void> {
-    if (!confirm('Are you sure you want to delete this prediction? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      await this.http.delete(`${environment.apiUrl}prediction/${predictionId}`).toPromise();
-      this.toastr.success('Prediction deleted successfully');
-      this.loadUserPosts(); // Reload to remove the deleted prediction
-    } catch (error) {
-      console.error('Error deleting prediction:', error);
-      this.toastr.error('Failed to delete prediction');
-    }
-  }
-
-  sharePost(predictionId: number): void {
-    // For sharing, use the public prediction-details route
-    const url = `${window.location.origin}/prediction-details/${predictionId}`;
-
-    if (navigator.share) {
-      navigator.share({
-        title: 'Check out my prediction!',
-        url: url
-      }).catch(console.error);
-    } else {
-      navigator.clipboard.writeText(url).then(() => {
-        this.toastr.success('Link copied to clipboard!');
-      }).catch(() => {
-        this.toastr.error('Failed to copy link');
-      });
+      console.error('Error parsing date:', dateValue, error);
+      return undefined;
     }
   }
 
   // EMPTY STATE METHODS
   getEmptyStateTitle(): string {
     if (this.hasActiveFilters()) {
-      return 'No predictions match your filters';
+      return 'No posts match your filters';
     }
 
     if (this.userPosts.length === 0) {
@@ -828,7 +996,7 @@ export class MyPredictionsComponent implements OnInit {
       case 'draft': return 'No Draft Predictions';
       case 'active': return 'No Active Predictions';
       case 'ended': return 'No Ended Predictions';
-      default: return 'No Predictions Found';
+      default: return 'No Posts Found';
     }
   }
 
@@ -852,25 +1020,6 @@ export class MyPredictionsComponent implements OnInit {
         return 'You don\'t have any ended predictions yet.';
       default:
         return 'Create your first prediction to get started!';
-    }
-  }
-  getPrivacyTypeDisplayName(privacyType: any): string {
-    if (typeof privacyType === 'string') {
-      return privacyType;
-    }
-
-    switch (privacyType) {
-      case 0:
-      case '0':
-        return 'Public';
-      case 1:
-      case '1':
-        return 'Private';
-      case 2:
-      case '2':
-        return 'Link Only';
-      default:
-        return 'Public';
     }
   }
 }

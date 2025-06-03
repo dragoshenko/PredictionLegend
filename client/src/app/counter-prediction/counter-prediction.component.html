@@ -27,32 +27,7 @@
       </h4>
     </div>
     <div class="card-body">
-      <!-- Debug Info (temporary) -->
-      <div class="card bg-warning border-warning mb-3" *ngIf="showForm()">
-        <div class="card-body">
-          <h6 class="text-dark mb-2">Debug Info</h6>
-          <div class="text-dark small">
-            <p><strong>Original Prediction Type:</strong> {{ originalPrediction?.predictionType }}</p>
-            <p><strong>Available Teams:</strong> {{ availableTeams.length }}</p>
-            <p><strong>Selected Teams:</strong> {{ selectedTeams.length }}</p>
-            <p><strong>PostRank exists:</strong> {{ !!postRank }}</p>
-            <p><strong>PostRank RankTable exists:</strong> {{ !!postRank?.rankTable }}</p>
-            <p><strong>PostRank Rows count:</strong> {{ getPostRankRows().length }}</p>
-            <p><strong>Template:</strong> {{ template ? 'Available' : 'Missing' }}</p>
-            <p><strong>Template ID:</strong> {{ template?.id }}</p>
-            <p><strong>Template Rows:</strong> {{ template?.numberOfRows }}</p>
-            <p><strong>Template Columns:</strong> {{ template?.numberOfColumns }}</p>
-            <p><strong>shouldShowRanking():</strong> {{ shouldShowRanking() }}</p>
-            <div *ngIf="availableTeams.length > 0">
-              <strong>Available Teams:</strong>
-              <span *ngFor="let team of availableTeams.slice(0, 3); let last = last" class="badge bg-primary me-1">
-                {{ team.name }}{{ !last ? ',' : '' }}
-              </span>
-              <span *ngIf="availableTeams.length > 3">... and {{ availableTeams.length - 3 }} more</span>
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       <form [formGroup]="counterPredictionForm" class="mb-4">
         <div class="mb-3">

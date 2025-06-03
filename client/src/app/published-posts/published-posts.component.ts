@@ -462,7 +462,7 @@ export class PublishedPostsComponent implements OnInit {
   searchTerm = '';
   selectedType = '';
   selectedCategoryId: number | string = '';
-  sortBy = 'newest';
+  sortBy = 'endingSoon';
 
   private searchTimeout: any;
 

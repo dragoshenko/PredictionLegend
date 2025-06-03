@@ -26,4 +26,11 @@ public interface IPostRepository
     Task<bool> UpdatePostBingo(PostBingo postBingo);
     Task<bool> DeletePostBingo(int postBingoId);
     #endregion
+    Task<List<PostRank>> GetPostRanksByUserIdAsync(int userId);
+    Task<List<PostBingo>> GetPostBingosByUserIdAsync(int userId);  
+    Task<List<PostBracket>> GetPostBracketsByUserIdAsync(int userId);
+    
+    Task<PostRank?> GetPostRankWithDetailsAsync(int postRankId);
+    Task<PostBingo?> GetPostBingoWithDetailsAsync(int postBingoId);
+    Task<PostBracket?> GetPostBracketWithDetailsAsync(int postBracketId);
 }
