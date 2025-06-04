@@ -53,527 +53,10 @@ interface PaginationInfo {
   selector: 'app-my-predictions',
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule],
-  template: `
-    <div class="container-fluid mt-4">
-      <!-- Header -->
-      <div class="card bg-primary border-primary mb-4">
-        <div class="card-header bg-primary border-primary">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h2 class="text-light mb-1">
-                <i class="fa fa-user me-2"></i>My Predictions
-              </h2>
-              <p class="text-light mb-0 opacity-75">
-                Manage your predictions and counter predictions
-              </p>
-            </div>
-            <button class="btn btn-outline-light" routerLink="/create-prediction">
-              <i class="fa fa-plus me-2"></i>Create New Prediction
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Enhanced Stats Cards -->
-      <div class="row mb-4">
-        <div class="col-md-2 mb-3">
-          <div class="card bg-success border-success">
-            <div class="card-body text-center">
-              <i class="fa fa-check-circle fa-2x text-light mb-2"></i>
-              <h4 class="text-light">{{ publishedCount }}</h4>
-              <p class="text-light mb-0">Published</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-2 mb-3">
-          <div class="card bg-warning border-warning">
-            <div class="card-body text-center">
-              <i class="fa fa-edit fa-2x text-dark mb-2"></i>
-              <h4 class="text-dark">{{ draftCount }}</h4>
-              <p class="text-dark mb-0">Drafts</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-2 mb-3">
-          <div class="card bg-info border-info">
-            <div class="card-body text-center">
-              <i class="fa fa-users fa-2x text-light mb-2"></i>
-              <h4 class="text-light">{{ totalCounterPredictions }}</h4>
-              <p class="text-light mb-0">Total Responses</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-2 mb-3">
-          <div class="card bg-secondary border-secondary">
-            <div class="card-body text-center">
-              <i class="fa fa-clock-o fa-2x text-light mb-2"></i>
-              <h4 class="text-light">{{ activeCount }}</h4>
-              <p class="text-light mb-0">Active</p>
-            </div>
-          </div>
-        </div>
-        <!-- NEW: Counter Predictions Stats -->
-        <div class="col-md-2 mb-3">
-          <div class="card bg-primary border-primary">
-            <div class="card-body text-center">
-              <i class="fa fa-reply fa-2x text-light mb-2"></i>
-              <h4 class="text-light">{{ counterPredictionsCount }}</h4>
-              <p class="text-light mb-0 small">Counter Predictions</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-2 mb-3">
-          <div class="card bg-dark border-dark">
-            <div class="card-body text-center">
-              <i class="fa fa-chart-bar fa-2x text-light mb-2"></i>
-              <h4 class="text-light">{{ totalPosts }}</h4>
-              <p class="text-light mb-0">Total Posts</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Enhanced Filters -->
-      <div class="card bg-secondary border-secondary mb-4">
-        <div class="card-body">
-          <div class="row g-3">
-            <div class="col-md-3">
-              <label class="form-label text-light">Search</label>
-              <input
-                type="text"
-                class="form-control bg-dark text-light border-secondary"
-                [(ngModel)]="searchTerm"
-                (input)="onSearchChange()"
-                placeholder="Search your predictions..."
-                [value]="searchTerm">
-            </div>
-
-            <!-- NEW: Post Type Filter -->
-            <div class="col-md-2">
-              <label class="form-label text-light">Post Type</label>
-              <select
-                class="form-select bg-dark text-light border-secondary"
-                [(ngModel)]="selectedPostType"
-                (change)="onFilterChange()">
-                <option value="">All Posts</option>
-                <option value="original">My Predictions</option>
-                <option value="counter">Counter Predictions</option>
-              </select>
-            </div>
-
-            <div class="col-md-2">
-              <label class="form-label text-light">Type</label>
-              <select
-                class="form-select bg-dark text-light border-secondary"
-                [(ngModel)]="selectedType"
-                (change)="onFilterChange()">
-                <option value="">All Types</option>
-                <option value="Ranking">Ranking</option>
-                <option value="Bracket">Bracket</option>
-                <option value="Bingo">Bingo</option>
-              </select>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label text-light">Status</label>
-              <select
-                class="form-select bg-dark text-light border-secondary"
-                [(ngModel)]="selectedStatus"
-                (change)="onFilterChange()">
-                <option value="">All Status</option>
-                <option value="published">Published</option>
-                <option value="draft">Draft</option>
-                <option value="active">Active</option>
-                <option value="ended">Ended</option>
-              </select>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label text-light">Sort By</label>
-              <select
-                class="form-select bg-dark text-light border-secondary"
-                [(ngModel)]="sortBy"
-                (change)="onFilterChange()">
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="mostResponses">Most Responses</option>
-                <option value="endingSoon">Ending Soon</option>
-                <option value="alphabetical">A-Z</option>
-              </select>
-            </div>
-            <div class="col-md-1 d-flex align-items-end">
-              <button
-                class="btn btn-outline-light w-100"
-                (click)="clearFilters()">
-                <i class="fa fa-times me-1"></i>Clear
-              </button>
-            </div>
-          </div>
-
-          <!-- Active filters indicator -->
-          <div class="mt-2" *ngIf="hasActiveFilters()">
-            <small class="text-light opacity-75">
-              Active filters:
-              <span *ngIf="searchTerm" class="badge bg-info me-1">Search: "{{ searchTerm }}"</span>
-              <span *ngIf="selectedPostType" class="badge bg-info me-1">Post Type: {{ getPostTypeDisplayName() }}</span>
-              <span *ngIf="selectedType" class="badge bg-info me-1">Type: {{ selectedType }}</span>
-              <span *ngIf="selectedStatus" class="badge bg-info me-1">Status: {{ selectedStatus }}</span>
-              <span *ngIf="sortBy !== 'newest'" class="badge bg-info me-1">Sort: {{ getSortDisplayName() }}</span>
-            </small>
-          </div>
-        </div>
-      </div>
-
-      <!-- Results counter and pagination info -->
-      <div class="d-flex justify-content-between align-items-center mb-3" *ngIf="!isLoading">
-        <div class="text-light">
-          <span *ngIf="!hasActiveFilters()">
-            Showing {{ getDisplayRange() }} of {{ pagination.totalItems }} posts
-            ({{ originalPredictionsCount }} predictions + {{ counterPredictionsCount }} counter predictions)
-          </span>
-          <span *ngIf="hasActiveFilters()">
-            Showing {{ getDisplayRange() }} of {{ pagination.totalItems }} filtered posts
-            <span class="text-muted">({{ allPosts.length }} total)</span>
-          </span>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-          <!-- Page size selector -->
-          <select
-            class="form-select form-select-sm bg-dark text-light border-secondary"
-            [(ngModel)]="pagination.pageSize"
-            (change)="onPageSizeChange()"
-            style="width: auto;">
-            <option value="5">5 per page</option>
-            <option value="10">10 per page</option>
-            <option value="20">20 per page</option>
-            <option value="50">50 per page</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Pagination Controls - Top -->
-      <div class="d-flex justify-content-center mb-4" *ngIf="pagination.totalPages > 1">
-        <nav aria-label="My predictions pagination">
-          <ul class="pagination pagination-sm">
-            <!-- First and Previous -->
-            <li class="page-item" [class.disabled]="!pagination.hasPrevious">
-              <button class="page-link bg-dark text-light border-secondary"
-                      (click)="goToPage(1)"
-                      [disabled]="!pagination.hasPrevious">
-                <i class="fa fa-angle-double-left"></i>
-              </button>
-            </li>
-            <li class="page-item" [class.disabled]="!pagination.hasPrevious">
-              <button class="page-link bg-dark text-light border-secondary"
-                      (click)="goToPage(pagination.currentPage - 1)"
-                      [disabled]="!pagination.hasPrevious">
-                <i class="fa fa-angle-left"></i>
-              </button>
-            </li>
-
-            <!-- Page Numbers -->
-            <li *ngFor="let page of getVisiblePages()"
-                class="page-item"
-                [class.active]="page === pagination.currentPage">
-              <button class="page-link"
-                      [class.bg-primary]="page === pagination.currentPage"
-                      [class.bg-dark]="page !== pagination.currentPage"
-                      [class.text-white]="true"
-                      [class.border-secondary]="page !== pagination.currentPage"
-                      [class.border-primary]="page === pagination.currentPage"
-                      (click)="goToPage(page)">
-                {{ page }}
-              </button>
-            </li>
-
-            <!-- Next and Last -->
-            <li class="page-item" [class.disabled]="!pagination.hasNext">
-              <button class="page-link bg-dark text-light border-secondary"
-                      (click)="goToPage(pagination.currentPage + 1)"
-                      [disabled]="!pagination.hasNext">
-                <i class="fa fa-angle-right"></i>
-              </button>
-            </li>
-            <li class="page-item" [class.disabled]="!pagination.hasNext">
-              <button class="page-link bg-dark text-light border-secondary"
-                      (click)="goToPage(pagination.totalPages)"
-                      [disabled]="!pagination.hasNext">
-                <i class="fa fa-angle-double-right"></i>
-              </button>
-            </li>
-          </ul>
-        </nav>
-      </div>
-
-      <!-- Enhanced Predictions List -->
-      <div class="row" *ngIf="paginatedPosts.length > 0">
-        <div class="col-lg-6 mb-4" *ngFor="let post of paginatedPosts">
-          <div class="card bg-dark border-dark h-100"
-               [class.border-primary]="post.isCounterPrediction">
-            <div class="card-header bg-dark border-dark">
-              <div class="d-flex justify-content-between align-items-start">
-                <div>
-                  <!-- Enhanced title for counter predictions -->
-                  <h6 class="card-title text-light mb-1">
-                    <span *ngIf="!post.isCounterPrediction">{{ post.title }}</span>
-                    <span *ngIf="post.isCounterPrediction">
-                      <i class="fa fa-reply text-primary me-1"></i>
-                      Counter to: "{{ post.originalTitle }}"
-                    </span>
-                  </h6>
-
-                  <div class="d-flex align-items-center gap-2">
-                    <i class="fa"
-                       [ngClass]="{
-                         'fa-list-ol': getPredictionType(post) === 'Ranking',
-                         'fa-sitemap': getPredictionType(post) === 'Bracket',
-                         'fa-th': getPredictionType(post) === 'Bingo'
-                       }" class="text-primary me-1"></i>
-                    <span class="badge bg-primary">{{ getPredictionType(post) }}</span>
-
-                    <!-- Counter prediction badge -->
-                    <span *ngIf="post.isCounterPrediction" class="badge bg-info">
-                      <i class="fa fa-reply me-1"></i>Counter Prediction
-                    </span>
-
-                    <!-- Status badges for original predictions -->
-                    <span *ngIf="!post.isCounterPrediction" class="badge"
-                          [class.bg-success]="!post.isDraft && post.isActive"
-                          [class.bg-warning]="post.isDraft"
-                          [class.bg-secondary]="!post.isDraft && !post.isActive">
-                      {{ getStatusText(post) }}
-                    </span>
-
-                    <span *ngIf="!post.isCounterPrediction" class="badge bg-info">{{ post.privacyType || 'Public' }}</span>
-                  </div>
-
-                  <!-- Original author for counter predictions -->
-                  <div *ngIf="post.isCounterPrediction" class="mt-1">
-                    <small class="text-muted">
-                      Original by: {{ post.originalAuthor?.displayName || 'Unknown' }}
-                    </small>
-                  </div>
-                </div>
-
-                <div class="dropdown">
-                  <button class="btn btn-sm btn-outline-light dropdown-toggle"
-                          type="button"
-                          [id]="'dropdown-' + post.id"
-                          data-bs-toggle="dropdown">
-                    <i class="fa fa-ellipsis-v"></i>
-                  </button>
-                  <ul class="dropdown-menu dropdown-menu-end">
-                    <li>
-                      <button class="dropdown-item" (click)="viewPrediction(post)">
-                        <i class="fa fa-eye me-2"></i>View Details
-                      </button>
-                    </li>
-
-                    <!-- Counter prediction specific actions -->
-                    <li *ngIf="post.isCounterPrediction">
-                      <button class="dropdown-item" (click)="viewOriginalPrediction(post)">
-                        <i class="fa fa-external-link me-2"></i>View Original
-                      </button>
-                    </li>
-
-                    <!-- Original prediction specific actions -->
-                    <li *ngIf="!post.isCounterPrediction && post.isDraft">
-                      <button class="dropdown-item" (click)="editPrediction(post.id)">
-                        <i class="fa fa-edit me-2"></i>Continue Editing
-                      </button>
-                    </li>
-                    <li *ngIf="!post.isCounterPrediction && post.isDraft">
-                      <button class="dropdown-item" (click)="publishPrediction(post.id)">
-                        <i class="fa fa-globe me-2"></i>Publish
-                      </button>
-                    </li>
-                    <li *ngIf="!post.isCounterPrediction && !post.isDraft">
-                      <button class="dropdown-item" (click)="duplicatePrediction(post.id)">
-                        <i class="fa fa-copy me-2"></i>Duplicate
-                      </button>
-                    </li>
-
-                    <li>
-                      <hr class="dropdown-divider">
-                    </li>
-                    <li>
-                      <button class="dropdown-item text-danger" (click)="deletePrediction(post)">
-                        <i class="fa fa-trash me-2"></i>Delete
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            <div class="card-body">
-              <!-- Description -->
-              <p class="card-text text-light small mb-3" *ngIf="post.description">
-                {{ post.description | slice:0:120 }}{{ post.description.length > 120 ? '...' : '' }}
-              </p>
-
-              <!-- Categories for original predictions -->
-              <div class="mb-3" *ngIf="!post.isCounterPrediction && post.categories && post.categories.length > 0">
-                <div class="d-flex flex-wrap gap-1">
-                  <span *ngFor="let category of post.categories.slice(0, 3)"
-                        class="badge bg-secondary very-small">
-                    {{ category.name }}
-                  </span>
-                  <span *ngIf="post.categories.length > 3"
-                        class="badge bg-secondary very-small">
-                    +{{ post.categories.length - 3 }} more
-                  </span>
-                </div>
-              </div>
-
-              <div class="row">
-                <div class="col-8">
-                  <div class="small text-muted mb-2">
-                    Created: {{ formatDate(post.createdAt) }}
-                  </div>
-                  <div *ngIf="!post.isCounterPrediction && post.endDate" class="small text-muted mb-2">
-                    <i class="fa fa-clock-o me-1"></i>
-                    Ends: {{ formatDate(post.endDate) }}
-                  </div>
-                  <div *ngIf="post.notes" class="small text-light">
-                    <strong>Notes:</strong> {{ post.notes | slice:0:100 }}{{ post.notes.length > 100 ? '...' : '' }}
-                  </div>
-                </div>
-                <div class="col-4 text-end">
-                  <div class="d-flex flex-column align-items-end">
-                    <!-- Counter predictions count for original predictions -->
-                    <div *ngIf="!post.isCounterPrediction" class="badge bg-info mb-2">
-                      <i class="fa fa-users me-1"></i>
-                      {{ post.counterPredictionsCount }}
-                    </div>
-                    <div *ngIf="!post.isCounterPrediction" class="small text-muted">
-                      {{ post.counterPredictionsCount === 1 ? 'Response' : 'Responses' }}
-                    </div>
-
-                    <div class="small text-muted mt-1" *ngIf="!post.isCounterPrediction && post.endDate">
-                      {{ getDaysUntilEnd(post.endDate) }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="card-footer bg-transparent border-dark">
-              <div class="d-flex justify-content-between align-items-center">
-                <button class="btn btn-outline-primary btn-sm" (click)="viewPrediction(post)">
-                  <i class="fa fa-eye me-1"></i>
-                  {{ post.isCounterPrediction ? 'View My Response' : (post.isDraft ? 'Preview' : 'View') }}
-                </button>
-
-                <div class="btn-group">
-                  <!-- Original prediction actions -->
-                  <button *ngIf="!post.isCounterPrediction && post.isDraft"
-                          class="btn btn-success btn-sm"
-                          (click)="editPrediction(post.id)">
-                    <i class="fa fa-edit me-1"></i>Continue Editing
-                  </button>
-                  <button *ngIf="!post.isCounterPrediction && !post.isDraft && post.counterPredictionsCount > 0"
-                          class="btn btn-info btn-sm"
-                          (click)="viewCounterPredictions(post.id)">
-                    <i class="fa fa-users me-1"></i>View Responses
-                  </button>
-
-                  <!-- Counter prediction actions -->
-                  <button *ngIf="post.isCounterPrediction"
-                          class="btn btn-info btn-sm"
-                          (click)="viewOriginalPrediction(post)">
-                    <i class="fa fa-external-link me-1"></i>View Original
-                  </button>
-
-                  <!-- Share button -->
-                  <button *ngIf="!post.isDraft"
-                          class="btn btn-outline-secondary btn-sm"
-                          (click)="sharePost(post)">
-                    <i class="fa fa-share me-1"></i>Share
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Pagination Controls - Bottom -->
-      <div class="d-flex justify-content-center mb-4" *ngIf="pagination.totalPages > 1">
-        <nav aria-label="My predictions pagination">
-          <ul class="pagination">
-            <!-- First and Previous -->
-            <li class="page-item" [class.disabled]="!pagination.hasPrevious">
-              <button class="page-link bg-dark text-light border-secondary"
-                      (click)="goToPage(1)"
-                      [disabled]="!pagination.hasPrevious">
-                <i class="fa fa-angle-double-left"></i> First
-              </button>
-            </li>
-            <li class="page-item" [class.disabled]="!pagination.hasPrevious">
-              <button class="page-link bg-dark text-light border-secondary"
-                      (click)="goToPage(pagination.currentPage - 1)"
-                      [disabled]="!pagination.hasPrevious">
-                <i class="fa fa-angle-left"></i> Previous
-              </button>
-            </li>
-
-            <!-- Page Numbers -->
-            <li *ngFor="let page of getVisiblePages()"
-                class="page-item"
-                [class.active]="page === pagination.currentPage">
-              <button class="page-link"
-                      [class.bg-primary]="page === pagination.currentPage"
-                      [class.bg-dark]="page !== pagination.currentPage"
-                      [class.text-white]="true"
-                      [class.border-secondary]="page !== pagination.currentPage"
-                      [class.border-primary]="page === pagination.currentPage"
-                      (click)="goToPage(page)">
-                {{ page }}
-              </button>
-            </li>
-
-            <!-- Next and Last -->
-            <li class="page-item" [class.disabled]="!pagination.hasNext">
-              <button class="page-link bg-dark text-light border-secondary"
-                      (click)="goToPage(pagination.currentPage + 1)"
-                      [disabled]="!pagination.hasNext">
-                Next <i class="fa fa-angle-right"></i>
-              </button>
-            </li>
-            <li class="page-item" [class.disabled]="!pagination.hasNext">
-              <button class="page-link bg-dark text-light border-secondary"
-                      (click)="goToPage(pagination.totalPages)"
-                      [disabled]="!pagination.hasNext">
-                Last <i class="fa fa-angle-double-right"></i>
-              </button>
-            </li>
-          </ul>
-        </nav>
-      </div>
-
-      <!-- Loading State -->
-      <div *ngIf="isLoading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-        <p class="mt-3 text-muted">Loading your predictions...</p>
-      </div>
-
-      <!-- Empty State -->
-      <div *ngIf="paginatedPosts.length === 0 && !isLoading" class="text-center py-5">
-        <i class="fa fa-lightbulb-o fa-3x text-muted mb-3"></i>
-        <h5 class="text-muted">{{ getEmptyStateTitle() }}</h5>
-        <p class="text-muted">{{ getEmptyStateMessage() }}</p>
-        <button class="btn btn-primary" routerLink="/create-prediction" *ngIf="!hasActiveFilters()">
-          <i class="fa fa-plus me-2"></i>Create Your First Prediction
-        </button>
-        <button class="btn btn-outline-secondary" (click)="clearFilters()" *ngIf="hasActiveFilters()">
-          <i class="fa fa-times me-2"></i>Clear Filters
-        </button>
-      </div>
-    </div>
-  `,
-  styleUrls: ['./my-predictions.component.css']
+  templateUrl: './my-predictions.component.html',
+  styleUrls: ['./my-predictions.component.css'],
 })
+
 export class MyPredictionsComponent implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -605,7 +88,7 @@ export class MyPredictionsComponent implements OnInit {
   selectedType = '';
   selectedStatus = '';
   selectedPostType = ''; // NEW: Filter for original vs counter predictions
-  sortBy = 'newest';
+  sortBy = 'mostResponses';
 
   private searchTimeout: any;
 
@@ -645,6 +128,160 @@ export class MyPredictionsComponent implements OnInit {
   ngOnInit(): void {
     this.checkRouteParams();
     this.loadUserPosts();
+  }
+
+  // FIXED: Icon mapping methods (same as published-posts)
+  getSafeIconClass(iconName: string | undefined): string {
+    if (!iconName) return 'fa-tag';
+
+    const cleanIconName = iconName.replace('fa-', '').toLowerCase().trim();
+
+    if (!cleanIconName) return 'fa-tag';
+
+    // Map broken/non-existent icons to working Font Awesome icons
+    const safeIconMap: { [key: string]: string } = {
+      // Sports icons
+      'sports': 'fa-trophy',
+      'sport': 'fa-trophy',
+      'soccer': 'fa-futbol-o', // Soccer/Association Football (round ball)
+      'football': 'fa-futbol-o', // Football (European/World) - same as soccer
+      'american-football': 'fa-shield', // American Football - shield represents teams/protection
+      'americanfootball': 'fa-shield', // Alternative spelling
+      'nfl': 'fa-shield', // NFL/American Football
+      'rugby': 'fa-shield', // Similar to American football
+      'gridiron': 'fa-shield', // Another name for American football
+      'basketball': 'fa-basketball-ball',
+      'baseball': 'fa-baseball',
+      'tennis': 'fa-trophy',
+      'golf': 'fa-trophy',
+      'hockey': 'fa-hockey-puck',
+      'racing': 'fa-car',
+      'olympics': 'fa-trophy',
+      'championship': 'fa-trophy',
+      'league': 'fa-trophy',
+      'premier': 'fa-trophy',
+      'competition': 'fa-trophy',
+
+      // Entertainment icons
+      'music': 'fa-music',
+      'movies': 'fa-film',
+      'tv': 'fa-tv',
+      'entertainment': 'fa-film',
+      'gaming': 'fa-gamepad',
+      'esports': 'fa-gamepad',
+      'game': 'fa-gamepad',
+      'bingo': 'fa-th', // FIXED: fa-bingo doesn't exist, use fa-th
+      'games': 'fa-gamepad',
+
+      // Technology icons
+      'technology': 'fa-laptop',
+      'tech': 'fa-laptop',
+      'software': 'fa-code',
+      'mobile': 'fa-mobile',
+      'computer': 'fa-laptop',
+
+      // Business icons
+      'business': 'fa-briefcase',
+      'finance': 'fa-money',
+      'economy': 'fa-line-chart',
+      'stocks': 'fa-line-chart',
+
+      // Education icons
+      'education': 'fa-graduation-cap',
+      'school': 'fa-graduation-cap',
+      'university': 'fa-university',
+      'science': 'fa-flask',
+      'books': 'fa-book',
+
+      // Travel and geography
+      'travel': 'fa-plane',
+      'tourism': 'fa-plane',
+      'geography': 'fa-globe',
+      'world': 'fa-globe',
+
+      // Health and fitness
+      'health': 'fa-heart',
+      'medicine': 'fa-medkit',
+      'fitness': 'fa-heart',
+
+      // News and politics
+      'news': 'fa-newspaper-o',
+      'politics': 'fa-institution',
+      'government': 'fa-institution',
+
+      // Food and lifestyle
+      'food': 'fa-cutlery',
+      'cooking': 'fa-cutlery',
+      'lifestyle': 'fa-home',
+      'home': 'fa-home',
+
+      // Default and fallback
+      'default': 'fa-tag',
+      'category': 'fa-tag',
+      'tag': 'fa-tag',
+      'tags': 'fa-tags'
+    };
+
+    // Direct mapping
+    if (safeIconMap[cleanIconName]) {
+      return safeIconMap[cleanIconName];
+    }
+
+    // Partial matching for compound names
+    for (const [key, value] of Object.entries(safeIconMap)) {
+      if (cleanIconName.includes(key) || key.includes(cleanIconName)) {
+        return value;
+      }
+    }
+
+    // List of known safe Font Awesome icons (v4.7)
+    const knownSafeIcons = [
+      'fa-trophy', 'fa-futbol-o', 'fa-basketball-ball', 'fa-baseball',
+      'fa-music', 'fa-film', 'fa-tv', 'fa-gamepad', 'fa-laptop', 'fa-mobile',
+      'fa-book', 'fa-graduation-cap', 'fa-university', 'fa-flask', 'fa-briefcase',
+      'fa-money', 'fa-line-chart', 'fa-globe', 'fa-plane', 'fa-heart', 'fa-medkit',
+      'fa-newspaper-o', 'fa-institution', 'fa-cutlery', 'fa-home', 'fa-users',
+      'fa-tag', 'fa-tags', 'fa-star', 'fa-cog', 'fa-camera', 'fa-car',
+      'fa-th', 'fa-list-ol', 'fa-sitemap', 'fa-check', 'fa-times', 'fa-plus',
+      'fa-minus', 'fa-edit', 'fa-trash', 'fa-search', 'fa-filter', 'fa-sort',
+      'fa-shield'
+    ];
+
+    // Check if the original icon (with fa- prefix) is in our safe list
+    const withPrefix = iconName.startsWith('fa-') ? iconName : `fa-${iconName}`;
+    if (knownSafeIcons.includes(withPrefix)) {
+      return withPrefix;
+    }
+
+    // Check cleaned version with prefix
+    const cleanWithPrefix = `fa-${cleanIconName}`;
+    if (knownSafeIcons.includes(cleanWithPrefix)) {
+      return cleanWithPrefix;
+    }
+
+    // Fallback to tag icon
+    return 'fa-tag';
+  }
+
+  // FIXED: Method to get full icon class with fa prefix
+  getFullIconClass(iconName: string | undefined): string {
+    const safeIcon = this.getSafeIconClass(iconName);
+    // Don't double-add fa prefix
+    return safeIcon.startsWith('fa ') ? safeIcon : `fa ${safeIcon}`;
+  }
+
+  // FIXED: Method to get predictionType icon
+  getPredictionTypeIcon(predictionType: string): string {
+    switch (predictionType) {
+      case 'Ranking':
+        return 'fa fa-list-ol';
+      case 'Bracket':
+        return 'fa fa-sitemap';
+      case 'Bingo':
+        return 'fa fa-th'; // FIXED: Use fa-th instead of non-existent icon
+      default:
+        return 'fa fa-question';
+    }
   }
 
   private checkRouteParams(): void {
@@ -909,7 +546,7 @@ export class MyPredictionsComponent implements OnInit {
     this.selectedType = '';
     this.selectedStatus = '';
     this.selectedPostType = '';
-    this.sortBy = 'newest';
+    this.sortBy = 'mostResponses';
     this.pagination.currentPage = 1;
     this.updateUrlParams();
     this.applyFiltersAndPagination();

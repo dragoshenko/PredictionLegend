@@ -84,7 +84,7 @@ export class PublishedPostsComponent implements OnInit {
   searchTerm = '';
   selectedType = '';
   selectedCategoryId: number | string = '';
-  sortBy = 'newest';
+  sortBy = 'mostResponses';
 
   private searchTimeout: any;
 
@@ -177,9 +177,7 @@ export class PublishedPostsComponent implements OnInit {
         console.log('Processed published posts:', this.allPosts);
         this.applyFiltersAndPagination();
 
-        if (this.allPosts.length > 0) {
-          this.toastr.success(`Loaded ${this.allPosts.length} published predictions`);
-        } else {
+        if (this.allPosts.length == 0) {
           this.toastr.info('No published predictions found');
         }
       } else {
@@ -195,6 +193,160 @@ export class PublishedPostsComponent implements OnInit {
       this.applyFiltersAndPagination();
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  // FIXED: Icon mapping method
+  getSafeIconClass(iconName: string | undefined): string {
+    if (!iconName) return 'fa-tag';
+
+    // Remove fa- prefix if it exists
+    const cleanIconName = iconName.replace('fa-', '').toLowerCase().trim();
+
+    if (!cleanIconName) return 'fa-tag';
+
+    // Map broken/non-existent icons to working Font Awesome icons
+    const safeIconMap: { [key: string]: string } = {
+      // Sports icons
+      'sports': 'fa-trophy',
+      'sport': 'fa-trophy',
+      'soccer': 'fa-futbol-o',
+      'football': 'fa-shield',
+      'american-football': 'fa-shield',
+      'americanfootball': 'fa-shield',
+      'nfl': 'fa-shield',
+      'rugby': 'fa-shield',
+      'gridiron': 'fa-shield',
+      'basketball': 'fa-basketball-ball',
+      'baseball': 'fa-baseball',
+      'tennis': 'fa-trophy',
+      'golf': 'fa-trophy',
+      'hockey': 'fa-hockey-puck',
+      'racing': 'fa-car',
+      'olympics': 'fa-trophy',
+      'championship': 'fa-trophy',
+      'league': 'fa-trophy',
+      'premier': 'fa-trophy',
+      'competition': 'fa-trophy',
+
+      // Entertainment icons
+      'music': 'fa-music',
+      'movies': 'fa-film',
+      'tv': 'fa-tv',
+      'entertainment': 'fa-film',
+      'gaming': 'fa-gamepad',
+      'esports': 'fa-gamepad',
+      'game': 'fa-gamepad',
+      'bingo': 'fa-th', // FIXED: fa-bingo doesn't exist, use fa-th
+      'games': 'fa-gamepad',
+
+      // Technology icons
+      'technology': 'fa-laptop',
+      'tech': 'fa-laptop',
+      'software': 'fa-code',
+      'mobile': 'fa-mobile',
+      'computer': 'fa-laptop',
+
+      // Business icons
+      'business': 'fa-briefcase',
+      'finance': 'fa-money',
+      'economy': 'fa-line-chart',
+      'stocks': 'fa-line-chart',
+
+      // Education icons
+      'education': 'fa-graduation-cap',
+      'school': 'fa-graduation-cap',
+      'university': 'fa-university',
+      'science': 'fa-flask',
+      'books': 'fa-book',
+
+      // Travel and geography
+      'travel': 'fa-plane',
+      'tourism': 'fa-plane',
+      'geography': 'fa-globe',
+      'world': 'fa-globe',
+
+      // Health and fitness
+      'health': 'fa-heart',
+      'medicine': 'fa-medkit',
+      'fitness': 'fa-heart',
+
+      // News and politics
+      'news': 'fa-newspaper-o',
+      'politics': 'fa-institution',
+      'government': 'fa-institution',
+
+      // Food and lifestyle
+      'food': 'fa-cutlery',
+      'cooking': 'fa-cutlery',
+      'lifestyle': 'fa-home',
+      'home': 'fa-home',
+
+      // Default and fallback
+      'default': 'fa-tag',
+      'category': 'fa-tag',
+      'tag': 'fa-tag',
+      'tags': 'fa-tags'
+    };
+
+    // Direct mapping
+    if (safeIconMap[cleanIconName]) {
+      return safeIconMap[cleanIconName];
+    }
+
+    // Partial matching for compound names
+    for (const [key, value] of Object.entries(safeIconMap)) {
+      if (cleanIconName.includes(key) || key.includes(cleanIconName)) {
+        return value;
+      }
+    }
+
+    // List of known safe Font Awesome icons (v4.7)
+    const knownSafeIcons = [
+      'fa-trophy', 'fa-futbol-o', 'fa-basketball-ball', 'fa-baseball',
+      'fa-music', 'fa-film', 'fa-tv', 'fa-gamepad', 'fa-laptop', 'fa-mobile',
+      'fa-book', 'fa-graduation-cap', 'fa-university', 'fa-flask', 'fa-briefcase',
+      'fa-money', 'fa-line-chart', 'fa-globe', 'fa-plane', 'fa-heart', 'fa-medkit',
+      'fa-newspaper-o', 'fa-institution', 'fa-cutlery', 'fa-home', 'fa-users',
+      'fa-tag', 'fa-tags', 'fa-star', 'fa-cog', 'fa-camera', 'fa-car',
+      'fa-th', 'fa-list-ol', 'fa-sitemap', 'fa-check', 'fa-times', 'fa-plus',
+      'fa-minus', 'fa-edit', 'fa-trash', 'fa-search', 'fa-filter', 'fa-sort'
+    ];
+
+    // Check if the original icon (with fa- prefix) is in our safe list
+    const withPrefix = iconName.startsWith('fa-') ? iconName : `fa-${iconName}`;
+    if (knownSafeIcons.includes(withPrefix)) {
+      return withPrefix;
+    }
+
+    // Check cleaned version with prefix
+    const cleanWithPrefix = `fa-${cleanIconName}`;
+    if (knownSafeIcons.includes(cleanWithPrefix)) {
+      return cleanWithPrefix;
+    }
+
+    // Fallback to tag icon
+    return 'fa-tag';
+  }
+
+  // FIXED: Method to get full icon class with fa prefix
+  getFullIconClass(iconName: string | undefined): string {
+    const safeIcon = this.getSafeIconClass(iconName);
+    // Don't double-add fa prefix
+    return safeIcon.startsWith('fa ') ? safeIcon : `fa ${safeIcon}`;
+  }
+
+  // FIXED: Method to get predictionType icon
+  getPredictionTypeIcon(predictionType: string): string {
+    switch (predictionType) {
+      case 'Ranking':
+        return 'fa fa-list-ol';
+      case 'Bracket':
+        return 'fa fa-sitemap';
+      case 'Bingo':
+        return 'fa fa-th'; // FIXED: Use fa-th instead of non-existent icon
+      default:
+        return 'fa fa-question';
     }
   }
 
@@ -399,7 +551,7 @@ export class PublishedPostsComponent implements OnInit {
     this.searchTerm = '';
     this.selectedType = '';
     this.selectedCategoryId = '';
-    this.sortBy = 'newest';
+    this.sortBy = 'mostResponses';
     this.pagination.currentPage = 1;
     this.updateUrlParams();
     this.applyFiltersAndPagination();

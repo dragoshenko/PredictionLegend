@@ -94,6 +94,36 @@
   font-size: 0.875rem;
 }
 
+.bracket-disabled {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.bracket-disabled .form-check-input {
+  cursor: not-allowed;
+}
+
+.bracket-disabled .form-check-label {
+  cursor: not-allowed !important;
+  color: #6c757d !important;
+}
+
+.bracket-disabled .form-check-label:hover {
+  color: #6c757d !important;
+}
+
+/* Soon badge styling */
+.badge.bg-secondary {
+  font-size: 0.7em;
+  padding: 0.25em 0.5em;
+}
+
+/* Prevent radio button from being selected */
+.bracket-disabled .form-check-input:checked {
+  background-color: #6c757d;
+  border-color: #6c757d;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .categories-dynamic-grid {

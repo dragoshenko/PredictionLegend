@@ -22,7 +22,7 @@ export class EditTemplateComponent implements OnInit {
   predictionId: number = 0;
   predictionType: PredictionType = PredictionType.Ranking;
 
-  // Use computed signals to get reactive data from service
+  // computed signals to get reactive data from service
   officialRankingTemplates = computed(() => this.templateService.officialRankingTemplates());
   officialBracketTemplates = computed(() => this.templateService.officialBracketTemplates());
   officialBingoTemplates = computed(() => this.templateService.officialBingoTemplates());

@@ -219,7 +219,6 @@ export class CounterPredictionComponent implements OnInit {
       this.postRank.rankTable.rows.push(row);
     }
 
-    this.toastr.success(`Initialized ${numberOfRows}x${numberOfColumns} ranking table`);
   }
 
   initializeCounterBingo(): void {

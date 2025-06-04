@@ -57,7 +57,7 @@ export class CreatePredictionComponent implements OnInit {
     const today = new Date();
     this.minDate = today.toISOString().split('T')[0];
     this.predictionForm = this.fb.group({
-      predictionType: ['', Validators.required],
+      predictionType: [{ value: '', disabled: false }, Validators.required],
       title: ['', [Validators.required, Validators.minLength(5)]],
       description: ['', [Validators.required, Validators.minLength(10)]],
       startDate: ['', [Validators.required]],
@@ -68,6 +68,12 @@ export class CreatePredictionComponent implements OnInit {
     }, {
       validators: this.dateRangeValidator('startDate', 'endDate')
     });
+
+    // Add custom validator to prevent bracket selection
+    this.predictionForm.get('predictionType')?.setValidators([
+      Validators.required,
+      this.noBracketValidator()
+    ]);
 
     if (this.predictionService.createdPredictionData() !== null) {
       const predictionData = this.predictionService.createdPredictionData();
@@ -85,6 +91,16 @@ export class CreatePredictionComponent implements OnInit {
         this.predictionForm.markAllAsTouched();
       }
     }
+  }
+
+  // Add this custom validator method
+  noBracketValidator() {
+    return (control: any) => {
+      if (control.value === 'Bracket') {
+        return { bracketNotAvailable: true };
+      }
+      return null;
+    };
   }
 
   onCategoryChange(categoryId: number, event: Event) {

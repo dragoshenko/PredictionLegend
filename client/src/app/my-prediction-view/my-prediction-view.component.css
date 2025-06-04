@@ -1,175 +1,163 @@
-/* my-prediction-view.component.css */
-
 .table-dark th,
-.table-dark td {
-  border-color: #495057;
-}
+    .table-dark td {
+      border-color: #495057;
+    }
 
-.card {
-  border-radius: 8px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
+    .card {
+      border-radius: 8px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
 
-.card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
+    .card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
 
-.badge {
-  font-size: 0.875rem;
-}
+    .badge {
+      font-size: 0.875rem;
+    }
 
-.bingo-grid {
-  max-width: 400px;
-  margin: 0 auto;
-}
+    .category-badge {
+      padding: 0.5em 0.75em;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-radius: 0.5rem;
+      display: inline-flex;
+      align-items: center;
+      transition: all 0.2s ease;
+    }
 
-.bingo-cell {
-  border-radius: 8px;
-  min-height: 80px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
+    .category-badge:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
 
-.bingo-cell.has-team {
-  background-color: #28a745;
-  border-color: #1e7e34;
-}
+    .bingo-grid {
+      max-width: 400px;
+      margin: 0 auto;
+    }
 
-.bingo-cell.empty-cell {
-  background-color: #6c757d;
-  border-color: #495057;
-}
+    .bingo-cell {
+      border-radius: 8px;
+      min-height: 80px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
 
-.very-small {
-  font-size: 0.7rem;
-}
+    .bingo-cell.has-team {
+      background-color: #28a745;
+      border-color: #1e7e34;
+    }
 
-pre {
-  max-height: 300px;
-  overflow-y: auto;
-  font-size: 0.8rem;
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-  padding: 0.75rem;
-}
+    .bingo-cell.empty-cell {
+      background-color: #6c757d;
+      border-color: #495057;
+    }
 
-.list-group-item {
-  padding: 0.5rem 0;
-}
+    .very-small {
+      font-size: 0.7rem;
+    }
 
-/* Dropdown styling */
-.dropdown-menu {
-  background-color: #343a40;
-  border-color: #495057;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
+    pre {
+      max-height: 300px;
+      overflow-y: auto;
+      font-size: 0.8rem;
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
+      padding: 0.75rem;
+    }
 
-.dropdown-item {
-  color: #fff;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  margin: 0.1rem;
-}
+    .list-group-item {
+      padding: 0.5rem 0;
+    }
 
-.dropdown-item:hover {
-  background-color: #495057;
-  color: #fff;
-}
+    .dropdown-menu {
+      background-color: #343a40;
+      border-color: #495057;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
 
-.dropdown-item.text-danger:hover {
-  background-color: #dc3545;
-  color: #fff;
-}
+    .dropdown-item {
+      color: #fff;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      margin: 0.1rem;
+    }
 
-/* Alert styling */
-.alert {
-  border-radius: 8px;
-  border: none;
-}
+    .dropdown-item:hover {
+      background-color: #495057;
+      color: #fff;
+    }
 
-.alert-warning {
-  background: linear-gradient(135deg, #ffc107, #fd7e14);
-  color: #000;
-}
+    .dropdown-item.text-danger:hover {
+      background-color: #dc3545;
+      color: #fff;
+    }
 
-.alert-info {
-  background: linear-gradient(135deg, #17a2b8, #6f42c1);
-  color: #fff;
-}
+    .alert {
+      border-radius: 8px;
+      border: none;
+    }
 
-/* Code styling */
-code {
-  background-color: rgba(255, 255, 255, 0.1);
-  padding: 0.2em 0.4em;
-  border-radius: 0.25rem;
-  color: #fff;
-}
+    .alert-warning {
+      background: linear-gradient(135deg, #ffc107, #fd7e14);
+      color: #000;
+    }
 
-/* Button improvements */
-.btn {
-  border-radius: 6px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
+    .alert-info {
+      background: linear-gradient(135deg, #17a2b8, #6f42c1);
+      color: #fff;
+    }
 
-.btn:hover {
-  transform: translateY(-1px);
-}
+    code {
+      background-color: rgba(255, 255, 255, 0.1);
+      padding: 0.2em 0.4em;
+      border-radius: 0.25rem;
+      color: #fff;
+    }
 
-.btn:active {
-  transform: translateY(0);
-}
+    .btn {
+      border-radius: 6px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
 
-/* Header card styling */
-.bg-primary {
-  background: linear-gradient(135deg, #007bff, #0056b3) !important;
-}
+    .btn:hover {
+      transform: translateY(-1px);
+    }
 
-/* Stats cards */
-.card.bg-info {
-  background: linear-gradient(135deg, #17a2b8, #138496) !important;
-}
+    .btn:active {
+      transform: translateY(0);
+    }
 
-.card.bg-success {
-  background: linear-gradient(135deg, #28a745, #1e7e34) !important;
-}
+    .bg-primary {
+      background: linear-gradient(135deg, #007bff, #0056b3) !important;
+    }
 
-.card.bg-warning {
-  background: linear-gradient(135deg, #ffc107, #e0a800) !important;
-}
+    .card.bg-info {
+      background: linear-gradient(135deg, #17a2b8, #138496) !important;
+    }
 
-.card.bg-secondary {
-  background: linear-gradient(135deg, #6c757d, #545b62) !important;
-}
+    .card.bg-success {
+      background: linear-gradient(135deg, #28a745, #1e7e34) !important;
+    }
 
-/* Table hover effects */
-.table-dark tbody tr:hover {
-  background-color: rgba(255, 255, 255, 0.075);
-}
+    .card.bg-warning {
+      background: linear-gradient(135deg, #ffc107, #e0a800) !important;
+    }
 
-/* Image fallback styling */
-.bg-primary.rounded-circle {
-  background: linear-gradient(135deg, #007bff, #0056b3) !important;
-}
+    .card.bg-secondary {
+      background: linear-gradient(135deg, #6c757d, #545b62) !important;
+    }
 
-/* Progress and status indicators */
-.text-success {
-  color: #28a745 !important;
-}
+    .table-dark tbody tr:hover {
+      background-color: rgba(255, 255, 255, 0.075);
+    }
 
-.text-warning {
-  color: #ffc107 !important;
-}
-
-.text-danger {
-  color: #dc3545 !important;
-}
-
-.text-info {
-  color: #17a2b8 !important;
-}
+    .bg-primary.rounded-circle {
+      background: linear-gradient(135deg, #007bff, #0056b3) !important;
+    }

@@ -264,12 +264,7 @@
             <div>
               <h6 class="card-title text-light mb-1">{{ post.title }}</h6>
               <div class="d-flex align-items-center gap-2">
-                <i class="fa"
-                   [ngClass]="{
-                     'fa-list-ol': post.predictionType === 'Ranking',
-                     'fa-sitemap': post.predictionType === 'Bracket',
-                     'fa-th': post.predictionType === 'Bingo'
-                   }" class="text-primary me-1"></i>
+                <i [class]="getPredictionTypeIcon(post.predictionType)" class="text-primary me-1"></i>
                 <span class="badge bg-primary">{{ post.predictionType }}</span>
                 <span class="badge bg-success">Active</span>
                 <span class="badge bg-info">Public</span>
@@ -358,7 +353,7 @@
                     [style.background-color]="category.colorCode || '#6c757d'"
                     (click)="filterByCategory(category.id)"
                     style="cursor: pointer;">
-                <i *ngIf="category.iconName" class="fa {{ category.iconName }} me-1"></i>
+                    <i *ngIf="category.iconName" [class]="getFullIconClass(category.iconName)" class="me-1"></i>
                 {{ category.name }}
               </span>
               <span *ngIf="post.categories.length > 3"
