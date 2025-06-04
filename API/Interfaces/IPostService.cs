@@ -43,5 +43,7 @@ public interface IPostService
     Task<List<PostBingoDTO>> GetPostBingosByTemplateIdAsync(int templateId);
     Task<ActionResult> PublishBingoPostAsync(PublishPostRequestDTO request, int userId);
     Task<ActionResult<PostBingoDTO>> CreatePostBingoAsync(PostBingoDTO postBingoDTO, int predictionId, int userId);
-    
+    Task<ActionResult> PublishResultsAsync(PublishResultsRequestDTO request, int userId);
+    Task<ActionResult<PredictionResultsDTO>> GetPredictionResultsAsync(int predictionId, int currentUserId);
+    Task<ActionResult> RecalculateScoresAsync(int predictionId);
 }
