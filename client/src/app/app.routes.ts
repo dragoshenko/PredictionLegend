@@ -26,6 +26,8 @@ import { PublishedPostsComponent } from './published-posts/published-posts.compo
 import { PostViewComponent } from './post-view/post-view.component';
 import { MyPredictionViewComponent } from './my-prediction-view/my-prediction-view.component';
 import { MyCounterPredictionViewComponent } from './my-counter-prediction-view/my-counter-prediction-view.component';
+import { PublishResultsComponent } from './publish-results/publish-results.component';
+import { PredictionResultsDisplayComponent } from './prediction-results-display/prediction-results-display.component';
 
 export const routes: Routes = [
   // Public routes (no authentication required)
@@ -34,6 +36,15 @@ export const routes: Routes = [
   { path: 'verify-email', component: VerificationComponent },
   { path: 'forgot-password', component: ForgotPasswordComponent },
   { path: 'reset-password', component: ResetPasswordComponent },
+  {
+    path: 'publish-results/:id',
+    component: PublishResultsComponent,
+    canActivate: [AuthGuard] // Ensure user is logged in
+  },
+  {
+    path: 'prediction-results/:id',
+    component: PredictionResultsDisplayComponent
+  },
 
   // Public content routes
   {
