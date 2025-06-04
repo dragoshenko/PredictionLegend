@@ -1,4 +1,3 @@
-<!-- client/src/app/select-teams/select-teams.component.html - COMPLETE FIXED VERSION -->
 <div class="container-fluid mt-4">
   <div class="row justify-content-center">
     <div class="col-lg-10">
@@ -12,7 +11,6 @@
                 Select Teams for {{ predictionType }} Prediction
               </h2>
               <p class="text-light mb-0 opacity-75">
-                <!-- FIXED: Better fallback for template name -->
                 Choose teams for your "{{ getTemplateDisplayName() }}" template
                 ({{ selectedTeams.length }}/{{ minimumTeamsRequired }} required, max {{ maximumTeamsAllowed }})
               </p>
@@ -47,7 +45,7 @@
         </div>
       </div>
 
-      <!-- Creating Team Alert - FIXED: Show when creating team -->
+      <!-- Creating Team Alert -->
       <div *ngIf="isCreatingTeam" class="alert alert-info mb-4">
         <div class="d-flex align-items-center">
           <div class="spinner-border spinner-border-sm me-2" role="status">
@@ -129,7 +127,7 @@
           <div class="d-flex justify-content-between align-items-center">
             <h4 class="text-light mb-0">
               <i class="fa fa-user me-2 text-info"></i>
-              Your Teams ({{ userTeams.length }})
+              Your Teams ({{ getAllUserTeams().length }})
             </h4>
             <button class="btn btn-outline-success btn-sm"
                     [disabled]="isCreatingTeam || isLoading"
@@ -140,7 +138,7 @@
           </div>
         </div>
         <div class="card-body">
-          <!-- Create Team Form - FIXED -->
+          <!-- Create Team Form -->
           <div *ngIf="showCreateForm" class="card bg-dark border-dark mb-4">
             <div class="card-header bg-dark border-dark">
               <h5 class="text-light mb-0">Create New Team</h5>
@@ -155,7 +153,6 @@
                            [class.is-invalid]="isFieldInvalid('name')"
                            placeholder="Team name"
                            maxlength="100">
-                    <!-- FIXED: Show validation errors -->
                     <div *ngIf="isFieldInvalid('name')" class="invalid-feedback">
                       {{ getFieldError('name') }}
                     </div>
@@ -168,7 +165,6 @@
                            [class.is-invalid]="isFieldInvalid('description')"
                            placeholder="Optional description"
                            maxlength="500">
-                    <!-- FIXED: Show validation errors -->
                     <div *ngIf="isFieldInvalid('description')" class="invalid-feedback">
                       {{ getFieldError('description') }}
                     </div>
@@ -180,7 +176,6 @@
                            class="form-control bg-dark text-light border-secondary"
                            [class.is-invalid]="isFieldInvalid('photoUrl')"
                            placeholder="https://example.com/image.jpg">
-                    <!-- FIXED: Show validation errors -->
                     <div *ngIf="isFieldInvalid('photoUrl')" class="invalid-feedback">
                       {{ getFieldError('photoUrl') }}
                     </div>
@@ -188,7 +183,6 @@
                   </div>
                 </div>
                 <div class="d-flex gap-2">
-                  <!-- FIXED: Use separate loading state for team creation -->
                   <button type="submit" class="btn btn-success"
                           [disabled]="teamForm.invalid || isCreatingTeam">
                     <span *ngIf="isCreatingTeam" class="spinner-border spinner-border-sm me-2"></span>
@@ -205,8 +199,113 @@
             </div>
           </div>
 
+          <!-- Search and Filter -->
+          <div class="row mb-3" *ngIf="getAllUserTeams().length > 0">
+            <div class="col-md-6">
+              <div class="input-group">
+                <span class="input-group-text bg-dark border-secondary">
+                  <i class="fa fa-search text-light"></i>
+                </span>
+                <input type="text"
+                       class="form-control bg-dark text-light border-secondary"
+                       placeholder="Search teams..."
+                       [(ngModel)]="teamSearchTerm"
+                       (input)="onTeamSearchChange()">
+                <button *ngIf="teamSearchTerm"
+                        class="btn btn-outline-secondary"
+                        type="button"
+                        (click)="clearTeamSearch()">
+                  <i class="fa fa-times"></i>
+                </button>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <select class="form-select bg-dark text-light border-secondary"
+                      [(ngModel)]="teamFilterType"
+                      (change)="onTeamFilterChange()">
+                <option value="all">All Teams</option>
+                <option value="selected">Selected Only</option>
+                <option value="unselected">Unselected Only</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <select class="form-select bg-dark text-light border-secondary"
+                      [(ngModel)]="teamPagination.pageSize"
+                      (change)="onTeamPageSizeChange()">
+                <option value="6">6 per page</option>
+                <option value="12">12 per page</option>
+                <option value="24">24 per page</option>
+                <option value="50">Show All</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Teams Results Info -->
+          <div class="d-flex justify-content-between align-items-center mb-3"
+               *ngIf="getAllUserTeams().length > 0">
+            <div class="text-light small">
+              <span *ngIf="!hasActiveTeamFilters()">
+                Showing {{ getTeamDisplayRange() }} of {{ teamPagination.totalItems }} teams
+              </span>
+              <span *ngIf="hasActiveTeamFilters()">
+                Showing {{ getTeamDisplayRange() }} of {{ teamPagination.totalItems }} filtered teams
+                <span class="text-muted">({{ getAllUserTeams().length }} total)</span>
+              </span>
+            </div>
+            <div *ngIf="hasActiveTeamFilters()" class="d-flex gap-2 align-items-center">
+              <small class="text-light opacity-75">Active filters:</small>
+              <span *ngIf="teamSearchTerm" class="badge bg-info">
+                Search: "{{ teamSearchTerm }}"
+              </span>
+              <span *ngIf="teamFilterType !== 'all'" class="badge bg-warning text-dark">
+                {{ getTeamFilterDisplayName() }}
+              </span>
+              <button class="btn btn-sm btn-outline-light" (click)="clearAllTeamFilters()">
+                <i class="fa fa-times me-1"></i>Clear
+              </button>
+            </div>
+          </div>
+
+          <!-- Team Pagination Controls - Top -->
+          <div class="d-flex justify-content-center mb-3"
+               *ngIf="getTeamTotalPages() > 1">
+            <nav aria-label="Teams pagination">
+              <ul class="pagination pagination-sm">
+                <li class="page-item" [class.disabled]="!teamPagination.hasPrevious">
+                  <button class="page-link bg-dark text-light border-secondary"
+                          (click)="goToTeamPage(teamPagination.currentPage - 1)"
+                          [disabled]="!teamPagination.hasPrevious">
+                    <i class="fa fa-angle-left"></i>
+                  </button>
+                </li>
+
+                <li *ngFor="let page of getTeamVisiblePages()"
+                    class="page-item"
+                    [class.active]="page === teamPagination.currentPage">
+                  <button class="page-link"
+                          [class.bg-primary]="page === teamPagination.currentPage"
+                          [class.bg-dark]="page !== teamPagination.currentPage"
+                          [class.text-white]="true"
+                          [class.border-secondary]="page !== teamPagination.currentPage"
+                          [class.border-primary]="page === teamPagination.currentPage"
+                          (click)="goToTeamPage(page)">
+                    {{ page }}
+                  </button>
+                </li>
+
+                <li class="page-item" [class.disabled]="!teamPagination.hasNext">
+                  <button class="page-link bg-dark text-light border-secondary"
+                          (click)="goToTeamPage(teamPagination.currentPage + 1)"
+                          [disabled]="!teamPagination.hasNext">
+                    <i class="fa fa-angle-right"></i>
+                  </button>
+                </li>
+              </ul>
+            </nav>
+          </div>
+
           <!-- User Teams List -->
-          <div *ngIf="userTeams.length === 0 && !showCreateForm && !isLoading" class="text-center py-4">
+          <div *ngIf="getAllUserTeams().length === 0 && !showCreateForm && !isLoading" class="text-center py-4">
             <i class="fa fa-users fa-3x text-muted mb-3"></i>
             <p class="text-muted">You haven't created any teams yet.</p>
             <button class="btn btn-outline-primary"
@@ -216,18 +315,35 @@
             </button>
           </div>
 
-          <div class="row" *ngIf="userTeams.length > 0">
-            <div class="col-md-6 col-lg-4 mb-3" *ngFor="let team of userTeams">
-              <div class="card h-100"
+          <!-- Filtered Teams Empty State -->
+          <div *ngIf="getPaginatedUserTeams().length === 0 && getAllUserTeams().length > 0 && !isLoading"
+               class="text-center py-4">
+            <i class="fa fa-search fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">No Teams Found</h5>
+            <p class="text-muted">No teams match your current filters.</p>
+            <button class="btn btn-outline-primary" (click)="clearAllTeamFilters()">
+              <i class="fa fa-times me-1"></i>Clear Filters
+            </button>
+          </div>
+
+          <div class="row" *ngIf="getPaginatedUserTeams().length > 0">
+            <div class="col-md-6 col-lg-4 mb-3" *ngFor="let team of getPaginatedUserTeams()">
+              <div class="card h-100 team-card"
                    [class.border-success]="isTeamSelected(team)"
                    [class.bg-success]="isTeamSelected(team)"
                    [class.text-light]="isTeamSelected(team)"
-                   style="cursor: pointer;"
+                   [class.border-primary]="!isTeamSelected(team)"
+                   style="cursor: pointer; transition: all 0.2s ease;"
                    [style.pointer-events]="isCreatingTeam ? 'none' : 'auto'"
                    (click)="!isCreatingTeam && toggleTeamSelection(team)">
                 <div class="card-body d-flex align-items-center">
                   <img *ngIf="team.photoUrl" [src]="team.photoUrl"
                        class="rounded me-3" width="48" height="48" alt="Team">
+                  <div class="bg-info rounded-circle me-3 d-flex align-items-center justify-content-center"
+                       *ngIf="!team.photoUrl"
+                       style="width: 48px; height: 48px;">
+                    <i class="fa fa-users text-white"></i>
+                  </div>
                   <div class="me-auto">
                     <h6 class="card-title mb-1">{{ team.name }}</h6>
                     <p class="card-text small mb-0"
@@ -239,17 +355,79 @@
                       <span class="badge"
                             [class.bg-light]="isTeamSelected(team)"
                             [class.text-dark]="isTeamSelected(team)"
-                            [class.bg-secondary]="!isTeamSelected(team)">
+                            [class.bg-info]="!isTeamSelected(team)">
                         Custom Team
+                      </span>
+                      <span *ngIf="team.score" class="badge bg-secondary ms-1">
+                        Score: {{ team.score }}
                       </span>
                     </div>
                   </div>
-                  <div *ngIf="isTeamSelected(team)">
-                    <i class="fa fa-check-circle fa-2x text-light"></i>
+                  <div class="text-end">
+                    <div *ngIf="isTeamSelected(team)">
+                      <i class="fa fa-check-circle fa-2x text-light"></i>
+                      <div class="small mt-1">Selected</div>
+                    </div>
+                    <div *ngIf="!isTeamSelected(team)" class="text-muted">
+                      <i class="fa fa-circle-o fa-2x"></i>
+                      <div class="small mt-1">Click to select</div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
+
+          <!-- Team Pagination Controls - Bottom -->
+          <div class="d-flex justify-content-center mt-3"
+               *ngIf="getTeamTotalPages() > 1">
+            <nav aria-label="Teams pagination">
+              <ul class="pagination">
+                <li class="page-item" [class.disabled]="!teamPagination.hasPrevious">
+                  <button class="page-link bg-dark text-light border-secondary"
+                          (click)="goToTeamPage(1)"
+                          [disabled]="!teamPagination.hasPrevious">
+                    <i class="fa fa-angle-double-left"></i> First
+                  </button>
+                </li>
+                <li class="page-item" [class.disabled]="!teamPagination.hasPrevious">
+                  <button class="page-link bg-dark text-light border-secondary"
+                          (click)="goToTeamPage(teamPagination.currentPage - 1)"
+                          [disabled]="!teamPagination.hasPrevious">
+                    <i class="fa fa-angle-left"></i> Previous
+                  </button>
+                </li>
+
+                <li *ngFor="let page of getTeamVisiblePages()"
+                    class="page-item"
+                    [class.active]="page === teamPagination.currentPage">
+                  <button class="page-link"
+                          [class.bg-primary]="page === teamPagination.currentPage"
+                          [class.bg-dark]="page !== teamPagination.currentPage"
+                          [class.text-white]="true"
+                          [class.border-secondary]="page !== teamPagination.currentPage"
+                          [class.border-primary]="page === teamPagination.currentPage"
+                          (click)="goToTeamPage(page)">
+                    {{ page }}
+                  </button>
+                </li>
+
+                <li class="page-item" [class.disabled]="!teamPagination.hasNext">
+                  <button class="page-link bg-dark text-light border-secondary"
+                          (click)="goToTeamPage(teamPagination.currentPage + 1)"
+                          [disabled]="!teamPagination.hasNext">
+                    Next <i class="fa fa-angle-right"></i>
+                  </button>
+                </li>
+                <li class="page-item" [class.disabled]="!teamPagination.hasNext">
+                  <button class="page-link bg-dark text-light border-secondary"
+                          (click)="goToTeamPage(getTeamTotalPages())"
+                          [disabled]="!teamPagination.hasNext">
+                    Last <i class="fa fa-angle-double-right"></i>
+                  </button>
+                </li>
+              </ul>
+            </nav>
           </div>
         </div>
       </div>
@@ -277,7 +455,7 @@
         </div>
       </div>
 
-      <!-- Loading State - FIXED: Show different loading states -->
+      <!-- Loading State -->
       <div *ngIf="isLoading && !isCreatingTeam" class="text-center py-5">
         <div class="spinner-border text-primary" role="status">
           <span class="visually-hidden">Loading...</span>

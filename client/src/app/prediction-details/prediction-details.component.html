@@ -1,1 +1,622 @@
-<p>prediction-details works!</p>
+<div class="container-fluid mt-4" *ngIf="predictionDetail">
+  <!-- Header -->
+  <div class="card bg-primary border-primary mb-4">
+    <div class="card-header bg-primary border-primary">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h2 class="text-light mb-1">{{ predictionDetail.title }}</h2>
+          <p class="text-light mb-0 opacity-75">{{ predictionDetail.description }}</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-light" (click)="goBack()">
+            <i class="fa fa-arrow-left me-2"></i>Back
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Counter Prediction Section -->
+  <div class="mb-4">
+    <app-counter-prediction
+      *ngIf="canShowCounterPrediction()"
+      [originalPrediction]="predictionDetail"
+      [template]="getTemplateData()"
+      [availableTeams]="getAvailableTeams()">
+    </app-counter-prediction>
+
+    <!-- Message when counter prediction is not available -->
+    <div class="card bg-secondary border-secondary" *ngIf="!canShowCounterPrediction() && predictionDetail">
+      <div class="card-body text-center">
+        <i class="fa fa-info-circle fa-2x text-light mb-3"></i>
+        <h5 class="text-light">Counter Prediction Not Available</h5>
+        <p class="text-light mb-2">{{ getCounterPredictionUnavailableReason() }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="row mb-4">
+    <div class="col-lg-8">
+      <!-- Original Prediction Section -->
+      <div class="mb-4">
+        <h3 class="text-light mb-3">
+          <i class="fa fa-star me-2 text-warning"></i>Original Prediction
+          <small class="text-muted ms-2">by {{ predictionDetail.author?.displayName || 'Unknown' }}</small>
+        </h3>
+
+        <!-- Original Ranking Prediction -->
+        <div *ngIf="isRankingType() && hasOriginalRankingData()"
+             class="card bg-secondary border-secondary mb-4">
+          <div class="card-header bg-secondary border-secondary">
+            <h4 class="text-light mb-0">
+              <i class="fa fa-list-ol me-2"></i>Ranking Prediction
+            </h4>
+            <div class="small text-light opacity-75">
+              Total Score: {{ getOriginalRankingData()?.totalScore || 0 }} |
+              Created: {{ formatDate(getOriginalRankingData()?.createdAt) }}
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-dark table-striped">
+                <thead>
+                  <tr>
+                    <th width="80">Rank</th>
+                    <th *ngFor="let col of getFirstRowColumns(); let i = index">
+                      Position {{ i + 1 }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let row of getOriginalRankingRows(); let rowIndex = index">
+                    <td class="fw-bold text-warning">#{{ row.order }}</td>
+                    <td *ngFor="let column of row.columns || []">
+                      <div *ngIf="column.team" class="d-flex align-items-center p-2">
+                        <img *ngIf="column.team.photoUrl && column.team.photoUrl.trim()"
+                             [src]="column.team.photoUrl"
+                             class="rounded me-2"
+                             width="32" height="32"
+                             alt="Team"
+                             (error)="onImageError($event)">
+                        <div class="bg-warning rounded-circle me-2 d-flex align-items-center justify-content-center"
+                             *ngIf="!column.team.photoUrl || !column.team.photoUrl.trim()"
+                             style="width: 32px; height: 32px; min-width: 32px;">
+                          <i class="fa fa-users text-dark small"></i>
+                        </div>
+                        <div>
+                          <div class="fw-bold text-light">{{ column.team.name }}</div>
+                          <div class="small text-muted" *ngIf="column.team.description && column.team.description.trim()">
+                            {{ column.team.description }}
+                          </div>
+                        </div>
+                      </div>
+                      <div *ngIf="!column.team" class="text-muted small text-center py-2">
+                        <i class="fa fa-minus-circle"></i> Empty Position
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Original Bingo Prediction -->
+        <div *ngIf="isBingoType() && hasOriginalBingoData()"
+             class="card bg-secondary border-secondary mb-4">
+          <div class="card-header bg-secondary border-secondary">
+            <h4 class="text-light mb-0">
+              <i class="fa fa-th me-2"></i>Bingo Prediction
+            </h4>
+            <div class="small text-light opacity-75">
+              Grid Size: {{ getOriginalBingoData()?.gridSize }}x{{ getOriginalBingoData()?.gridSize }} |
+              Total Score: {{ getOriginalBingoData()?.totalScore || 0 }} |
+              Created: {{ formatDate(getOriginalBingoData()?.createdAt) }}
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="bingo-grid"
+                 [style.grid-template-columns]="'repeat(' + getOriginalBingoData()?.gridSize + ', 1fr)'"
+                 [style.gap]="'8px'"
+                 [style.display]="'grid'">
+
+              <div *ngFor="let cell of getOriginalBingoCells(); let cellIndex = index"
+                   class="bingo-cell p-2 border text-center original-cell"
+                   [class.has-team]="cell.team"
+                   [class.empty-cell]="!cell.team">
+
+                <div *ngIf="cell.team">
+                  <img *ngIf="cell.team.photoUrl && cell.team.photoUrl.trim()"
+                       [src]="cell.team.photoUrl"
+                       class="rounded mb-1"
+                       width="24" height="24"
+                       alt="Team"
+                       (error)="onImageError($event)">
+                  <div class="bg-warning rounded-circle mx-auto mb-1 d-flex align-items-center justify-content-center"
+                       *ngIf="!cell.team.photoUrl || !cell.team.photoUrl.trim()"
+                       style="width: 24px; height: 24px;">
+                    <i class="fa fa-users text-dark" style="font-size: 10px;"></i>
+                  </div>
+                  <div class="small text-light fw-bold">{{ cell.team.name }}</div>
+                </div>
+                <div *ngIf="!cell.team" class="text-muted">
+                  <i class="fa fa-square-o fa-lg"></i>
+                  <div class="very-small mt-1">Empty</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- No Original Post Data -->
+        <div *ngIf="!hasOriginalPostData()" class="card bg-warning border-warning">
+          <div class="card-body text-center">
+            <i class="fa fa-exclamation-triangle fa-2x mb-3 text-dark"></i>
+            <h5 class="text-dark">No Original Post Data Found</h5>
+            <p class="text-dark mb-2">
+              This {{ getPredictionTypeDisplayName().toLowerCase() }} prediction doesn't have any original post data yet.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Counter Predictions Section with Pagination -->
+      <div class="mb-4" *ngIf="getAllCounterPredictions().length > 0">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h3 class="text-light mb-0" id="counter-predictions">
+            <i class="fa fa-users me-2 text-info"></i>Counter Predictions
+            <small class="text-muted ms-2">({{ getAllCounterPredictions().length }} responses)</small>
+          </h3>
+
+          <!-- Counter Predictions Per Page Selector -->
+          <div class="d-flex align-items-center gap-2">
+            <label class="text-light small me-2">Show:</label>
+            <select
+              class="form-select form-select-sm bg-dark text-light border-secondary"
+              [(ngModel)]="counterPredictionsPerPage"
+              (change)="onCounterPredictionsPageSizeChange()"
+              style="width: auto;">
+              <option value="5">5 per page</option>
+              <option value="10">10 per page</option>
+              <option value="20">20 per page</option>
+              <option value="50">Show All</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Counter Predictions Pagination Controls - Top -->
+        <div class="d-flex justify-content-between align-items-center mb-3" *ngIf="getCounterPredictionTotalPages() > 1">
+          <div class="text-light small">
+            Showing {{ getCounterPredictionDisplayRange() }} of {{ getAllCounterPredictions().length }} responses
+          </div>
+          <nav aria-label="Counter predictions pagination">
+            <ul class="pagination pagination-sm mb-0">
+              <li class="page-item" [class.disabled]="counterPredictionsCurrentPage <= 1">
+                <button class="page-link bg-dark text-light border-secondary"
+                        (click)="goToCounterPredictionPage(counterPredictionsCurrentPage - 1)"
+                        [disabled]="counterPredictionsCurrentPage <= 1">
+                  <i class="fa fa-angle-left"></i>
+                </button>
+              </li>
+
+              <li *ngFor="let page of getCounterPredictionVisiblePages()"
+                  class="page-item"
+                  [class.active]="page === counterPredictionsCurrentPage">
+                <button class="page-link"
+                        [class.bg-primary]="page === counterPredictionsCurrentPage"
+                        [class.bg-dark]="page !== counterPredictionsCurrentPage"
+                        [class.text-white]="true"
+                        [class.border-secondary]="page !== counterPredictionsCurrentPage"
+                        [class.border-primary]="page === counterPredictionsCurrentPage"
+                        (click)="goToCounterPredictionPage(page)">
+                  {{ page }}
+                </button>
+              </li>
+
+              <li class="page-item" [class.disabled]="counterPredictionsCurrentPage >= getCounterPredictionTotalPages()">
+                <button class="page-link bg-dark text-light border-secondary"
+                        (click)="goToCounterPredictionPage(counterPredictionsCurrentPage + 1)"
+                        [disabled]="counterPredictionsCurrentPage >= getCounterPredictionTotalPages()">
+                  <i class="fa fa-angle-right"></i>
+                </button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+
+        <!-- Counter Ranking Predictions -->
+        <div *ngIf="isRankingType() && getPaginatedCounterRankings().length > 0">
+          <div *ngFor="let counterPrediction of getPaginatedCounterRankings(); let i = index"
+               class="card bg-dark border-primary mb-3 counter-prediction-card fade-in-up">
+            <div class="card-header bg-dark border-primary">
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                  <img *ngIf="counterPrediction.author?.photoUrl"
+                       [src]="counterPrediction.author.photoUrl"
+                       class="rounded-circle me-2" width="32" height="32" alt="Author">
+                  <div class="bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center"
+                       *ngIf="!counterPrediction.author?.photoUrl"
+                       style="width: 32px; height: 32px;">
+                    <i class="fa fa-user text-white"></i>
+                  </div>
+                  <div>
+                    <h6 class="text-light mb-0">{{ counterPrediction.author?.displayName || 'Anonymous' }}</h6>
+                    <small class="text-muted">{{ formatDate(counterPrediction.createdAt) }}</small>
+                  </div>
+                </div>
+                <div class="text-end">
+                  <span class="badge bg-primary">
+                    Counter #{{ getCounterPredictionGlobalIndex(i) }}
+                  </span>
+                  <div class="small text-muted mt-1">Score: {{ counterPrediction.totalScore || 0 }}</div>
+                </div>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-dark table-striped table-sm">
+                  <thead>
+                    <tr>
+                      <th width="60">Rank</th>
+                      <th *ngFor="let col of getCounterRankingFirstRowColumns(counterPrediction); let j = index">
+                        Pos {{ j + 1 }}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let row of getCounterRankingRows(counterPrediction); let rowIndex = index">
+                      <td class="fw-bold text-primary">#{{ row.order }}</td>
+                      <td *ngFor="let column of row.columns || []">
+                        <div *ngIf="column.team" class="d-flex align-items-center p-1">
+                          <img *ngIf="column.team.photoUrl && column.team.photoUrl.trim()"
+                               [src]="column.team.photoUrl"
+                               class="rounded me-1"
+                               width="24" height="24"
+                               alt="Team"
+                               (error)="onImageError($event)">
+                          <div class="bg-primary rounded-circle me-1 d-flex align-items-center justify-content-center"
+                               *ngIf="!column.team.photoUrl || !column.team.photoUrl.trim()"
+                               style="width: 24px; height: 24px; min-width: 24px;">
+                            <i class="fa fa-users text-white" style="font-size: 10px;"></i>
+                          </div>
+                          <div>
+                            <div class="fw-bold text-light small">{{ column.team.name }}</div>
+                            <div class="very-small text-muted" *ngIf="column.team.description && column.team.description.trim()">
+                              {{ column.team.description | slice:0:30 }}{{ column.team.description.length > 30 ? '...' : '' }}
+                            </div>
+                          </div>
+                        </div>
+                        <div *ngIf="!column.team" class="text-muted small text-center py-1">
+                          <i class="fa fa-minus"></i>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Counter prediction stats -->
+              <div class="row mt-2">
+                <div class="col-6">
+                  <small class="text-muted">Teams Assigned: {{ getCounterRankingAssignedCount(counterPrediction) }}</small>
+                </div>
+                <div class="col-6 text-end">
+                  <small class="text-muted">Completion: {{ getCounterRankingCompletionPercentage(counterPrediction) }}%</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Counter Bingo Predictions -->
+        <div *ngIf="isBingoType() && getPaginatedCounterBingos().length > 0">
+          <div *ngFor="let counterPrediction of getPaginatedCounterBingos(); let i = index"
+               class="card bg-dark border-primary mb-3 counter-prediction-card fade-in-up">
+            <div class="card-header bg-dark border-primary">
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                  <img *ngIf="counterPrediction.author?.photoUrl"
+                       [src]="counterPrediction.author.photoUrl"
+                       class="rounded-circle me-2" width="32" height="32" alt="Author">
+                  <div class="bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center"
+                       *ngIf="!counterPrediction.author?.photoUrl"
+                       style="width: 32px; height: 32px;">
+                    <i class="fa fa-user text-white"></i>
+                  </div>
+                  <div>
+                    <h6 class="text-light mb-0">{{ counterPrediction.author?.displayName || 'Anonymous' }}</h6>
+                    <small class="text-muted">{{ formatDate(counterPrediction.createdAt) }}</small>
+                  </div>
+                </div>
+                <div class="text-end">
+                  <span class="badge bg-primary">
+                    Counter Bingo #{{ getCounterPredictionGlobalIndex(i) }}
+                  </span>
+                  <div class="small text-muted mt-1">Score: {{ counterPrediction.totalScore || 0 }}</div>
+                </div>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="bingo-grid"
+                   [style.grid-template-columns]="'repeat(' + getCounterBingoGridSize(counterPrediction) + ', 1fr)'"
+                   [style.gap]="'4px'"
+                   [style.display]="'grid'"
+                   [style.max-width]="'300px'"
+                   [style.margin]="'0 auto'">
+
+                <div *ngFor="let cell of getCounterBingoCells(counterPrediction); let cellIndex = index"
+                     class="bingo-cell p-1 border text-center counter-cell"
+                     [class.has-team]="cell.team"
+                     [class.empty-cell]="!cell.team"
+                     style="min-height: 60px;">
+
+                  <div *ngIf="cell.team">
+                    <img *ngIf="cell.team.photoUrl && cell.team.photoUrl.trim()"
+                         [src]="cell.team.photoUrl"
+                         class="rounded mb-1"
+                         width="20" height="20"
+                         alt="Team"
+                         (error)="onImageError($event)">
+                    <div class="bg-primary rounded-circle mx-auto mb-1 d-flex align-items-center justify-content-center"
+                         *ngIf="!cell.team.photoUrl || !cell.team.photoUrl.trim()"
+                         style="width: 20px; height: 20px;">
+                      <i class="fa fa-users text-white" style="font-size: 8px;"></i>
+                    </div>
+                    <div class="very-small text-light fw-bold">{{ cell.team.name | slice:0:8 }}{{ cell.team.name.length > 8 ? '...' : '' }}</div>
+                  </div>
+                  <div *ngIf="!cell.team" class="text-muted very-small">
+                    <i class="fa fa-square-o"></i>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Counter bingo stats -->
+              <div class="row mt-2">
+                <div class="col-6">
+                  <small class="text-muted">Teams Assigned: {{ getCounterBingoAssignedCount(counterPrediction) }}</small>
+                </div>
+                <div class="col-6 text-end">
+                  <small class="text-muted">Completion: {{ getCounterBingoCompletionPercentage(counterPrediction) }}%</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Counter Predictions Pagination Controls - Bottom -->
+        <div class="d-flex justify-content-center mb-4" *ngIf="getCounterPredictionTotalPages() > 1">
+          <nav aria-label="Counter predictions pagination">
+            <ul class="pagination">
+              <li class="page-item" [class.disabled]="counterPredictionsCurrentPage <= 1">
+                <button class="page-link bg-dark text-light border-secondary"
+                        (click)="goToCounterPredictionPage(1)"
+                        [disabled]="counterPredictionsCurrentPage <= 1">
+                  <i class="fa fa-angle-double-left"></i> First
+                </button>
+              </li>
+              <li class="page-item" [class.disabled]="counterPredictionsCurrentPage <= 1">
+                <button class="page-link bg-dark text-light border-secondary"
+                        (click)="goToCounterPredictionPage(counterPredictionsCurrentPage - 1)"
+                        [disabled]="counterPredictionsCurrentPage <= 1">
+                  <i class="fa fa-angle-left"></i> Previous
+                </button>
+              </li>
+
+              <li *ngFor="let page of getCounterPredictionVisiblePages()"
+                  class="page-item"
+                  [class.active]="page === counterPredictionsCurrentPage">
+                <button class="page-link"
+                        [class.bg-primary]="page === counterPredictionsCurrentPage"
+                        [class.bg-dark]="page !== counterPredictionsCurrentPage"
+                        [class.text-white]="true"
+                        [class.border-secondary]="page !== counterPredictionsCurrentPage"
+                        [class.border-primary]="page === counterPredictionsCurrentPage"
+                        (click)="goToCounterPredictionPage(page)">
+                  {{ page }}
+                </button>
+              </li>
+
+              <li class="page-item" [class.disabled]="counterPredictionsCurrentPage >= getCounterPredictionTotalPages()">
+                <button class="page-link bg-dark text-light border-secondary"
+                        (click)="goToCounterPredictionPage(counterPredictionsCurrentPage + 1)"
+                        [disabled]="counterPredictionsCurrentPage >= getCounterPredictionTotalPages()">
+                  Next <i class="fa fa-angle-right"></i>
+                </button>
+              </li>
+              <li class="page-item" [class.disabled]="counterPredictionsCurrentPage >= getCounterPredictionTotalPages()">
+                <button class="page-link bg-dark text-light border-secondary"
+                        (click)="goToCounterPredictionPage(getCounterPredictionTotalPages())"
+                        [disabled]="counterPredictionsCurrentPage >= getCounterPredictionTotalPages()">
+                  Last <i class="fa fa-angle-double-right"></i>
+                </button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+
+      <!-- No Counter Predictions Message -->
+      <div class="mb-4" *ngIf="hasOriginalPostData() && getAllCounterPredictions().length === 0">
+        <div class="card bg-info border-info">
+          <div class="card-body text-center">
+            <i class="fa fa-users fa-2x text-white mb-3"></i>
+            <h5 class="text-white">No Counter Predictions Yet</h5>
+            <p class="text-white mb-2">Be the first to create a counter prediction for this {{ getPredictionTypeDisplayName().toLowerCase() }}!</p>
+            <button *ngIf="canShowCounterPrediction()"
+                    class="btn btn-light"
+                    (click)="scrollToCounterPrediction()">
+              <i class="fa fa-plus me-2"></i>Create Counter Prediction
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+      <!-- Prediction Info -->
+      <div class="card bg-dark border-dark mb-3">
+        <div class="card-header bg-dark border-dark">
+          <h5 class="text-light mb-0">Prediction Info</h5>
+        </div>
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3" *ngIf="predictionDetail.author">
+            <img *ngIf="predictionDetail.author.photoUrl" [src]="predictionDetail.author.photoUrl"
+                 class="rounded-circle me-3" width="48" height="48" alt="Author">
+            <div class="bg-primary rounded-circle me-3 d-flex align-items-center justify-content-center"
+                 *ngIf="!predictionDetail.author.photoUrl"
+                 style="width: 48px; height: 48px;">
+              <i class="fa fa-user text-white"></i>
+            </div>
+            <div>
+              <div class="fw-bold text-light">{{ predictionDetail.author.displayName || 'Unknown Author' }}</div>
+              <div class="small text-muted">Author</div>
+            </div>
+          </div>
+
+          <ul class="list-group list-group-flush">
+            <li class="list-group-item bg-transparent border-secondary text-light">
+              <strong>Type:</strong> {{ getPredictionTypeDisplayName() }}
+            </li>
+            <li class="list-group-item bg-transparent border-secondary text-light">
+              <strong>Created:</strong> {{ formatDate(getOriginalRankingData()?.createdAt) }}
+            </li>
+            <li class="list-group-item bg-transparent border-secondary text-light" *ngIf="predictionDetail.endDate">
+              <strong>Ends:</strong> {{ formatDate(predictionDetail.endDate) }}
+            </li>
+            <li class="list-group-item bg-transparent border-secondary text-light">
+              <strong>Status:</strong>
+              <span [class]="predictionDetail.isActive ? 'text-success' : 'text-warning'">
+                {{ predictionDetail.isActive ? 'Active' : 'Ended' }}
+              </span>
+            </li>
+            <li class="list-group-item bg-transparent border-secondary text-light">
+              <strong>Counter Predictions:</strong>
+              <span class="badge bg-info ms-2">{{ getAllCounterPredictions().length }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Counter Predictions Summary -->
+      <div class="card bg-dark border-dark mb-3" *ngIf="getAllCounterPredictions().length > 0">
+        <div class="card-header bg-dark border-dark">
+          <h5 class="text-light mb-0">
+            <i class="fa fa-chart-bar me-2"></i>Response Summary
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row text-center">
+            <div class="col-6">
+              <div class="h4 text-primary">{{ getAllCounterPredictions().length }}</div>
+              <div class="small text-muted">Total Responses</div>
+            </div>
+            <div class="col-6">
+              <div class="h4 text-success">{{ getUniqueRespondersCount() }}</div>
+              <div class="small text-muted">Unique Users</div>
+            </div>
+          </div>
+
+          <hr class="border-secondary">
+
+          <div class="list-group list-group-flush">
+            <div *ngFor="let counter of getAllCounterPredictions().slice(0, 3)"
+                 class="list-group-item bg-transparent border-secondary text-light p-2">
+              <div class="d-flex align-items-center">
+                <img *ngIf="counter.author?.photoUrl"
+                     [src]="counter.author.photoUrl"
+                     class="rounded-circle me-2" width="24" height="24" alt="Author">
+                <div class="bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center"
+                     *ngIf="!counter.author?.photoUrl"
+                     style="width: 24px; height: 24px;">
+                  <i class="fa fa-user text-white" style="font-size: 10px;"></i>
+                </div>
+                <div class="flex-grow-1">
+                  <div class="small fw-bold">{{ counter.author?.displayName || 'Anonymous' }}</div>
+                  <div class="very-small text-muted">{{ formatDateShort(counter.createdAt) }}</div>
+                </div>
+              </div>
+            </div>
+            <div *ngIf="getAllCounterPredictions().length > 3"
+                 class="text-center py-2">
+              <small class="text-muted">+{{ getAllCounterPredictions().length - 3 }} more</small>
+            </div>
+          </div>
+
+          <button class="btn btn-outline-primary btn-sm w-100 mt-2"
+                  (click)="scrollToCounterPredictions()">
+            <i class="fa fa-eye me-1"></i>View All Responses
+          </button>
+        </div>
+      </div>
+
+      <!-- Teams List -->
+      <div class="card bg-dark border-dark mb-3" *ngIf="getAvailableTeams().length > 0">
+        <div class="card-header bg-dark border-dark">
+          <h5 class="text-light mb-0">Available Teams ({{ getAvailableTeams().length }})</h5>
+        </div>
+        <div class="card-body">
+          <div class="list-group list-group-flush">
+            <div *ngFor="let team of getAvailableTeams().slice(0, 5)"
+                 class="list-group-item bg-transparent border-secondary text-light p-2">
+              <div class="d-flex align-items-center">
+                <img *ngIf="team.photoUrl && team.photoUrl.trim()"
+                     [src]="team.photoUrl"
+                     class="rounded me-2"
+                     width="24" height="24"
+                     alt="Team">
+                <div class="bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center"
+                     *ngIf="!team.photoUrl || !team.photoUrl.trim()"
+                     style="width: 24px; height: 24px;">
+                  <i class="fa fa-users text-white" style="font-size: 10px;"></i>
+                </div>
+                <div>
+                  <div class="fw-bold small">{{ team.name }}</div>
+                  <div class="very-small text-muted" *ngIf="team.description">{{ team.description | slice:0:20 }}{{ team.description.length > 20 ? '...' : '' }}</div>
+                </div>
+              </div>
+            </div>
+            <div *ngIf="getAvailableTeams().length > 5"
+                 class="list-group-item bg-transparent border-secondary text-center">
+              <small class="text-muted">+{{ getAvailableTeams().length - 5 }} more teams</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Categories -->
+      <div class="card bg-dark border-dark" *ngIf="predictionDetail.categories && predictionDetail.categories.length > 0">
+        <div class="card-header bg-dark border-dark">
+          <h5 class="text-light mb-0">Categories</h5>
+        </div>
+        <div class="card-body">
+          <div class="d-flex flex-wrap gap-2">
+            <span *ngFor="let category of predictionDetail.categories"
+                  class="badge bg-primary"
+                  [style.background-color]="category.colorCode || '#0d6efd'">
+              <i class="fa" [ngClass]="category.iconName" *ngIf="category.iconName" class="me-1"></i>
+              {{ category.name }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Loading State -->
+<div *ngIf="!predictionDetail && isLoading" class="text-center py-5">
+  <div class="spinner-border text-primary" role="status">
+    <span class="visually-hidden">Loading...</span>
+  </div>
+  <p class="mt-3 text-muted">Loading prediction details...</p>
+</div>
+
+<!-- Error State -->
+<div *ngIf="!predictionDetail && !isLoading" class="text-center py-5">
+  <i class="fa fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+  <h5 class="text-warning">Prediction Not Found</h5>
+  <p class="text-muted">The prediction you're looking for doesn't exist or has been removed.</p>
+  <button class="btn btn-primary" (click)="goBack()">Go Back</button>
+</div>
