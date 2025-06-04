@@ -30,20 +30,16 @@ public class PostController : BaseAPIController
         return result;
     }
 
-    // FIXED: Improved publish endpoint with comprehensive error handling and logging
-
     [HttpPost("rank/publish")]
     public async Task<ActionResult> PublishRankingPost([FromBody] PublishPostRequestDTO request)
     {
         try
         {
-            // FIXED: Enhanced validation with detailed error messages
             if (request == null)
             {
                 return BadRequest(new { message = "Request data is required", error = "The request body cannot be null or empty" });
             }
 
-            // FIXED: More specific validation checks
             if (request.PredictionId <= 0)
             {
                 return BadRequest(new { message = "Invalid prediction ID", error = $"PredictionId must be greater than 0, received: {request.PredictionId}" });
@@ -127,6 +123,7 @@ public class PostController : BaseAPIController
             });
         }
     }
+    
     [HttpGet("published")]
     public async Task<ActionResult<List<PublishedPostDTO>>> GetPublishedPosts(
         [FromQuery] int pageNumber = 1,
@@ -208,14 +205,14 @@ public class PostController : BaseAPIController
                 return BadRequest(new { message = "PostBingo data is required", error = "PostBingo data is required for bingo predictions" });
             }
 
-            // FIXED: Validate PostBingo structure
+            // Validate PostBingo structure
             if (request.PostBingo.BingoCells == null || !request.PostBingo.BingoCells.Any())
             {
                 Console.WriteLine("BINGO CELLS ARE NULL OR EMPTY");
                 return BadRequest(new { message = "Bingo cells are required", error = "PostBingo must contain at least one bingo cell" });
             }
 
-            // FIXED: Validate that at least some cells have teams
+            // Validate that at least some cells have teams
             var hasAnyTeams = request.PostBingo.BingoCells.Any(cell => cell.Team != null);
 
             if (!hasAnyTeams)
@@ -235,7 +232,7 @@ public class PostController : BaseAPIController
 
             Console.WriteLine("All validations passed, calling service...");
 
-            // FIXED: Set the userId in the PostBingo object
+            // Set the userId in the PostBingo object
             request.PostBingo.UserId = userId;
 
             var result = await _postService.PublishBingoPostAsync(request, userId);
@@ -295,6 +292,7 @@ public class PostController : BaseAPIController
             });
         }
     }
+
     [HttpGet("my-posts")]
     public async Task<ActionResult<List<UserPostSummaryDTO>>> GetMyPosts()
     {
@@ -394,6 +392,7 @@ public class PostController : BaseAPIController
             return 0;
         }
     }
+
     [HttpGet("prediction/{predictionId}/with-posts")]
     public async Task<ActionResult<PredictionWithPostsDTO>> GetPredictionWithPosts(int predictionId)
     {
@@ -454,24 +453,20 @@ public class PostController : BaseAPIController
                     {
                         try
                         {
+                            // FIXED: Ensure user data is properly mapped
                             var postRankDTO = _mapper.Map<PostRankDTO>(postRank);
 
-                            // Ensure we have teams data
-                            if (postRank.RankTable?.Rows != null)
+                            // Explicitly set user data if mapper doesn't handle it
+                            if (postRank.User != null)
                             {
-                                Console.WriteLine($"PostRank {postRank.Id} has {postRank.RankTable.Rows.Count} rows");
-                                foreach (var row in postRank.RankTable.Rows)
-                                {
-                                    if (row.Columns != null)
-                                    {
-                                        Console.WriteLine($"Row {row.Order} has {row.Columns.Count} columns");
-                                        foreach (var col in row.Columns.Where(c => c.Team != null))
-                                        {
-                                            Console.WriteLine($"Column has team: {col.Team.Name}");
-                                        }
-                                    }
-                                }
+                                postRankDTO.User = _mapper.Map<MemberDTO>(postRank.User);
                             }
+
+                            // Also set userId for consistency
+                            postRankDTO.UserId = postRank.UserId;
+
+                            // Log user info for debugging
+                            Console.WriteLine($"PostRank {postRank.Id} - UserId: {postRank.UserId}, User: {postRank.User?.DisplayName ?? "NULL"}");
 
                             response.PostRanks.Add(postRankDTO);
                         }
@@ -492,6 +487,14 @@ public class PostController : BaseAPIController
                         try
                         {
                             var postBracketDTO = _mapper.Map<PostBracketDTO>(postBracket);
+
+                            // FIXED: Ensure user data is properly mapped
+                            if (postBracket.User != null)
+                            {
+                                postBracketDTO.User = _mapper.Map<MemberDTO>(postBracket.User);
+                            }
+
+                            postBracketDTO.UserId = postBracket.UserId;
                             response.PostBrackets.Add(postBracketDTO);
                         }
                         catch (Exception pbEx)
@@ -511,6 +514,14 @@ public class PostController : BaseAPIController
                         try
                         {
                             var postBingoDTO = _mapper.Map<PostBingoDTO>(postBingo);
+
+                            // FIXED: Ensure user data is properly mapped
+                            if (postBingo.User != null)
+                            {
+                                postBingoDTO.User = _mapper.Map<MemberDTO>(postBingo.User);
+                            }
+
+                            postBingoDTO.UserId = postBingo.UserId;
 
                             // Log bingo cells info
                             if (postBingo.BingoCells != null)
@@ -544,6 +555,7 @@ public class PostController : BaseAPIController
             });
         }
     }
+
     [HttpPost("counter-prediction")]
     public async Task<ActionResult> CreateCounterPrediction([FromBody] CounterPredictionRequestDTO request)
     {

@@ -14,4 +14,6 @@ public class PostRankDTO
     public bool IsOfficialResult { get; set; } = false;
     public float TotalScore { get; set; }
     public List<TeamDTO> RankTeams { get; set; } = [];
+    public MemberDTO? User { get; set; }
+    public MemberDTO? Author { get; set; }
 }

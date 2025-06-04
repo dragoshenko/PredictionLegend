@@ -14,4 +14,6 @@ public class PostBingoDTO
     public List<TeamDTO> Teams { get; set; } = [];
     public int TotalScore { get; set; }
     public bool IsOfficialResult { get; set; } = false;
+    public MemberDTO? User { get; set; }
+    public MemberDTO? Author { get; set; }
 }

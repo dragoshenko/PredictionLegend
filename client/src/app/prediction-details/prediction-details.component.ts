@@ -62,9 +62,6 @@ interface CounterPredictionData {
               <button class="btn btn-outline-light" (click)="goBack()">
                 <i class="fa fa-arrow-left me-2"></i>Back
               </button>
-              <button class="btn btn-info" (click)="showDebugInfo = !showDebugInfo">
-                <i class="fa fa-bug me-2"></i>{{ showDebugInfo ? 'Hide' : 'Show' }} Debug
-              </button>
             </div>
           </div>
         </div>
@@ -85,35 +82,6 @@ interface CounterPredictionData {
             <i class="fa fa-info-circle fa-2x text-light mb-3"></i>
             <h5 class="text-light">Counter Prediction Not Available</h5>
             <p class="text-light mb-2">{{ getCounterPredictionUnavailableReason() }}</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Debug Info -->
-      <div class="card bg-dark border-dark mb-4" *ngIf="showDebugInfo">
-        <div class="card-header bg-dark border-dark">
-          <h5 class="text-light mb-0">Debug Information</h5>
-        </div>
-        <div class="card-body">
-          <div class="row">
-            <div class="col-md-6">
-              <h6 class="text-light">Counter Predictions Count:</h6>
-              <pre class="text-light small">
-Total Counter Predictions: {{ getAllCounterPredictions().length }}
-Ranking Counter Predictions: {{ getCounterRankings().length }}
-Bingo Counter Predictions: {{ getCounterBingos().length }}
-Original Post Data Available: {{ hasOriginalPostData() }}
-Available Teams: {{ getAvailableTeams().length }}
-              </pre>
-            </div>
-            <div class="col-md-6">
-              <h6 class="text-light">Raw Post Data:</h6>
-              <pre class="text-light small" style="max-height: 200px; overflow-y: auto;">
-PostRanks: {{ predictionDetail.postRanks?.length || 0 }}
-PostBingos: {{ predictionDetail.postBingos?.length || 0 }}
-{{ getDebugStructure() }}
-              </pre>
-            </div>
           </div>
         </div>
       </div>

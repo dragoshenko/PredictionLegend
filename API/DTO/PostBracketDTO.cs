@@ -13,5 +13,7 @@ public class PostBracketDTO
     public float TotalScore { get; set; }
     public bool IsOfficialResult { get; set; } = false;
     public List<Team> Teams { get; set; } = [];
+    public MemberDTO? User { get; set; }
+    public MemberDTO? Author { get; set; }
 
 }
