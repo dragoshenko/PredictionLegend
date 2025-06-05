@@ -1104,6 +1104,85 @@ public class PostController : BaseAPIController
             });
         }
     }
+    [HttpPut("prediction/{predictionId}/publish")]
+public async Task<ActionResult> PublishPrediction(int predictionId)
+{
+    try
+    {
+        var userId = User.GetUserId();
+        Console.WriteLine($"Publishing prediction {predictionId} for user {userId}");
+
+        // Get the prediction
+        var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(predictionId);
+        if (prediction == null)
+        {
+            return NotFound(new { message = "Prediction not found" });
+        }
+
+        // Verify ownership
+        if (prediction.UserId != userId)
+        {
+            return Unauthorized(new { message = "You can only publish your own predictions" });
+        }
+
+        // Check if it's currently a draft
+        if (!prediction.IsDraft)
+        {
+            return BadRequest(new { message = "This prediction is already published" });
+        }
+
+        // Validate that the prediction has the required post data
+        bool hasPostData = false;
+        switch (prediction.PredictionType)
+        {
+            case PredictionType.Ranking:
+                hasPostData = prediction.PostRanks.Any(pr => pr.UserId == userId);
+                break;
+            case PredictionType.Bingo:
+                hasPostData = prediction.PostBingos.Any(pb => pb.UserId == userId);
+                break;
+            case PredictionType.Bracket:
+                hasPostData = prediction.PostBrackets.Any(pb => pb.UserId == userId);
+                break;
+        }
+
+        if (!hasPostData)
+        {
+            return BadRequest(new { 
+                message = "Cannot publish prediction without post data", 
+                error = "Please complete your prediction by adding ranking/bingo/bracket data before publishing" 
+            });
+        }
+
+        // Update prediction to published status
+        prediction.IsDraft = false;
+        prediction.IsActive = true;
+        prediction.LastModified = DateTime.UtcNow;
+
+        await _unitOfWork.PredictionRepository.UpdatePredictionAsync(prediction);
+        await _unitOfWork.Complete();
+
+        Console.WriteLine($"Successfully published prediction {predictionId}");
+
+        return Ok(new
+        {
+            message = "Prediction published successfully",
+            predictionId = predictionId,
+            title = prediction.Title,
+            isPublished = true
+        });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error publishing prediction {predictionId}: {ex.Message}");
+        Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        return StatusCode(500, new
+        {
+            message = "An error occurred while publishing the prediction",
+            error = "Please try again later or contact support if the problem persists"
+        });
+    }
+}
     
     [HttpGet("my-counter-predictions")]
     public async Task<ActionResult<List<UserCounterPredictionSummaryDTO>>> GetMyCounterPredictions()

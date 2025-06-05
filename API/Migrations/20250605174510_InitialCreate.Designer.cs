@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace API.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20250528225540_FixBingo")]
-    partial class FixBingo
+    [Migration("20250605174510_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -1147,11 +1147,13 @@ namespace API.Migrations
                 {
                     b.HasOne("API.Entities.PostBingo", null)
                         .WithMany("BingoCells")
-                        .HasForeignKey("PostBingoId");
+                        .HasForeignKey("PostBingoId")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("API.Entities.Team", "Team")
                         .WithMany()
-                        .HasForeignKey("TeamId");
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Team");
                 });
@@ -1297,7 +1299,7 @@ namespace API.Migrations
                     b.HasOne("API.Entities.AppUser", "User")
                         .WithMany("PostBingos")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Prediction");

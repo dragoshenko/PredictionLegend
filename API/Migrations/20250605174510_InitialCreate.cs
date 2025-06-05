@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace API.Migrations
 {
     /// <inheritdoc />
-    public partial class FixBingo : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -427,8 +427,7 @@ namespace API.Migrations
                         name: "FK_PostBingos_AspNetUsers_UserId",
                         column: x => x.UserId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_PostBingos_BingoTemplates_BingoTemplateId",
                         column: x => x.BingoTemplateId,
@@ -566,7 +565,8 @@ namespace API.Migrations
                         name: "FK_BingoCells_PostBingos_PostBingoId",
                         column: x => x.PostBingoId,
                         principalTable: "PostBingos",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -1099,7 +1099,8 @@ namespace API.Migrations
                 table: "BingoCells",
                 column: "TeamId",
                 principalTable: "Teams",
-                principalColumn: "Id");
+                principalColumn: "Id",
+                onDelete: ReferentialAction.SetNull);
 
             migrationBuilder.AddForeignKey(
                 name: "FK_Brackets_RootBrackets_RootBracketId",
