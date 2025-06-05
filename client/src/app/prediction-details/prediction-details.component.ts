@@ -552,6 +552,120 @@ export class PredictionDetailsComponent implements OnInit {
     return null;
   }
 
+  // FIXED: Add the missing category icon methods from my-prediction-view
+  getContrastColor(hexColor: string): string {
+    if (!hexColor) return '#ffffff';
+
+    const color = hexColor.replace('#', '');
+
+    const r = parseInt(color.substr(0, 2), 16);
+    const g = parseInt(color.substr(2, 2), 16);
+    const b = parseInt(color.substr(4, 2), 16);
+
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+    return brightness > 128 ? '#000000' : '#ffffff';
+  }
+
+  getSafeIconClass(iconName: string | undefined): string {
+    if (!iconName) return 'fa-tag';
+
+    const cleanIconName = iconName.replace('fa-', '').toLowerCase().trim();
+
+    if (!cleanIconName) return 'fa-tag';
+
+    const safeIconMap: { [key: string]: string } = {
+      'sports': 'fa-trophy',
+      'sport': 'fa-trophy',
+      'soccer': 'fa-soccer-ball-o',
+      'football': 'fa-football',
+      'basketball': 'fa-basketball',
+      'baseball': 'fa-baseball',
+      'tennis': 'fa-trophy',
+      'golf': 'fa-trophy',
+      'hockey': 'fa-trophy',
+      'racing': 'fa-car',
+      'olympics': 'fa-trophy',
+      'championship': 'fa-trophy',
+      'league': 'fa-trophy',
+      'premier': 'fa-trophy',
+      'competition': 'fa-trophy',
+      'music': 'fa-music',
+      'movies': 'fa-film',
+      'tv': 'fa-tv',
+      'entertainment': 'fa-film',
+      'gaming': 'fa-gamepad',
+      'esports': 'fa-gamepad',
+      'technology': 'fa-laptop',
+      'tech': 'fa-laptop',
+      'software': 'fa-code',
+      'mobile': 'fa-mobile',
+      'computer': 'fa-laptop',
+      'business': 'fa-briefcase',
+      'finance': 'fa-money',
+      'economy': 'fa-chart-line',
+      'stocks': 'fa-chart-line',
+      'education': 'fa-graduation-cap',
+      'school': 'fa-graduation-cap',
+      'university': 'fa-university',
+      'science': 'fa-flask',
+      'books': 'fa-book',
+      'travel': 'fa-plane',
+      'tourism': 'fa-plane',
+      'geography': 'fa-globe',
+      'world': 'fa-globe',
+      'health': 'fa-heart',
+      'medicine': 'fa-medkit',
+      'fitness': 'fa-heart',
+      'news': 'fa-newspaper-o',
+      'politics': 'fa-institution',
+      'government': 'fa-institution',
+      'food': 'fa-cutlery',
+      'cooking': 'fa-cutlery',
+      'lifestyle': 'fa-home',
+      'home': 'fa-home',
+      'default': 'fa-tag',
+      'category': 'fa-tag'
+    };
+
+    if (safeIconMap[cleanIconName]) {
+      return safeIconMap[cleanIconName];
+    }
+
+    for (const [key, value] of Object.entries(safeIconMap)) {
+      if (cleanIconName.includes(key) || key.includes(cleanIconName)) {
+        return value;
+      }
+    }
+
+    const knownSafeIcons = [
+      'fa-trophy', 'fa-soccer-ball-o', 'fa-football', 'fa-basketball', 'fa-baseball',
+      'fa-music', 'fa-film', 'fa-tv', 'fa-gamepad', 'fa-laptop', 'fa-mobile',
+      'fa-book', 'fa-graduation-cap', 'fa-university', 'fa-flask', 'fa-briefcase',
+      'fa-money', 'fa-chart-line', 'fa-globe', 'fa-plane', 'fa-heart', 'fa-medkit',
+      'fa-newspaper-o', 'fa-institution', 'fa-cutlery', 'fa-home', 'fa-users',
+      'fa-tag', 'fa-tags', 'fa-star', 'fa-cog', 'fa-camera', 'fa-car'
+    ];
+
+    const withPrefix = iconName.startsWith('fa-') ? iconName : `fa-${iconName}`;
+    if (knownSafeIcons.includes(withPrefix)) {
+      return withPrefix;
+    }
+
+    const cleanWithPrefix = `fa-${cleanIconName}`;
+    if (knownSafeIcons.includes(cleanWithPrefix)) {
+      return cleanWithPrefix;
+    }
+
+    return 'fa-tag';
+  }
+
+  // This is the key method that fixes the icon display issue
+  getFullIconClass(iconName: string | undefined): string {
+    const safeIcon = this.getSafeIconClass(iconName);
+    return `fa ${safeIcon}`;
+  }
+
   // Format date helper - handles invalid dates
   formatDate(dateString: string | Date): string {
     if (!dateString) return 'Not available';

@@ -588,22 +588,23 @@
       <!-- Categories -->
       <div class="card bg-dark border-dark" *ngIf="predictionDetail.categories && predictionDetail.categories.length > 0">
         <div class="card-header bg-dark border-dark">
-          <h5 class="text-light mb-0">Categories</h5>
+          <h5 class="text-light mb-0">
+            <i class="fa fa-tags me-2"></i>Categories
+          </h5>
         </div>
         <div class="card-body">
           <div class="d-flex flex-wrap gap-2">
             <span *ngFor="let category of predictionDetail.categories"
-                  class="badge bg-primary"
-                  [style.background-color]="category.colorCode || '#0d6efd'">
-              <i class="fa" [ngClass]="category.iconName" *ngIf="category.iconName" class="me-1"></i>
+                  class="badge category-badge"
+                  [style.background-color]="category.colorCode || '#0d6efd'"
+                  [style.color]="getContrastColor(category.colorCode || '#0d6efd')"
+                  [style.border]="'1px solid ' + (category.colorCode || '#0d6efd')">
+              <i [class]="getFullIconClass(category.iconName)" class="me-1"></i>
               {{ category.name }}
             </span>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-</div>
 
 <!-- Loading State -->
 <div *ngIf="!predictionDetail && isLoading" class="text-center py-5">

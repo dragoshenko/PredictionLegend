@@ -223,6 +223,47 @@
   border-color: rgba(0, 123, 255, 0.3);
   transform: translateY(-2px);
 }
+.category-badge {
+  padding: 0.5em 0.75em;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.category-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Make sure icons are properly spaced */
+.category-badge i {
+  margin-right: 0.25rem;
+}
+
+/* Enhanced badge effects for categories */
+.category-badge {
+  position: relative;
+  overflow: hidden;
+}
+
+.category-badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.category-badge:hover::before {
+  left: 100%;
+}
 
 /* Animations */
 @keyframes fadeInUp {
