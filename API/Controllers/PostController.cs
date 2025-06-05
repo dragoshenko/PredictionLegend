@@ -1105,85 +1105,86 @@ public class PostController : BaseAPIController
         }
     }
     [HttpPut("prediction/{predictionId}/publish")]
-public async Task<ActionResult> PublishPrediction(int predictionId)
-{
-    try
+    public async Task<ActionResult> PublishPrediction(int predictionId)
     {
-        var userId = User.GetUserId();
-        Console.WriteLine($"Publishing prediction {predictionId} for user {userId}");
-
-        // Get the prediction
-        var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(predictionId);
-        if (prediction == null)
+        try
         {
-            return NotFound(new { message = "Prediction not found" });
-        }
+            var userId = User.GetUserId();
+            Console.WriteLine($"Publishing prediction {predictionId} for user {userId}");
 
-        // Verify ownership
-        if (prediction.UserId != userId)
-        {
-            return Unauthorized(new { message = "You can only publish your own predictions" });
-        }
+            // Get the prediction
+            var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(predictionId);
+            if (prediction == null)
+            {
+                return NotFound(new { message = "Prediction not found" });
+            }
 
-        // Check if it's currently a draft
-        if (!prediction.IsDraft)
-        {
-            return BadRequest(new { message = "This prediction is already published" });
-        }
+            // Verify ownership
+            if (prediction.UserId != userId)
+            {
+                return Unauthorized(new { message = "You can only publish your own predictions" });
+            }
 
-        // Validate that the prediction has the required post data
-        bool hasPostData = false;
-        switch (prediction.PredictionType)
-        {
-            case PredictionType.Ranking:
-                hasPostData = prediction.PostRanks.Any(pr => pr.UserId == userId);
-                break;
-            case PredictionType.Bingo:
-                hasPostData = prediction.PostBingos.Any(pb => pb.UserId == userId);
-                break;
-            case PredictionType.Bracket:
-                hasPostData = prediction.PostBrackets.Any(pb => pb.UserId == userId);
-                break;
-        }
+            // Check if it's currently a draft
+            if (!prediction.IsDraft)
+            {
+                return BadRequest(new { message = "This prediction is already published" });
+            }
 
-        if (!hasPostData)
-        {
-            return BadRequest(new { 
-                message = "Cannot publish prediction without post data", 
-                error = "Please complete your prediction by adding ranking/bingo/bracket data before publishing" 
+            // Validate that the prediction has the required post data
+            bool hasPostData = false;
+            switch (prediction.PredictionType)
+            {
+                case PredictionType.Ranking:
+                    hasPostData = prediction.PostRanks.Any(pr => pr.UserId == userId);
+                    break;
+                case PredictionType.Bingo:
+                    hasPostData = prediction.PostBingos.Any(pb => pb.UserId == userId);
+                    break;
+                case PredictionType.Bracket:
+                    hasPostData = prediction.PostBrackets.Any(pb => pb.UserId == userId);
+                    break;
+            }
+
+            if (!hasPostData)
+            {
+                return BadRequest(new
+                {
+                    message = "Cannot publish prediction without post data",
+                    error = "Please complete your prediction by adding ranking/bingo/bracket data before publishing"
+                });
+            }
+
+            // Update prediction to published status
+            prediction.IsDraft = false;
+            prediction.IsActive = true;
+            prediction.LastModified = DateTime.UtcNow;
+
+            await _unitOfWork.PredictionRepository.UpdatePredictionAsync(prediction);
+            await _unitOfWork.Complete();
+
+            Console.WriteLine($"Successfully published prediction {predictionId}");
+
+            return Ok(new
+            {
+                message = "Prediction published successfully",
+                predictionId = predictionId,
+                title = prediction.Title,
+                isPublished = true
             });
         }
-
-        // Update prediction to published status
-        prediction.IsDraft = false;
-        prediction.IsActive = true;
-        prediction.LastModified = DateTime.UtcNow;
-
-        await _unitOfWork.PredictionRepository.UpdatePredictionAsync(prediction);
-        await _unitOfWork.Complete();
-
-        Console.WriteLine($"Successfully published prediction {predictionId}");
-
-        return Ok(new
+        catch (Exception ex)
         {
-            message = "Prediction published successfully",
-            predictionId = predictionId,
-            title = prediction.Title,
-            isPublished = true
-        });
+            Console.WriteLine($"Error publishing prediction {predictionId}: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return StatusCode(500, new
+            {
+                message = "An error occurred while publishing the prediction",
+                error = "Please try again later or contact support if the problem persists"
+            });
+        }
     }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Error publishing prediction {predictionId}: {ex.Message}");
-        Console.WriteLine($"Stack trace: {ex.StackTrace}");
-        return StatusCode(500, new
-        {
-            message = "An error occurred while publishing the prediction",
-            error = "Please try again later or contact support if the problem persists"
-        });
-    }
-}
-    
+
     [HttpGet("my-counter-predictions")]
     public async Task<ActionResult<List<UserCounterPredictionSummaryDTO>>> GetMyCounterPredictions()
     {
@@ -1393,5 +1394,198 @@ public async Task<ActionResult> PublishPrediction(int predictionId)
             });
         }
     }
+
+    [HttpDelete("counter-prediction/{id}/{type}")]
+    public async Task<ActionResult> DeleteCounterPrediction(int id, string type)
+    {
+        try
+        {
+            var userId = User.GetUserId();
+            Console.WriteLine($"Deleting counter prediction: ID={id}, Type={type}, User={userId}");
+
+            if (userId <= 0)
+            {
+                return Unauthorized(new { message = "Invalid user authentication" });
+            }
+
+            bool deleteResult = false;
+            string entityType = "";
+
+            switch (type.ToLower())
+            {
+                case "ranking":
+                    var postRank = await _unitOfWork.PostRepository.GetPostRank(id);
+                    if (postRank == null)
+                    {
+                        return NotFound(new { message = "Ranking counter prediction not found" });
+                    }
+
+                    // Verify ownership
+                    if (postRank.UserId != userId)
+                    {
+                        return Unauthorized(new { message = "You can only delete your own counter predictions" });
+                    }
+
+                    // Verify it's actually a counter prediction (not the original)
+                    var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(postRank.PredictionId);
+                    if (prediction != null && prediction.UserId == userId)
+                    {
+                        return BadRequest(new { message = "Cannot delete original prediction through this endpoint" });
+                    }
+
+                    deleteResult = await _unitOfWork.PostRepository.DeletePostRank(id);
+                    entityType = "ranking counter prediction";
+                    break;
+
+                case "bingo":
+                    var postBingo = await _unitOfWork.PostRepository.GetPostBingo(id);
+                    if (postBingo == null)
+                    {
+                        return NotFound(new { message = "Bingo counter prediction not found" });
+                    }
+
+                    // Verify ownership
+                    if (postBingo.UserId != userId)
+                    {
+                        return Unauthorized(new { message = "You can only delete your own counter predictions" });
+                    }
+
+                    // Verify it's actually a counter prediction (not the original)
+                    var bingoPrediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(postBingo.PredictionId);
+                    if (bingoPrediction != null && bingoPrediction.UserId == userId)
+                    {
+                        return BadRequest(new { message = "Cannot delete original prediction through this endpoint" });
+                    }
+
+                    deleteResult = await _unitOfWork.PostRepository.DeletePostBingo(id);
+                    entityType = "bingo counter prediction";
+                    break;
+
+                case "bracket":
+                    var postBracket = await _unitOfWork.PostRepository.GetPostBracket(id);
+                    if (postBracket == null)
+                    {
+                        return NotFound(new { message = "Bracket counter prediction not found" });
+                    }
+
+                    // Verify ownership
+                    if (postBracket.UserId != userId)
+                    {
+                        return Unauthorized(new { message = "You can only delete your own counter predictions" });
+                    }
+
+                    // Verify it's actually a counter prediction (not the original)
+                    var bracketPrediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(postBracket.PredictionId);
+                    if (bracketPrediction != null && bracketPrediction.UserId == userId)
+                    {
+                        return BadRequest(new { message = "Cannot delete original prediction through this endpoint" });
+                    }
+
+                    deleteResult = await _unitOfWork.PostRepository.DeletePostBracket(id);
+                    entityType = "bracket counter prediction";
+                    break;
+
+                default:
+                    return BadRequest(new { message = "Invalid counter prediction type", error = $"Type '{type}' is not supported" });
+            }
+
+            if (!deleteResult)
+            {
+                Console.WriteLine($"Failed to delete {entityType} with ID {id}");
+                return BadRequest(new { message = $"Failed to delete {entityType}" });
+            }
+
+            Console.WriteLine($"Successfully deleted {entityType} with ID {id}");
+            return Ok(new
+            {
+                message = $"Counter prediction deleted successfully",
+                deletedId = id,
+                type = type
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting counter prediction: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return StatusCode(500, new
+            {
+                message = "An error occurred while deleting the counter prediction",
+                error = "Please try again later or contact support if the problem persists"
+            });
+        }
+    }
+[HttpDelete("{id}")]
+public async Task<ActionResult> DeletePrediction(int id)
+{
+    try
+    {
+        var userId = User.GetUserId();
+        Console.WriteLine($"Deleting prediction: ID={id}, User={userId}");
+
+        if (userId <= 0)
+        {
+            return Unauthorized(new { message = "Invalid user authentication" });
+        }
+
+        // Get the prediction with all related data
+        var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(
+            id,
+            includeUser: true,
+            includePostRanks: true,
+            includePostBingos: true,
+            includePostBrackets: true
+        );
+
+        if (prediction == null)
+        {
+            return NotFound(new { message = "Prediction not found" });
+        }
+
+        // Verify ownership
+        if (prediction.UserId != userId)
+        {
+            return Unauthorized(new { message = "You can only delete your own predictions" });
+        }
+
+        // Check if prediction has counter predictions
+        var hasCounterPredictions = 
+            prediction.PostRanks.Any(pr => pr.UserId != userId) ||
+            prediction.PostBingos.Any(pb => pb.UserId != userId) ||
+            prediction.PostBrackets.Any(pb => pb.UserId != userId);
+
+        if (hasCounterPredictions && !prediction.IsDraft)
+        {
+            return BadRequest(new { 
+                message = "Cannot delete published predictions with counter predictions",
+                error = "This prediction has responses from other users and cannot be deleted"
+            });
+        }
+
+        // Delete the prediction (cascade should handle related data)
+        var deleteResult = await _unitOfWork.PredictionRepository.DeletePrediction(prediction);
+
+        if (!deleteResult)
+        {
+            Console.WriteLine($"Failed to delete prediction with ID {id}");
+            return BadRequest(new { message = "Failed to delete prediction" });
+        }
+
+        Console.WriteLine($"Successfully deleted prediction with ID {id}");
+        return Ok(new { 
+            message = "Prediction deleted successfully",
+            deletedId = id
+        });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error deleting prediction: {ex.Message}");
+        Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        return StatusCode(500, new
+        {
+            message = "An error occurred while deleting the prediction",
+            error = "Please try again later or contact support if the problem persists"
+        });
+    }
+}
 
 }

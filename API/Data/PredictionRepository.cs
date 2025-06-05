@@ -24,18 +24,87 @@ public class PredictionRepository : IPredictionRepository
         return entity.Entity;
     }
 
+    public async Task<bool> DeletePrediction(Prediction prediction)
+{
+    try
+    {
+        Console.WriteLine($"=== DeletePrediction called for prediction {prediction.Id} ===");
+        
+        // Load the prediction with all related data to ensure proper deletion
+        var predictionToDelete = await _context.Predictions
+            .Include(p => p.PostRanks)
+                .ThenInclude(pr => pr.RankTable)
+                    .ThenInclude(rt => rt.Rows)
+                        .ThenInclude(r => r.Columns)
+            .Include(p => p.PostBingos)
+                .ThenInclude(pb => pb.BingoCells)
+            .Include(p => p.PostBrackets)
+                .ThenInclude(pb => pb.RootBracket)
+                    .ThenInclude(rb => rb.Brackets)
+            .Include(p => p.Categories) // Include prediction categories
+            .FirstOrDefaultAsync(p => p.Id == prediction.Id);
+
+        if (predictionToDelete == null)
+        {
+            Console.WriteLine($"Prediction {prediction.Id} not found for deletion");
+            return false;
+        }
+
+        Console.WriteLine($"Found prediction to delete: {predictionToDelete.Title}");
+        Console.WriteLine($"PostRanks: {predictionToDelete.PostRanks?.Count ?? 0}");
+        Console.WriteLine($"PostBingos: {predictionToDelete.PostBingos?.Count ?? 0}");
+        Console.WriteLine($"PostBrackets: {predictionToDelete.PostBrackets?.Count ?? 0}");
+        Console.WriteLine($"Categories: {predictionToDelete.Categories?.Count ?? 0}");
+
+        // Remove prediction categories first (they might not cascade properly)
+        if (predictionToDelete.Categories != null && predictionToDelete.Categories.Any())
+        {
+            Console.WriteLine("Removing prediction categories...");
+            _context.PredictionCategories.RemoveRange(predictionToDelete.Categories);
+        }
+
+        // Remove the prediction (cascade should handle the rest)
+        Console.WriteLine("Removing prediction...");
+        _context.Predictions.Remove(predictionToDelete);
+        
+        // Save changes
+        var result = await _context.SaveChangesAsync();
+        Console.WriteLine($"SaveChanges result: {result} rows affected");
+        
+        return result > 0;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"=== ERROR in DeletePrediction ===");
+        Console.WriteLine($"Exception type: {ex.GetType().Name}");
+        Console.WriteLine($"Exception message: {ex.Message}");
+        Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        
+        if (ex.InnerException != null)
+        {
+            Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+            Console.WriteLine($"Inner stack trace: {ex.InnerException.StackTrace}");
+        }
+        
+        // Log database-specific errors
+        if (ex is Microsoft.EntityFrameworkCore.DbUpdateException dbEx)
+        {
+            Console.WriteLine($"Database update exception: {dbEx.Message}");
+            if (dbEx.InnerException != null)
+            {
+                Console.WriteLine($"DB Inner exception: {dbEx.InnerException.Message}");
+            }
+        }
+        
+        throw; // Re-throw to be caught by the controller
+    }
+}
+
     public Task AddPredictionCategoryAsync(int predictionId, int categoryId)
     {
         throw new NotImplementedException();
     }
 
-    public async Task<bool> DeletePrediction(Prediction prediction)
-    {
-        // entity context modified
-        _context.Entry(prediction).State = EntityState.Deleted;
-        var result = await _context.SaveChangesAsync();
-        return result > 0;
-    }
 
     public Task<BracketPredictionDetailDTO?> GetBracketDetailAsync(int predictionId)
     {
