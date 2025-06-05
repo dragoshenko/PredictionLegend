@@ -7,9 +7,35 @@ namespace API.Data;
 
 public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, AppRole, int, IdentityUserClaim<int>, AppUserRole, IdentityUserLogin<int>, IdentityRoleClaim<int>, IdentityUserToken<int>>(options) //specific order for this one
 {
-    public DbSet<Comment> Comments { get; set; }
-    public DbSet<PostBracket> PostBrackets { get; set; }
-    public DbSet<Bracket> Brackets { get; set; }
+    public DbSet<Category> Categories { get; set; } = null!;
+    public DbSet<Comment> Comments { get; set; } = null!;
+    public DbSet<DiscussionPost> DiscussionPosts { get; set; } = null!;
+    public DbSet<Photo> Photos { get; set; } = null!;
+    public DbSet<Team> Teams { get; set; } = null!;
+    public DbSet<CreationFlow> CreationFlows { get; set; } = null!; // Added
+
+    #region PredictionDbConfig
+    public DbSet<Prediction> Predictions { get; set; } = null!;
+    public DbSet<PredictionCategory> PredictionCategories { get; set; } = null!;
+    // brackets
+    public DbSet<BracketTemplate> BracketTemplates { get; set; } = null!;
+    public DbSet<PostBracket> PostBrackets { get; set; } = null!;
+    public DbSet<RootBracket> RootBrackets { get; set; } = null!;
+    public DbSet<Bracket> Brackets { get; set; } = null!;
+    public DbSet<BracketToBracket> BracketToBrackets { get; set; } = null!;
+    // ranking
+    public DbSet<RankingTemplate> RankingTemplates { get; set; } = null!;
+    public DbSet<RankTable> RankTables { get; set; } = null!;
+    public DbSet<Row> Rows { get; set; } = null!;
+    public DbSet<Column> Columns { get; set; } = null!;
+    public DbSet<PostRank> PostRanks { get; set; } = null!;
+    // bingo
+    public DbSet<BingoTemplate> BingoTemplates { get; set; } = null!;
+    public DbSet<BingoCell> BingoCells { get; set; } = null!;
+    public DbSet<PostBingo> PostBingos { get; set; } = null!;
+    #endregion
+
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         #region UserDbConfig
@@ -25,16 +51,16 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
         .HasOne(u => u.Photo)
         .WithOne(p => p.AppUser)
         .HasForeignKey<Photo>(p => p.AppUserId)
-        .OnDelete(DeleteBehavior.Cascade); // set null when user is deleted
+        .OnDelete(DeleteBehavior.Cascade);
 
         // User - RefreshToken relationship (One to many)
         builder.Entity<AppUser>()
          .HasMany(rt => rt.RefreshTokens)
          .WithOne(u => u.AppUser)
          .HasForeignKey(rt => rt.AppUserId)
-         .OnDelete(DeleteBehavior.Cascade); //cascade delete refresh tokens when user is deleted
-                                            // Role - User relationship (One to many)
+         .OnDelete(DeleteBehavior.Cascade);
 
+        // Role - User relationship (One to many)
         builder.Entity<AppRole>()
          .HasMany(ur => ur.UserRoles)
          .WithOne(u => u.Role)
@@ -47,6 +73,122 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
            .HasForeignKey(p => p.UserId)
            .OnDelete(DeleteBehavior.NoAction);
         #endregion
+
+        #region PredictionDbConfig - FIXED FOR COUNTER PREDICTIONS
+
+        // Prediction to PostRank (One-to-Many) - FIXED to support multiple users per prediction
+        builder.Entity<Prediction>()
+            .HasMany(p => p.PostRanks)
+            .WithOne(pr => pr.Prediction)
+            .HasForeignKey(pr => pr.PredictionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Prediction to PostBingo (One-to-Many) - FIXED to support multiple users per prediction
+        builder.Entity<Prediction>()
+            .HasMany(p => p.PostBingos)
+            .WithOne(pb => pb.Prediction)
+            .HasForeignKey(pb => pb.PredictionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Prediction to PostBracket (One-to-Many) - FIXED to support multiple users per prediction
+        builder.Entity<Prediction>()
+            .HasMany(p => p.PostBrackets)
+            .WithOne(pb => pb.Prediction)
+            .HasForeignKey(pb => pb.PredictionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // PostRank to User (Many-to-One) - User can have multiple PostRanks
+        builder.Entity<PostRank>()
+            .HasOne(pr => pr.User)
+            .WithMany(u => u.PostRanks)
+            .HasForeignKey(pr => pr.UserId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        // PostBingo to User (Many-to-One) - User can have multiple PostBingos
+        builder.Entity<PostBingo>()
+            .HasOne(pb => pb.User)
+            .WithMany(u => u.PostBingos)
+            .HasForeignKey(pb => pb.UserId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        // PostBracket to User (Many-to-One) - User can have multiple PostBrackets
+        builder.Entity<PostBracket>()
+            .HasOne(pb => pb.User)
+            .WithMany(u => u.PostBrackets)
+            .HasForeignKey(pb => pb.UserId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        // PostRank to RankTable (One-to-One)
+        builder.Entity<PostRank>()
+            .HasOne(pr => pr.RankTable)
+            .WithOne(rt => rt.PostRank)
+            .HasForeignKey<RankTable>(rt => rt.PostRankId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // RankTable to Rows (One-to-Many)
+        builder.Entity<RankTable>()
+            .HasMany(rt => rt.Rows)
+            .WithOne()
+            .HasForeignKey("RankTableId")
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Row to Columns (One-to-Many)
+        builder.Entity<Row>()
+            .HasMany(r => r.Columns)
+            .WithOne()
+            .HasForeignKey("RowId")
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Column to Team (Many-to-One)
+        builder.Entity<Column>()
+            .HasOne(c => c.Team)
+            .WithMany()
+            .HasForeignKey("TeamId")
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // PostBingo to BingoCells (One-to-Many)
+        builder.Entity<PostBingo>()
+            .HasMany(pb => pb.BingoCells)
+            .WithOne()
+            .HasForeignKey("PostBingoId")
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // BingoCell to Team (Many-to-One)
+        builder.Entity<BingoCell>()
+            .HasOne(bc => bc.Team)
+            .WithMany()
+            .HasForeignKey(bc => bc.TeamId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        #endregion
+
+        #region CreationFlowDbConfig
+        builder.Entity<CreationFlow>()
+            .HasOne(cf => cf.User)
+            .WithMany()
+            .HasForeignKey(cf => cf.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<CreationFlow>()
+            .HasOne(cf => cf.Prediction)
+            .WithMany()
+            .HasForeignKey(cf => cf.PredictionId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<CreationFlow>()
+            .HasIndex(cf => cf.FlowToken)
+            .IsUnique();
+        #endregion
+
+        #region CategoryDbConfig
+        // Configure Category entity
+        builder.Entity<Category>()
+            .HasMany(c => c.SubCategories)
+            .WithOne(c => c.ParentCategory)
+            .HasForeignKey(c => c.ParentCategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
+        #endregion
+
         #region CommentDbConfig
         builder.Entity<Comment>()
         .HasOne(c => c.ParentComment)
@@ -55,36 +197,16 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
         .OnDelete(DeleteBehavior.NoAction);
 
         builder.Entity<Comment>()
-        .HasOne(c => c.User)
-        .WithMany(u => u.Comments)
-        .HasForeignKey(c => c.UserId)
-        .OnDelete(DeleteBehavior.NoAction);
-
-        builder.Entity<Comment>()
-        .HasOne(c => c.PostBracket)
-        .WithMany(p => p.Comments)
-        .HasForeignKey(c => c.PostBracketId)
-        .OnDelete(DeleteBehavior.NoAction);
-
-
-        builder.Entity<Comment>()
-            .HasOne(c => c.PostRank)
-            .WithMany(p => p.Comments)
-            .HasForeignKey(c => c.PostRankId)
-            .OnDelete(DeleteBehavior.NoAction);
-
-        builder.Entity<Comment>()
             .HasOne(c => c.DiscussionPost)
             .WithMany(p => p.Comments)
             .HasForeignKey(c => c.DiscussionPostId)
             .OnDelete(DeleteBehavior.NoAction);
-
         #endregion
-        #region BracketDbConfig
 
-        // Composite key for auxiliary table (if needed)
+        #region BracketDbConfig
+        // Composite key for auxiliary table
         builder.Entity<BracketToBracket>()
-     .HasKey(b => new { b.LeftBracketId, b.RightBracketId });
+         .HasKey(b => new { b.LeftBracketId, b.RightBracketId });
 
         builder.Entity<BracketToBracket>()
             .HasOne(b => b.LeftBracket)
@@ -97,34 +219,6 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
             .WithMany()
             .HasForeignKey(b => b.RightBracketId)
             .OnDelete(DeleteBehavior.NoAction);
-
-
-        // PostBracket and AppUser
-        builder.Entity<PostBracket>()
-            .HasOne(p => p.User)
-            .WithMany(u => u.PostBrackets)
-            .HasForeignKey(p => p.UserId)
-            .OnDelete(DeleteBehavior.NoAction);
-
-        // PostBracket and RootBracket (1:1)
-        builder.Entity<PostBracket>()
-            .HasOne(p => p.RootBracket)
-            .WithOne(r => r.PostBracket)
-            .HasForeignKey<PostBracket>(p => p.Id)
-            .OnDelete(DeleteBehavior.NoAction);
-
-        // RootBracket and Brackets (left & right)
-        builder.Entity<RootBracket>()
-            .HasOne(r => r.LeftBracket)
-            .WithMany()
-            .HasForeignKey(r => r.LeftBracketId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<RootBracket>()
-            .HasOne(r => r.RightBracket)
-            .WithMany()
-            .HasForeignKey(r => r.RightBracketId)
-            .OnDelete(DeleteBehavior.Restrict);
 
         // Brackets belonging to a RootBracket
         builder.Entity<Bracket>()
@@ -132,58 +226,53 @@ public class DataContext(DbContextOptions options) : IdentityDbContext<AppUser, 
             .WithMany(r => r.Brackets)
             .HasForeignKey(b => b.RootBracketId)
             .OnDelete(DeleteBehavior.NoAction);
-
-        // Bracket self-referencing: Parent → Children
-        builder.Entity<Bracket>()
-            .HasOne(b => b.ParentBracket)
-            .WithMany()
-            .HasForeignKey(b => b.ParentBracketId)
-            .IsRequired(false)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // Optional Left and Right children (without navigation from them to parent)
-        builder.Entity<Bracket>()
-            .HasOne(b => b.LeftBracket)
-            .WithMany()
-            .HasForeignKey(b => b.LeftBracketId)
-            .IsRequired(false)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<Bracket>()
-            .HasOne(b => b.RightBracket)
-            .WithMany()
-            .HasForeignKey(b => b.RightBracketId)
-            .IsRequired(false)
-            .OnDelete(DeleteBehavior.Restrict);
-
         #endregion
-        #region RankingDbConfig
-        // User - Ranking relationship (One to many)
-        builder.Entity<AppUser>()
-         .HasMany(r => r.PostRanks)
-         .WithOne(u => u.User)
-         .HasForeignKey(r => r.UserId)
-         .OnDelete(DeleteBehavior.Cascade);
 
-        builder.Entity<PostRank>()
-            .HasMany(r => r.Rows)
-            .WithOne(u => u.PostRank)
-            .HasForeignKey(r => r.PostRankId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.Entity<Row>()
-            .HasOne(r => r.PostRank)
-            .WithMany(u => u.Rows)
-            .HasForeignKey(r => r.PostRankId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        #endregion
         #region DiscussionPostDbConfig
         builder.Entity<DiscussionPost>()
             .HasOne(d => d.User)
             .WithMany(u => u.DiscussionPosts)
             .HasForeignKey(d => d.UserId)
             .OnDelete(DeleteBehavior.NoAction);
+        #endregion
+
+        #region TeamDbConfig
+        builder.Entity<Team>()
+            .HasOne(t => t.CreatedByUser)
+            .WithMany(u => u.Teams)
+            .HasForeignKey(t => t.CreatedByUserId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        builder.Entity<Team>()
+            .Property(t => t.Name)
+            .IsRequired()
+            .HasMaxLength(100);
+
+        builder.Entity<Team>()
+            .Property(t => t.Description)
+            .IsRequired()
+            .HasMaxLength(500)
+            .HasDefaultValue(string.Empty);
+
+        builder.Entity<Team>()
+            .Property(t => t.CreatedAt)
+            .IsRequired()
+            .HasDefaultValueSql("GETUTCDATE()");
+
+        builder.Entity<Team>()
+            .Property(t => t.PhotoUrl)
+            .HasMaxLength(500);
+
+        // Create unique constraint on Name + CreatedByUserId
+        builder.Entity<Team>()
+            .HasIndex(t => new { t.CreatedByUserId, t.Name })
+            .IsUnique()
+            .HasDatabaseName("IX_Teams_UserId_Name");
+
+        // Add index on CreatedByUserId for better query performance
+        builder.Entity<Team>()
+            .HasIndex(t => t.CreatedByUserId)
+            .HasDatabaseName("IX_Teams_CreatedByUserId");
         #endregion
     }
 }

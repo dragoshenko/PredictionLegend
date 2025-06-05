@@ -1,0 +1,507 @@
+<!-- Enhanced counter-prediction.component.html with fixed null safety and autofill button -->
+<div class="counter-prediction-container">
+  <!-- Status Card -->
+  <div class="card bg-info border-info mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center">
+        <i class="fa fa-info-circle fa-2x me-3 text-white"></i>
+        <div class="flex-grow-1">
+          <h6 class="text-white mb-1">Counter Prediction Status</h6>
+          <p class="text-white mb-0">{{ getCounterPredictionStatus() }}</p>
+        </div>
+        <div *ngIf="canShowCounterPredictButton()">
+          <button class="btn btn-light" (click)="toggleForm()">
+            <i class="fa fa-plus me-2"></i>
+            {{ showForm() ? 'Cancel' : 'Create Counter Prediction' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Counter Prediction Form -->
+  <div *ngIf="showForm()" class="card bg-secondary border-secondary mb-4">
+    <div class="card-header bg-secondary border-secondary">
+      <h4 class="text-light mb-0">
+        <i class="fa fa-plus-circle me-2"></i>Create Your Counter Prediction
+      </h4>
+    </div>
+    <div class="card-body">
+
+
+      <form [formGroup]="counterPredictionForm" class="mb-4">
+        <div class="mb-3">
+          <label class="form-label text-light">Notes (Optional)</label>
+          <textarea
+            class="form-control bg-dark text-light border-secondary"
+            formControlName="notes"
+            rows="3"
+            placeholder="Add any notes about your counter prediction..."></textarea>
+          <div class="form-text text-light opacity-75">
+            Explain your reasoning or strategy
+          </div>
+        </div>
+      </form>
+
+      <!-- Team Selection Instructions -->
+      <div class="alert alert-info mb-4" *ngIf="isSelectingTeam">
+        <i class="fa fa-hand-pointer-o me-2"></i>
+        <span *ngIf="selectedSlot">
+          <strong>Step 2:</strong> Choose a team for Rank {{ selectedSlot.rowIndex + 1 }}
+        </span>
+        <span *ngIf="selectedBingoCell !== null">
+          <strong>Step 2:</strong> Choose a team for the selected bingo cell
+        </span>
+        <button class="btn btn-sm btn-outline-primary ms-2" (click)="clearSelection()">
+          <i class="fa fa-times me-1"></i>Cancel Selection
+        </button>
+      </div>
+
+      <!-- Ranking View - ALWAYS SHOW IF DATA EXISTS -->
+      <div *ngIf="shouldShowRanking()" class="mb-4">
+        <h5 class="text-light mb-3">
+          <i class="fa fa-list-ol me-2"></i>Your Ranking
+          <small class="text-muted ms-2">
+            ({{ getAssignedTeams().length }} / {{ selectedTeams.length }} teams assigned)
+          </small>
+        </h5>
+
+        <div class="row">
+          <!-- Ranking Table -->
+          <div class="col-md-8">
+            <div class="table-responsive">
+              <table class="table table-dark table-striped">
+                <thead>
+                  <tr>
+                    <th width="80">Rank</th>
+                    <th *ngFor="let col of getFirstRowColumns(); let i = index">
+                      Position {{ i + 1 }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let row of getPostRankRows(); let rowIndex = index">
+                    <td class="fw-bold">#{{ row.order }}</td>
+                    <td *ngFor="let column of (row.columns || []); let colIndex = index">
+                      <div class="team-slot"
+                           [class.occupied]="column.team"
+                           [class.empty]="!column.team"
+                           [class.selected]="selectedSlot?.rowIndex === rowIndex && selectedSlot?.colIndex === colIndex"
+                           [class.selecting]="isSelectingTeam && !column.team"
+                           style="min-height: 70px; border: 2px solid; border-radius: 8px; padding: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease;"
+                           (click)="!isSelectingTeam ? openTeamPicker(rowIndex, colIndex) : null">
+
+                        <!-- Occupied Slot -->
+                        <div *ngIf="column.team" class="d-flex align-items-center w-100">
+                          <img *ngIf="column.team.photoUrl" [src]="column.team.photoUrl"
+                               class="rounded me-2" width="32" height="32" alt="Team">
+                          <div class="bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center"
+                               *ngIf="!column.team.photoUrl"
+                               style="width: 32px; height: 32px;">
+                            <i class="fa fa-users text-white small"></i>
+                          </div>
+                          <div class="me-auto">
+                            <div class="fw-bold text-light">{{ column.team.name }}</div>
+                            <div class="small text-muted" *ngIf="column.team.description">{{ column.team.description }}</div>
+                          </div>
+                          <button class="btn btn-sm btn-outline-danger"
+                                  (click)="removeTeamFromRanking(rowIndex, colIndex); $event.stopPropagation()"
+                                  [disabled]="isSelectingTeam">
+                            <i class="fa fa-times"></i>
+                          </button>
+                        </div>
+
+                        <!-- Empty Slot -->
+                        <div *ngIf="!column.team" class="text-center text-muted w-100">
+                          <i class="fa fa-plus-circle fa-2x mb-1"></i>
+                          <div class="small">
+                            {{ isSelectingTeam ? 'Select this position' : 'Click to select team' }}
+                          </div>
+                          <div class="very-small mt-1">
+                            Rank {{ rowIndex + 1 }}
+                          </div>
+                        </div>
+
+                        <!-- Selection Indicator -->
+                        <div *ngIf="selectedSlot?.rowIndex === rowIndex && selectedSlot?.colIndex === colIndex"
+                             class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+                             style="background: rgba(0, 123, 255, 0.2); border-radius: 8px;">
+                          <div class="badge bg-primary">
+                            <i class="fa fa-hand-pointer-o me-1"></i>Selected
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Team Selection Panel -->
+          <div class="col-md-4">
+            <div class="card bg-dark border-dark">
+              <div class="card-header bg-dark border-dark">
+                <h6 class="text-light mb-0">
+                  <span *ngIf="!isSelectingTeam">Available Teams ({{ getAvailableTeams().length }})</span>
+                  <span *ngIf="isSelectingTeam">Choose Team for Rank {{ (selectedSlot?.rowIndex || 0) + 1 }}</span>
+                </h6>
+              </div>
+              <div class="card-body p-2" style="max-height: 400px; overflow-y: auto;">
+                <!-- Available Teams - Simple Click to Select -->
+                <div *ngFor="let team of getAvailableTeams()"
+                     class="team-item p-2 mb-2 border border-secondary rounded"
+                     [class.selectable]="isSelectingTeam"
+                     [class.available]="!isSelectingTeam"
+                     style="cursor: pointer; transition: all 0.2s ease;"
+                     (click)="isSelectingTeam ? selectTeamForSlot(team) : null"
+                     (mouseenter)="onTeamHover($event, true)"
+                     (mouseleave)="onTeamHover($event, false)">
+
+                  <div class="d-flex align-items-center">
+                    <img *ngIf="team.photoUrl" [src]="team.photoUrl"
+                         class="rounded me-2" width="28" height="28" alt="Team">
+                    <div class="bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center"
+                         *ngIf="!team.photoUrl"
+                         style="width: 28px; height: 28px;">
+                      <i class="fa fa-users text-white" style="font-size: 12px;"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                      <div class="fw-bold text-light small">{{ team.name }}</div>
+                      <div class="text-muted very-small" *ngIf="team.description">{{ team.description }}</div>
+                    </div>
+                    <div *ngIf="isSelectingTeam" class="text-primary">
+                      <i class="fa fa-hand-pointer-o"></i>
+                    </div>
+                    <div *ngIf="!isSelectingTeam" class="text-muted">
+                      <i class="fa fa-mouse-pointer"></i>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Assigned Teams (Read-only display) -->
+                <div *ngIf="getAssignedTeams().length > 0 && !isSelectingTeam" class="mt-3">
+                  <h6 class="text-light mb-2">Assigned Teams ({{ getAssignedTeams().length }})</h6>
+                  <div *ngFor="let team of getAssignedTeams()"
+                       class="team-item p-2 mb-2 border border-success rounded bg-success bg-opacity-10">
+                    <div class="d-flex align-items-center">
+                      <img *ngIf="team.photoUrl" [src]="team.photoUrl"
+                           class="rounded me-2" width="24" height="24" alt="Team">
+                      <div class="bg-success rounded-circle me-2 d-flex align-items-center justify-content-center"
+                           *ngIf="!team.photoUrl"
+                           style="width: 24px; height: 24px;">
+                        <i class="fa fa-users text-white" style="font-size: 10px;"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <div class="fw-bold text-light small">{{ team.name }}</div>
+                        <div class="text-success very-small">{{ getTeamPosition(team) }}</div>
+                      </div>
+                      <i class="fa fa-check text-success"></i>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Empty States -->
+                <div *ngIf="getAvailableTeams().length === 0 && !isSelectingTeam" class="text-center text-muted py-3">
+                  <i class="fa fa-check-circle fa-2x mb-2"></i>
+                  <div class="small">All teams assigned!</div>
+                </div>
+
+                <div *ngIf="getAvailableTeams().length === 0 && isSelectingTeam" class="text-center text-warning py-3">
+                  <i class="fa fa-exclamation-triangle fa-2x mb-2"></i>
+                  <div class="small">No available teams to assign</div>
+                  <button class="btn btn-sm btn-outline-warning mt-2" (click)="clearSelection()">
+                    Cancel Selection
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fallback: Initialize Ranking if Missing -->
+      <div *ngIf="(originalPrediction?.predictionType === 'Ranking' || originalPrediction?.predictionType === 0 || originalPrediction?.predictionType === '0') && (!postRank || !postRank?.rankTable)" class="mb-4">
+        <div class="card bg-warning border-warning">
+          <div class="card-body text-center">
+            <i class="fa fa-exclamation-triangle fa-2x mb-3 text-dark"></i>
+            <h6 class="text-dark">Ranking Not Initialized</h6>
+            <p class="text-dark mb-3">Let's set up your ranking table.</p>
+            <button class="btn btn-dark" (click)="initializeCounterPrediction()">
+              <i class="fa fa-refresh me-2"></i>Initialize Ranking
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bingo View -->
+      <div *ngIf="(originalPrediction?.predictionType === 'Bingo' || originalPrediction?.predictionType === 2 || originalPrediction?.predictionType === '2') && postBingo?.bingoCells"
+           class="mb-4">
+        <h5 class="text-light mb-3">
+          <i class="fa fa-th me-2"></i>Your Bingo Card
+          <small class="text-muted ms-2">
+            ({{ getAssignedTeams().length }} / {{ selectedTeams.length }} teams assigned)
+          </small>
+        </h5>
+
+        <div class="row">
+          <!-- Bingo Grid -->
+          <div class="col-md-8">
+            <div class="bingo-grid"
+                 [style.grid-template-columns]="'repeat(' + getGridSize() + ', 1fr)'"
+                 style="display: grid; gap: 8px; max-width: 500px; margin: 0 auto;">
+              <div *ngFor="let cell of getBingoCells(); let cellIndex = index"
+                   class="bingo-cell"
+                   [class.occupied]="cell.team"
+                   [class.empty]="!cell.team"
+                   [class.selected]="selectedBingoCell === cellIndex"
+                   [class.selecting]="isSelectingTeam && !cell.team"
+                   style="aspect-ratio: 1; border: 2px solid; border-radius: 8px; padding: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease;"
+                   (click)="!isSelectingTeam ? openBingoCellPicker(cellIndex) : null">
+
+                <!-- Occupied Cell -->
+                <div *ngIf="cell.team" class="text-center position-relative w-100">
+                  <img *ngIf="cell.team.photoUrl" [src]="cell.team.photoUrl"
+                       class="rounded mb-1" width="32" height="32" alt="Team">
+                  <div class="bg-primary rounded-circle mx-auto mb-1 d-flex align-items-center justify-content-center"
+                       *ngIf="!cell.team.photoUrl"
+                       style="width: 32px; height: 32px;">
+                    <i class="fa fa-users text-white"></i>
+                  </div>
+                  <div class="small text-light fw-bold">{{ cell.team.name }}</div>
+                  <button class="btn btn-sm btn-outline-danger mt-1"
+                          (click)="removeTeamFromBingo(cellIndex); $event.stopPropagation()"
+                          [disabled]="isSelectingTeam">
+                    <i class="fa fa-times"></i>
+                  </button>
+                </div>
+
+                <!-- Empty Cell -->
+                <div *ngIf="!cell.team" class="text-center text-muted">
+                  <i class="fa fa-plus-circle fa-lg mb-1"></i>
+                  <div class="small">
+                    {{ isSelectingTeam ? 'Select this cell' : 'Click to add team' }}
+                  </div>
+                </div>
+
+                <!-- Selection Indicator -->
+                <div *ngIf="selectedBingoCell === cellIndex"
+                     class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+                     style="background: rgba(0, 123, 255, 0.2); border-radius: 8px;">
+                  <div class="badge bg-primary">
+                    <i class="fa fa-hand-pointer-o me-1"></i>Selected
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Team Selection Panel for Bingo -->
+          <div class="col-md-4">
+            <div class="card bg-dark border-dark">
+              <div class="card-header bg-dark border-dark">
+                <h6 class="text-light mb-0">
+                  <span *ngIf="!isSelectingTeam">Available Teams ({{ getAvailableTeams().length }})</span>
+                  <span *ngIf="isSelectingTeam">Choose Team for Bingo Cell</span>
+                </h6>
+              </div>
+              <div class="card-body p-2" style="max-height: 400px; overflow-y: auto;">
+                <!-- Available Teams -->
+                <div *ngFor="let team of getAvailableTeams()"
+                     class="team-item p-2 mb-2 border border-secondary rounded"
+                     [class.selectable]="isSelectingTeam"
+                     [class.available]="!isSelectingTeam"
+                     style="cursor: pointer; transition: all 0.2s ease;"
+                     (click)="isSelectingTeam ? selectTeamForSlot(team) : null"
+                     (mouseenter)="onTeamHover($event, true)"
+                     (mouseleave)="onTeamHover($event, false)">
+                  <div class="d-flex align-items-center">
+                    <img *ngIf="team.photoUrl" [src]="team.photoUrl"
+                         class="rounded me-2" width="28" height="28" alt="Team">
+                    <div class="bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center"
+                         *ngIf="!team.photoUrl"
+                         style="width: 28px; height: 28px;">
+                      <i class="fa fa-users text-white" style="font-size: 12px;"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                      <div class="fw-bold text-light small">{{ team.name }}</div>
+                      <div class="text-muted very-small" *ngIf="team.description">{{ team.description }}</div>
+                    </div>
+                    <div *ngIf="isSelectingTeam" class="text-primary">
+                      <i class="fa fa-hand-pointer-o"></i>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Assigned Teams -->
+                <div *ngIf="getAssignedTeams().length > 0 && !isSelectingTeam" class="mt-3">
+                  <h6 class="text-light mb-2">Assigned Teams ({{ getAssignedTeams().length }})</h6>
+                  <div *ngFor="let team of getAssignedTeams()"
+                       class="team-item p-2 mb-2 border border-success rounded bg-success bg-opacity-10">
+                    <div class="d-flex align-items-center">
+                      <img *ngIf="team.photoUrl" [src]="team.photoUrl"
+                           class="rounded me-2" width="24" height="24" alt="Team">
+                      <div class="bg-success rounded-circle me-2 d-flex align-items-center justify-content-center"
+                           *ngIf="!team.photoUrl"
+                           style="width: 24px; height: 24px;">
+                        <i class="fa fa-users text-white" style="font-size: 10px;"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <div class="fw-bold text-light small">{{ team.name }}</div>
+                        <div class="text-success very-small">{{ getTeamPosition(team) }}</div>
+                      </div>
+                      <i class="fa fa-check text-success"></i>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Empty States -->
+                <div *ngIf="getAvailableTeams().length === 0 && !isSelectingTeam" class="text-center text-muted py-3">
+                  <i class="fa fa-check-circle fa-2x mb-2"></i>
+                  <div class="small">All teams assigned!</div>
+                </div>
+
+                <div *ngIf="getAvailableTeams().length === 0 && isSelectingTeam" class="text-center text-warning py-3">
+                  <i class="fa fa-exclamation-triangle fa-2x mb-2"></i>
+                  <div class="small">No available teams to assign</div>
+                  <button class="btn btn-sm btn-outline-warning mt-2" (click)="clearSelection()">
+                    Cancel Selection
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Enhanced Quick Actions - Always Show -->
+      <div class="card bg-dark border-dark mb-3" *ngIf="!isSelectingTeam">
+        <div class="card-body">
+          <h6 class="text-light mb-2">
+            <i class="fa fa-bolt me-2"></i>Quick Actions
+            <small class="text-muted ms-2">({{ getAvailableTeams().length }} teams available)</small>
+          </h6>
+          <div class="d-flex flex-wrap gap-2">
+            <!-- Auto Fill Button - Primary Action -->
+            <button class="btn btn-primary btn-sm"
+                    (click)="autoFillPrediction()"
+                    [disabled]="getAvailableTeams().length === 0"
+                    [title]="getAvailableTeams().length === 0 ? 'No teams available to assign' : 'Automatically fill all empty positions with available teams'">
+              <i class="fa fa-magic me-1"></i>
+              <span *ngIf="originalPrediction?.predictionType === 'Ranking' || originalPrediction?.predictionType === 0 || originalPrediction?.predictionType === '0'">Auto Fill Ranking</span>
+              <span *ngIf="originalPrediction?.predictionType === 'Bingo' || originalPrediction?.predictionType === 2 || originalPrediction?.predictionType === '2'">Auto Fill Bingo</span>
+              <span *ngIf="!isRecognizedPredictionType()">Auto Fill</span>
+            </button>
+
+            <!-- Shuffle Button -->
+            <button class="btn btn-outline-success btn-sm"
+                    (click)="shuffleTeams()"
+                    [disabled]="getAvailableTeams().length === 0"
+                    [title]="getAvailableTeams().length === 0 ? 'No teams available to shuffle' : 'Randomly shuffle teams in positions'">
+              <i class="fa fa-random me-1"></i>Shuffle
+            </button>
+
+            <!-- Clear All Button -->
+            <button class="btn btn-outline-warning btn-sm"
+                    (click)="clearAll()"
+                    [title]="'Remove all team assignments'">
+              <i class="fa fa-eraser me-1"></i>Clear All
+            </button>
+
+            <!-- Smart Fill Button - Advanced Option -->
+            <button class="btn btn-outline-info btn-sm"
+                    (click)="smartFillPrediction()"
+                    [disabled]="getAvailableTeams().length === 0"
+                    [title]="getAvailableTeams().length === 0 ? 'No teams available' : 'Fill positions strategically based on team names or existing patterns'">
+              <i class="fa fa-brain me-1"></i>Smart Fill
+            </button>
+          </div>
+
+          <!-- Status indicator -->
+          <div class="mt-2 d-flex justify-content-between align-items-center">
+            <small class="text-muted">
+              <i class="fa fa-info-circle me-1"></i>
+              <span *ngIf="getAssignedTeams().length === 0">No teams assigned yet</span>
+              <span *ngIf="getAssignedTeams().length > 0 && getAvailableTeams().length > 0">
+                {{ getAssignedTeams().length }} assigned, {{ getAvailableTeams().length }} remaining
+              </span>
+              <span *ngIf="getAvailableTeams().length === 0 && getAssignedTeams().length > 0">
+                All {{ getAssignedTeams().length }} teams assigned
+              </span>
+            </small>
+            <small class="text-muted" *ngIf="isValidCounterPrediction()">
+              <i class="fa fa-check text-success me-1"></i>Ready to submit
+            </small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress Indicator -->
+      <div class="card bg-info border-info mb-3">
+        <div class="card-body py-2">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="text-white mb-1">Progress</h6>
+              <div class="text-white small">
+                {{ getAssignedTeams().length }} of {{ selectedTeams.length }} teams assigned
+              </div>
+            </div>
+            <div class="text-end">
+              <div class="h4 text-white mb-0">
+                {{ getCompletionPercentage() }}%
+              </div>
+            </div>
+          </div>
+          <div class="progress mt-2" style="height: 8px;">
+            <div class="progress-bar bg-success"
+                 [style.width.%]="getCompletionPercentage()">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Validation Status -->
+      <div class="alert mb-3"
+           [class.alert-success]="getCompletionPercentage() === 100"
+           [class.alert-warning]="getCompletionPercentage() > 0 && getCompletionPercentage() < 100"
+           [class.alert-info]="getCompletionPercentage() === 0">
+        <div *ngIf="getCompletionPercentage() === 100">
+          <i class="fa fa-check-circle me-2"></i>
+          Perfect! All positions filled - ready to submit your counter prediction!
+        </div>
+        <div *ngIf="getCompletionPercentage() > 0 && getCompletionPercentage() < 100">
+          <i class="fa fa-exclamation-triangle me-2"></i>
+          {{ getCompletionPercentage() }}% complete - fill all positions to submit ({{ selectedTeams.length - getAssignedTeams().length }} remaining)
+        </div>
+        <div *ngIf="getCompletionPercentage() === 0">
+          <i class="fa fa-info-circle me-2"></i>
+          Start by assigning teams to create your counter prediction
+        </div>
+      </div>
+
+      <!-- Submit Button -->
+      <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+        <button class="btn btn-outline-light" (click)="toggleForm()" [disabled]="isSubmitting">
+          Cancel
+        </button>
+        <button
+          class="btn btn-success"
+          [disabled]="getCompletionPercentage() !== 100 || isSubmitting"
+          (click)="submitCounterPrediction()">
+          <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-2"></span>
+          <i class="fa fa-check me-2" *ngIf="!isSubmitting"></i>
+          <span *ngIf="getCompletionPercentage() === 100">Submit Counter Prediction</span>
+          <span *ngIf="getCompletionPercentage() < 100">Complete All Positions ({{ getCompletionPercentage() }}%)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading state -->
+  <div *ngIf="isCheckingEligibility()" class="text-center py-3">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2 text-muted">Checking eligibility...</p>
+  </div>
+</div>

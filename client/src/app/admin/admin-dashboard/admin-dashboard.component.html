@@ -1,0 +1,278 @@
+<div class="container-fluid py-4">
+  <!-- Dashboard Header -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <h1><i class="fa fa-tachometer me-2"></i> Admin Dashboard</h1>
+        <button class="btn btn-primary" (click)="refreshData()">
+          <i class="fa fa-refresh me-2"></i> Refresh Data
+        </button>
+      </div>
+      <p class="text-muted">Manage users and view system statistics</p>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="row mb-4" id="stats-section">
+    <div class="col-md-4 col-lg-2 mb-3">
+      <div class="card bg-primary text-white h-100">
+        <div class="card-body text-center">
+          <h3 class="display-4">{{ stats.totalUsers }}</h3>
+          <p class="mb-0">Total Users</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 col-lg-2 mb-3">
+      <div class="card bg-success text-white h-100">
+        <div class="card-body text-center">
+          <h3 class="display-4">{{ stats.verifiedUsers }}</h3>
+          <p class="mb-0">Verified Users</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 col-lg-2 mb-3">
+      <div class="card bg-warning text-dark h-100">
+        <div class="card-body text-center">
+          <h3 class="display-4">{{ stats.unverifiedUsers }}</h3>
+          <p class="mb-0">Unverified Users</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 col-lg-2 mb-3">
+      <div class="card bg-danger text-white h-100">
+        <div class="card-body text-center">
+          <h3 class="display-4">{{ stats.admins }}</h3>
+          <p class="mb-0">Admins</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 col-lg-2 mb-3">
+      <div class="card bg-info text-white h-100">
+        <div class="card-body text-center">
+          <h3 class="display-4">{{ stats.moderators }}</h3>
+          <p class="mb-0">Moderators</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 col-lg-2 mb-3">
+      <div class="card bg-secondary text-white h-100">
+        <div class="card-body text-center">
+          <h3 class="display-4">{{ stats.recentUsers }}</h3>
+          <p class="mb-0">New (30d)</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Info Component -->
+  <div class="row mb-4" id="system-info-section">
+    <div class="col-12">
+      <app-system-info></app-system-info>
+    </div>
+  </div>
+
+  <!-- User Management -->
+  <div class="row mb-4" id="user-management-section">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">User Management</h5>
+            <span class="badge bg-light text-dark">{{ filteredUsers.length }} / {{ users.length }} Users</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <!-- Search and Filter Controls -->
+          <div class="row mb-4">
+            <div class="col-md-6 mb-3 mb-md-0">
+              <div class="input-group">
+                <span class="input-group-text"><i class="fa fa-search"></i></span>
+                <input type="text" class="form-control" placeholder="Search by name or email..."
+                       [value]="searchTerm" (input)="onSearch($event)">
+                <button *ngIf="searchTerm" class="btn btn-outline-secondary" type="button" (click)="searchTerm = ''; applyFilters()">
+                  <i class="fa fa-times"></i>
+                </button>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="btn-group w-100 role-filter-group">
+                <button class="btn btn-filter"
+                        [class.btn-primary]="filterRole === 'All'"
+                        [class.btn-outline-primary]="filterRole !== 'All'"
+                        (click)="onFilterRole('All')">
+                  All
+                </button>
+                <button class="btn btn-filter"
+                        [class.btn-primary]="filterRole === 'Admin'"
+                        [class.btn-outline-primary]="filterRole !== 'Admin'"
+                        (click)="onFilterRole('Admin')">
+                  Admins
+                </button>
+                <button class="btn btn-filter"
+                        [class.btn-primary]="filterRole === 'Moderator'"
+                        [class.btn-outline-primary]="filterRole !== 'Moderator'"
+                        (click)="onFilterRole('Moderator')">
+                  Moderators
+                </button>
+                <button class="btn btn-filter"
+                        [class.btn-primary]="filterRole === 'Member'"
+                        [class.btn-outline-primary]="filterRole !== 'Member'"
+                        (click)="onFilterRole('Member')">
+                  Members
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Loading spinner -->
+          <div *ngIf="loading" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3 text-dark">Loading users...</p>
+          </div>
+
+          <!-- Error message -->
+          <div *ngIf="error" class="alert alert-danger">
+            {{ error }}
+          </div>
+
+          <!-- Users table -->
+          <div *ngIf="!loading && !error && filteredUsers.length > 0" class="table-responsive">
+            <table class="table table-hover table-striped">
+              <thead class="table-dark">
+                <tr>
+                  <th style="cursor: pointer" (click)="onSort('id')">
+                    ID
+                    <i *ngIf="sortColumn === 'id'" class="fa"
+                       [ngClass]="sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down'"></i>
+                  </th>
+                  <th style="cursor: pointer" (click)="onSort('username')">
+                    Username
+                    <i *ngIf="sortColumn === 'username'" class="fa"
+                       [ngClass]="sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down'"></i>
+                  </th>
+                  <th style="cursor: pointer" (click)="onSort('displayName')">
+                    Display Name
+                    <i *ngIf="sortColumn === 'displayName'" class="fa"
+                       [ngClass]="sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down'"></i>
+                  </th>
+                  <th style="cursor: pointer" (click)="onSort('email')">
+                    Email
+                    <i *ngIf="sortColumn === 'email'" class="fa"
+                       [ngClass]="sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down'"></i>
+                  </th>
+                  <th>Status</th>
+                  <th style="cursor: pointer" (click)="onSort('createdAt')">
+                    Created
+                    <i *ngIf="sortColumn === 'createdAt'" class="fa"
+                       [ngClass]="sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down'"></i>
+                  </th>
+                  <th>Roles</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let user of filteredUsers">
+                  <td class="text-dark">{{ user.id }}</td>
+                  <td class="text-dark">{{ user.username }}</td>
+                  <td class="text-dark">
+                    <div class="d-flex align-items-center">
+                      <div *ngIf="user.hasPhoto" class="me-2">
+                        <i class="fa fa-user-circle text-primary"></i>
+                      </div>
+                      {{ user.displayName }}
+                    </div>
+                  </td>
+                  <td class="text-dark">{{ user.email }}</td>
+                  <td>
+                    <span class="badge" [ngClass]="user.emailConfirmed ? 'bg-success' : 'bg-warning text-dark'">
+                      {{ user.emailConfirmed ? 'Verified' : 'Unverified' }}
+                    </span>
+                  </td>
+                  <td class="text-dark">{{ formatDate(user.createdAt) }}</td>
+                  <td>
+                    <span class="badge" [ngClass]="getRolesBadgeClass(user.roles)">
+                      {{ user.roles.length > 0 ? user.roles.join(', ') : 'Member' }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="btn-group">
+                      <button class="btn btn-sm btn-outline-primary" (click)="viewUserDetails(user.id)" title="View Details">
+                        <i class="fa fa-eye"></i>
+                      </button>
+                      <button class="btn btn-sm btn-outline-danger" (click)="deleteUser(user.id, user.username)" title="Delete User">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="d-flex justify-content-between py-2">
+              <div>
+                <span class="text-muted">Showing {{ filteredUsers.length }} of {{ users.length }} users</span>
+              </div>
+              <div *ngIf="searchTerm || filterRole !== 'All'">
+                <button class="btn btn-sm btn-outline-secondary" (click)="clearFilters()">
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- No matching users -->
+          <div *ngIf="!loading && !error && filteredUsers.length === 0 && users.length > 0" class="text-center py-5">
+            <div class="mb-4">
+              <i class="fa fa-search fa-4x text-muted"></i>
+            </div>
+            <h3 class="text-dark">No Users Match Your Filters</h3>
+            <p class="text-muted">Try adjusting your search criteria.</p>
+            <button class="btn btn-outline-primary" (click)="clearFilters()">
+              Clear All Filters
+            </button>
+          </div>
+
+          <!-- No users at all -->
+          <div *ngIf="!loading && !error && users.length === 0" class="text-center py-5">
+            <div class="mb-4">
+              <i class="fa fa-users fa-4x text-muted"></i>
+            </div>
+            <h3 class="text-dark">No Users Found</h3>
+            <p class="text-muted">There are no users registered on the platform yet.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Future Expansion: Additional Management Sections -->
+  <div class="row mb-4" id="content-management-section">
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header bg-secondary text-white">
+          <h5 class="mb-0">Content Management</h5>
+        </div>
+        <div class="card-body text-center py-5">
+          <i class="fa fa-file-text fa-4x text-muted mb-3"></i>
+          <h4 class="text-dark">Content Management</h4>
+          <p class="text-muted">Manage predictions, categories, and other content.</p>
+          <button class="btn btn-outline-secondary" disabled>Coming Soon</button>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header bg-secondary text-white">
+          <h5 class="mb-0">Site Settings</h5>
+        </div>
+        <div class="card-body text-center py-5">
+          <i class="fa fa-cogs fa-4x text-muted mb-3"></i>
+          <h4 class="text-dark">Site Configuration</h4>
+          <p class="text-muted">Configure site settings, preferences, and features.</p>
+          <button class="btn btn-outline-secondary" disabled>Coming Soon</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

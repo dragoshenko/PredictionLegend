@@ -1,0 +1,216 @@
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card border-primary">
+        <div class="card-header bg-primary text-white">
+          <h2 class="text-center mb-0">Create Prediction</h2>
+        </div>
+        <div class="card-body">
+          <form [formGroup]="predictionForm" (ngSubmit)="onSubmit()">
+            <!-- Prediction Type -->
+            <div class="mb-4">
+              <label class="form-label fw-bold">Prediction Type</label>
+              <div class="d-flex flex-wrap gap-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" formControlName="predictionType" id="rankingType"
+                    value="Ranking">
+                  <label class="form-check-label" for="rankingType">
+                    <div class="d-flex align-items-center">
+                      <i class="fa fa-list-ol me-2"></i>
+                      <span>Ranking</span>
+                    </div>
+                    <small class="text-muted d-block">Order items from best to worst</small>
+                  </label>
+                </div>
+                <div class="form-check bracket-disabled">
+                  <input class="form-check-input" type="radio" formControlName="predictionType" id="bracketType"
+                    value="Bracket">
+                  <label class="form-check-label disabled-option" for="bracketType">
+                    <div class="d-flex align-items-center">
+                      <i class="fa fa-sitemap me-2"></i>
+                      <span>Bracket</span>
+                      <span class="badge bg-secondary ms-2">Soon</span>
+                    </div>
+                    <small class="text-muted d-block">Tournament-style elimination</small>
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" formControlName="predictionType" id="bingoType"
+                    value="Bingo">
+                  <label class="form-check-label" for="bingoType">
+                    <div class="d-flex align-items-center">
+                      <i class="fa fa-th me-2"></i>
+                      <span>Bingo</span>
+                    </div>
+                    <small class="text-muted d-block">Create a customizable bingo card</small>
+                  </label>
+                </div>
+              </div>
+              <div *ngIf="predictionForm.get('predictionType')?.invalid &&
+                           (predictionForm.get('predictionType')?.dirty ||
+                            predictionForm.get('predictionType')?.touched)" class="text-danger mt-1">
+                Please select a prediction type
+              </div>
+            </div>
+
+            <!-- Title -->
+            <div class="mb-3">
+              <label for="title" class="form-label fw-bold">Prediction Title</label>
+              <input type="text" class="form-control" id="title" formControlName="title"
+                placeholder="Enter prediction title">
+              <div *ngIf="predictionForm.get('title')?.invalid &&
+                           (predictionForm.get('title')?.dirty ||
+                            predictionForm.get('title')?.touched)" class="text-danger mt-1">
+                Title is required (minimum 5 characters)
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div class="mb-3">
+              <label for="description" class="form-label fw-bold">Description</label>
+              <textarea class="form-control" id="description" formControlName="description"
+                placeholder="Add a description" rows="4"></textarea>
+                <div *ngIf="predictionForm.get('description')?.invalid &&
+                           (predictionForm.get('description')?.dirty ||
+                            predictionForm.get('description')?.touched)" class="text-danger mt-1">
+                Description is required (minimum 10 characters)
+              </div>
+            </div>
+
+            <!-- Start Date -->
+            <div class="mb-3">
+              <label for="startDate" class="form-label fw-bold">Start Date</label>
+              <input type="date" class="form-control" id="startDate" formControlName="startDate" [min]="minDate"
+                required>
+              <div *ngIf="predictionForm.get('startDate')?.invalid &&
+             (predictionForm.get('startDate')?.dirty ||
+              predictionForm.get('startDate')?.touched)" class="text-danger mt-1">
+                <div *ngIf="predictionForm.get('startDate')?.errors?.['required']">
+                  Start date is required
+                </div>
+                <div *ngIf="predictionForm.get('startDate')?.errors?.['invalidDate']">
+                  Please enter a valid start date
+                </div>
+                <div *ngIf="predictionForm.get('startDate')?.errors?.['pastDate']">
+                  Start date cannot be in the past
+                </div>
+              </div>
+            </div>
+
+            <!-- End Date -->
+            <div class="mb-3">
+              <label for="endDate" class="form-label fw-bold">End Date</label>
+              <input type="date" class="form-control" id="endDate" formControlName="endDate" [min]="minDate" required>
+              <div *ngIf="predictionForm.get('endDate')?.invalid &&
+             (predictionForm.get('endDate')?.dirty ||
+              predictionForm.get('endDate')?.touched)" class="text-danger mt-1">
+                <div *ngIf="predictionForm.get('endDate')?.errors?.['required']">
+                  End date is required
+                </div>
+                <div *ngIf="predictionForm.get('endDate')?.errors?.['invalidDate']">
+                  Please enter a valid end date
+                </div>
+                <div *ngIf="predictionForm.get('endDate')?.errors?.['pastDate']">
+                  End date cannot be in the past
+                </div>
+                <div *ngIf="predictionForm.get('endDate')?.errors?.['invalidDateRange']">
+                  End date must be at least one day after start date
+                </div>
+              </div>
+            </div>
+
+            <!-- Categories -->
+            <label class="form-label fw-bold">Categories</label>
+            <div class="mb-3">
+              <div class="categories-dynamic-grid">
+                @for (category of rootCategories; track category.id) {
+                <div class="category-item"
+                  [class.has-children]="category.subCategories && category.subCategories.length > 0">
+                  <!-- Parent Category -->
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" [id]="'category-' + category.id"
+                      [checked]="predictionForm.get('categories')?.value?.includes(category.id)"
+                      (change)="onCategoryChange(category.id, $event)">
+
+                    <label class="form-check-label fw-bold" [for]="'category-' + category.id">
+                      @if (category.iconName) {
+                      <i class="fa" [ngClass]="category.iconName" [style.color]="category.colorCode"></i>
+                      }
+                      {{ category.name }}
+                    </label>
+                  </div>
+
+                  <!-- Subcategories (if any) -->
+                  @if (category.subCategories && category.subCategories.length > 0) {
+                  <div class="subcategories-container">
+                    @for (subCategory of category.subCategories; track subCategory.id) {
+                    <div class="form-check subcategory-item">
+                      <input class="form-check-input form-check-input-sm" type="checkbox"
+                        [id]="'category-' + subCategory.id"
+                        [checked]="predictionForm.get('categories')?.value?.includes(subCategory.id)"
+                        (change)="onCategoryChange(subCategory.id, $event)">
+
+                      <label class="form-check-label small text-muted" [for]="'category-' + subCategory.id">
+                        @if (subCategory.iconName) {
+                        <i class="fa" [ngClass]="subCategory.iconName" [style.color]="subCategory.colorCode"></i>
+                        }
+                        {{ subCategory.name }}
+                      </label>
+                    </div>
+                    }
+                  </div>
+                  }
+                </div>
+                }
+              </div>
+            </div>
+
+            <!-- Privacy Settings -->
+            <div class="mb-3">
+              <label class="form-label fw-bold">Privacy Settings</label>
+              <div class="d-flex flex-wrap gap-2">
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" formControlName="privacyType" id="publicType"
+                    value="Public">
+                  <label class="form-check-label" for="publicType">
+                    <i class="fa fa-globe me-1"></i> Public
+                  </label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" formControlName="privacyType" id="privateType"
+                    value="Private">
+                  <label class="form-check-label" for="privateType">
+                    <i class="fa fa-lock me-1"></i> Private
+                  </label>
+                </div>
+              </div>
+              <div *ngIf="predictionForm.get('privacyType')?.invalid &&
+                           (predictionForm.get('privacyType')?.dirty ||
+                            predictionForm.get('privacyType')?.touched)" class="text-danger mt-1">
+                Please select a privacy setting
+              </div>
+            </div>
+
+            <!-- Publish or Draft -->
+            <div class="mb-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="publishNow" formControlName="isDraft">
+                <label class="form-check-label" for="publishNow">
+                  Publish immediately (uncheck to save as draft)
+                </label>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="d-grid mt-4">
+              <button type="submit" class="btn btn-primary" [disabled]="predictionForm.invalid || submitting">
+                <span *ngIf="submitting" class="spinner-border spinner-border-sm me-2"></span>
+                Create Prediction
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

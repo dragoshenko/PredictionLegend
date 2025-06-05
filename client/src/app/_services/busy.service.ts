@@ -19,7 +19,7 @@ export class BusyService {
     });
   }
 
-  idle() //
+  idle()
   {
     this.busyRequestCount--;
     if(this.busyRequestCount <= 0)

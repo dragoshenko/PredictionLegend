@@ -7,6 +7,7 @@ import { delay } from 'rxjs';
 import { GoogleApiService } from './_services/google-api.service';
 import { GlobalFooterComponent } from './global-footer/global-footer.component';
 import { CookieService } from 'ngx-cookie-service';
+import { AccountService } from './_services/account.service';
 
 @Component({
   selector: 'app-root',
@@ -20,9 +21,10 @@ export class AppComponent implements OnInit {
   busy = inject(BusyService);
   googleService = inject(GoogleApiService);
   cookieService = inject(CookieService);
+  accountService = inject(AccountService);
 
   ngOnInit(): void {
-    if(this.cookieService.check('id_token') === false) {
+    if(this.cookieService.check('id_token') === false && this.accountService.currentUser() === null) {
       this.googleService.configure();
       this.googleService.handleLoginRedirect();
     }

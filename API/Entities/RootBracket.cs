@@ -5,15 +5,35 @@ namespace API.Entities;
 public class RootBracket
 {
     public int Id { get; set; }
-    public string Content { get; set; } = string.Empty;
     public float Score { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-    public int LeftBracketId { get; set; }
-    public Bracket LeftBracket { get; set; } = null!;
-    public int RightBracketId { get; set; }
-    public Bracket RightBracket { get; set; } = null!;
-    public int PostBracketId { get; set; }
-    public PostBracket PostBracket { get; set; } = null!;
+    public BracketType BracketType { get; set; } = BracketType.SingleTeam;
+
+    public Team? LeftTeam { get; set; }
+    public int OfficialScoreLeftTeam { get; set; } = 0;
+    public Team? RightTeam { get; set; }
+    public int OfficialScoreRightTeam { get; set; } = 0;
+
     public ICollection<Bracket> Brackets { get; set; } = [];
+
+    public RootBracket() { }
+    public RootBracket(BracketType bracketType, int numberOfBrackets)
+    {
+        BracketType = bracketType;
+        Brackets = new List<Bracket>(numberOfBrackets);
+        for (int i = 0; i < numberOfBrackets; i++)
+        {
+            Brackets.Add(new Bracket(bracketType, i));
+        }
+
+        if(bracketType == BracketType.SingleTeam)
+        {
+            LeftTeam = new Team();
+        }
+        else
+        {
+            LeftTeam = new Team();
+            RightTeam = new Team();
+        }
+    }
+
 }

@@ -1,0 +1,70 @@
+.bingo-grid {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.bingo-cell {
+  border-radius: 8px;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.bingo-cell.has-team {
+  background-color: #007bff;
+  border-color: #0056b3;
+}
+
+.bingo-cell.empty-cell {
+  background-color: #6c757d;
+  border-color: #495057;
+}
+
+.counter-cell.has-team {
+  background-color: #007bff;
+  border-color: #0056b3;
+}
+
+.very-small {
+  font-size: 0.7rem;
+}
+
+.table-dark th,
+.table-dark td {
+  border-color: #495057;
+}
+
+.card {
+  border-radius: 8px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.badge {
+  font-size: 0.875rem;
+}
+
+.list-group-item {
+  padding: 0.5rem 0;
+}
+
+.btn {
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(0);
+}

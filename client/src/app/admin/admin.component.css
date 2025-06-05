@@ -1,0 +1,88 @@
+/* client/src/app/admin/admin.component.css */
+.admin-container {
+  display: flex;
+  min-height: calc(100vh - 100px);
+  background-color: #f8f9fa;
+}
+
+.sidebar {
+  background-color: #343a40;
+  color: white;
+  min-height: calc(100vh - 100px);
+  padding: 0;
+  position: sticky;
+  top: 100px;
+  height: calc(100vh - 100px);
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-sidebar-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.admin-sidebar-menu {
+  flex: 1;
+  padding: 10px 0;
+}
+
+.admin-sidebar-menu .nav-link {
+  color: rgba(255, 255, 255, 0.7);
+  padding: 10px 20px;
+  border-left: 3px solid transparent;
+  transition: all 0.2s;
+}
+
+.admin-sidebar-menu .nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: white;
+}
+
+.admin-sidebar-menu .nav-link.active {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-left-color: #0d6efd;
+}
+
+.admin-sidebar-menu .nav-link.disabled {
+  color: rgba(255, 255, 255, 0.3);
+  pointer-events: none;
+}
+
+.admin-sidebar-footer {
+  padding: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-content {
+  padding: 30px 20px;
+}
+
+@media (max-width: 767.98px) {
+  .sidebar {
+    position: static;
+    height: auto;
+    min-height: auto;
+  }
+
+  .admin-sidebar-header {
+    text-align: center;
+  }
+
+  .admin-sidebar-menu .nav-link {
+    border-left: none;
+    border-bottom: 3px solid transparent;
+    text-align: center;
+  }
+
+  .admin-sidebar-menu .nav-link.active {
+    border-left-color: transparent;
+    border-bottom-color: #0d6efd;
+  }
+}

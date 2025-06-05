@@ -11,7 +11,7 @@ export const GoogleGuard: CanActivateFn = (route, state) => {
 
   const isAuthReady$ = toObservable(googleService.isAuthReady);
   const idToken$ = toObservable(googleService.idToken);
-  const currentUser$ = accountService.currentUser$;
+  const currentUser$ = toObservable(accountService.currentUser);
 
   return isAuthReady$.pipe(
     filter(ready => ready), // wait until auth process is done

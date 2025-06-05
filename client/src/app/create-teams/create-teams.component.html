@@ -1,0 +1,64 @@
+<div class="container py-4">
+  <div class="card bg-dark border-light shadow">
+    <div class="card-header bg-success text-white">
+      <h4 class="mb-0"><i class="fa fa-users me-2"></i>Manage Teams for "{{ template.name }}"</h4>
+    </div>
+    <div class="card-body">
+
+      <!-- Add Team Form -->
+      <form [formGroup]="teamForm" (ngSubmit)="addTeam()" class="mb-4">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label text-light">Name</label>
+            <input type="text" formControlName="name" class="form-control bg-dark text-light border-secondary" placeholder="Team name" />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label text-light">Description</label>
+            <input type="text" formControlName="description" class="form-control bg-dark text-light border-secondary" placeholder="Optional" />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label text-light">Photo URL</label>
+            <input type="text" formControlName="photoUrl" class="form-control bg-dark text-light border-secondary" placeholder="Optional" />
+          </div>
+          <div class="col-12 text-end">
+            <button type="submit" class="btn btn-success" [disabled]="teamForm.invalid || isLoading">
+              <i class="fa fa-plus me-1"></i> Add Team
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Error -->
+      <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
+
+      <!-- Team List -->
+      <div *ngIf="teams.length > 0; else noTeams">
+        <div class="row">
+          <div class="col-md-6 mb-3" *ngFor="let team of teams">
+            <div class="card bg-secondary text-light h-100">
+              <div class="card-body d-flex">
+                <img *ngIf="team.photoUrl" [src]="team.photoUrl" class="rounded me-3" width="64" height="64" alt="Team photo" />
+                <div>
+                  <h5 class="card-title mb-1">{{ team.name }}</h5>
+                  <p class="mb-1 small">{{ team.description || 'No description' }}</p>
+                  <p class="mb-0 small text-muted">
+                    Score: {{ team.score ?? 0 }} • Created on: {{ team.createdAt | date:'short' }}
+                  </p>
+                </div>
+                <div class="ms-auto">
+                  <button class="btn btn-sm btn-outline-light" (click)="deleteTeam(team.id)">
+                    <i class="fa fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ng-template #noTeams>
+        <p class="text-muted text-center">No teams have been added yet.</p>
+      </ng-template>
+
+    </div>
+  </div>
+</div>

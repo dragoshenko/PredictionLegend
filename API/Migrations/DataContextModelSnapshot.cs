@@ -66,6 +66,9 @@ namespace API.Migrations
                     b.Property<string>("Bio")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("CommentsCount")
+                        .HasColumnType("int");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
@@ -172,7 +175,45 @@ namespace API.Migrations
                     b.ToTable("AspNetUserRoles", (string)null);
                 });
 
-            modelBuilder.Entity("API.Entities.Column", b =>
+            modelBuilder.Entity("API.Entities.BingoCell", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Column")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsWrong")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("OfficialScore")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PostBingoId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Row")
+                        .HasColumnType("int");
+
+                    b.Property<float>("Score")
+                        .HasColumnType("real");
+
+                    b.Property<int?>("TeamId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PostBingoId");
+
+                    b.HasIndex("TeamId");
+
+                    b.ToTable("BingoCells");
+                });
+
+            modelBuilder.Entity("API.Entities.BingoTemplate", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -183,24 +224,130 @@ namespace API.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("GridSize")
+                        .HasColumnType("int");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("Order")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RowId")
-                        .HasColumnType("int");
+                    b.Property<bool>("OfficialTemplate")
+                        .HasColumnType("bit");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("BingoTemplates");
+                });
+
+            modelBuilder.Entity("API.Entities.BracketTemplate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BracketType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("NumberOfBrackets")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NumberOfRounds")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("OfficialTemplate")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("BracketTemplates");
+                });
+
+            modelBuilder.Entity("API.Entities.Category", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ColorCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IconName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("ParentCategoryId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentCategoryId");
+
+                    b.ToTable("Categories");
+                });
+
+            modelBuilder.Entity("API.Entities.Column", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("OfficialScore")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RowId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TeamId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("RowId");
 
-                    b.ToTable("Column");
+                    b.HasIndex("TeamId");
+
+                    b.ToTable("Columns");
                 });
 
             modelBuilder.Entity("API.Entities.Comment", b =>
@@ -230,6 +377,9 @@ namespace API.Migrations
                     b.Property<int?>("PostRankId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("PredictionId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -246,9 +396,76 @@ namespace API.Migrations
 
                     b.HasIndex("PostRankId");
 
+                    b.HasIndex("PredictionId");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("Comments");
+                });
+
+            modelBuilder.Entity("API.Entities.CreationFlow", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AbandonReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("AbandonedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedTeamIds")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FlowToken")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<bool>("IsAbandoned")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("PredictionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PredictionType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SelectedTeamIds")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("TemplateId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FlowToken")
+                        .IsUnique();
+
+                    b.HasIndex("PredictionId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("CreationFlows");
                 });
 
             modelBuilder.Entity("API.Entities.DiscussionPost", b =>
@@ -292,7 +509,7 @@ namespace API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("DiscussionPost");
+                    b.ToTable("DiscussionPosts");
                 });
 
             modelBuilder.Entity("API.Entities.Photo", b =>
@@ -322,9 +539,58 @@ namespace API.Migrations
                     b.ToTable("Photos");
                 });
 
+            modelBuilder.Entity("API.Entities.PostBingo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BingoTemplateId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("GridSize")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsOfficialResult")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("PredictionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalScore")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BingoTemplateId");
+
+                    b.HasIndex("PredictionId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PostBingos");
+                });
+
             modelBuilder.Entity("API.Entities.PostBracket", b =>
                 {
                     b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BracketTemplateId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
@@ -333,7 +599,10 @@ namespace API.Migrations
                     b.Property<bool>("IsOfficialResult")
                         .HasColumnType("bit");
 
-                    b.Property<int?>("PredictionId")
+                    b.Property<int>("PredictionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RootBracketId")
                         .HasColumnType("int");
 
                     b.Property<float>("TotalScore")
@@ -347,7 +616,11 @@ namespace API.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BracketTemplateId");
+
                     b.HasIndex("PredictionId");
+
+                    b.HasIndex("RootBracketId");
 
                     b.HasIndex("UserId");
 
@@ -368,7 +641,10 @@ namespace API.Migrations
                     b.Property<bool>("IsOfficialResult")
                         .HasColumnType("bit");
 
-                    b.Property<int?>("PredictionId")
+                    b.Property<int>("PredictionId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RankingTemplateId")
                         .HasColumnType("int");
 
                     b.Property<float>("TotalScore")
@@ -384,9 +660,11 @@ namespace API.Migrations
 
                     b.HasIndex("PredictionId");
 
+                    b.HasIndex("RankingTemplateId");
+
                     b.HasIndex("UserId");
 
-                    b.ToTable("PostRank");
+                    b.ToTable("PostRanks");
                 });
 
             modelBuilder.Entity("API.Entities.Prediction", b =>
@@ -404,7 +682,14 @@ namespace API.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsDraft")
                         .HasColumnType("bit");
@@ -412,19 +697,18 @@ namespace API.Migrations
                     b.Property<DateTime>("LastModified")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("PredictionType")
+                        .HasColumnType("int");
+
                     b.Property<int>("PrivacyType")
                         .HasColumnType("int");
 
-                    b.PrimitiveCollection<string>("Tags")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<DateTime?>("StartDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("int");
 
                     b.Property<int?>("UserId")
                         .HasColumnType("int");
@@ -433,7 +717,86 @@ namespace API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Prediction");
+                    b.ToTable("Predictions");
+                });
+
+            modelBuilder.Entity("API.Entities.PredictionCategory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("PredictionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("categoryId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PredictionId");
+
+                    b.HasIndex("categoryId");
+
+                    b.ToTable("PredictionCategories");
+                });
+
+            modelBuilder.Entity("API.Entities.RankTable", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("NumberOfColumns")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NumberOfRows")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PostRankId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PostRankId")
+                        .IsUnique();
+
+                    b.ToTable("RankTables");
+                });
+
+            modelBuilder.Entity("API.Entities.RankingTemplate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("NumberOfColumns")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NumberOfRows")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("OfficialTemplate")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RankingTemplates");
                 });
 
             modelBuilder.Entity("API.Entities.RefreshToken", b =>
@@ -478,35 +841,31 @@ namespace API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("LeftBracketId")
+                    b.Property<int>("BracketType")
                         .HasColumnType("int");
 
-                    b.Property<int>("PostBracketId")
+                    b.Property<int?>("LeftTeamId")
                         .HasColumnType("int");
 
-                    b.Property<int>("RightBracketId")
+                    b.Property<int>("OfficialScoreLeftTeam")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OfficialScoreRightTeam")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RightTeamId")
                         .HasColumnType("int");
 
                     b.Property<float>("Score")
                         .HasColumnType("real");
 
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("LeftBracketId");
+                    b.HasIndex("LeftTeamId");
 
-                    b.HasIndex("RightBracketId");
+                    b.HasIndex("RightTeamId");
 
-                    b.ToTable("RootBracket");
+                    b.ToTable("RootBrackets");
                 });
 
             modelBuilder.Entity("API.Entities.Row", b =>
@@ -517,23 +876,97 @@ namespace API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                    b.Property<bool>("IsWrong")
+                        .HasColumnType("bit");
 
                     b.Property<int>("Order")
                         .HasColumnType("int");
 
-                    b.Property<int>("PostRankId")
+                    b.Property<int?>("RankTableId")
                         .HasColumnType("int");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("RankTableId");
+
+                    b.ToTable("Rows");
+                });
+
+            modelBuilder.Entity("API.Entities.Team", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BingoTemplateId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("BracketTemplateId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasDefaultValue("");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PhotoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("PostBingoId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PostBracketId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PostRankId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RankingTemplateId")
+                        .HasColumnType("int");
+
+                    b.Property<float?>("Score")
+                        .HasColumnType("real");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BingoTemplateId");
+
+                    b.HasIndex("BracketTemplateId");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("IX_Teams_CreatedByUserId");
+
+                    b.HasIndex("PostBingoId");
+
+                    b.HasIndex("PostBracketId");
+
                     b.HasIndex("PostRankId");
 
-                    b.ToTable("Row");
+                    b.HasIndex("RankingTemplateId");
+
+                    b.HasIndex("CreatedByUserId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Teams_UserId_Name");
+
+                    b.ToTable("Teams");
                 });
 
             modelBuilder.Entity("Bracket", b =>
@@ -544,26 +977,22 @@ namespace API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("BracketId")
+                    b.Property<bool>("IsWrong")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("LeftTeamId")
                         .HasColumnType("int");
 
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("OfficialScoreLeftTeam")
+                        .HasColumnType("int");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("LeftBracketId")
+                    b.Property<int>("OfficialScoreRightTeam")
                         .HasColumnType("int");
 
                     b.Property<int>("Order")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ParentBracketId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("RightBracketId")
+                    b.Property<int?>("RightTeamId")
                         .HasColumnType("int");
 
                     b.Property<int?>("RootBracketId")
@@ -572,18 +1001,11 @@ namespace API.Migrations
                     b.Property<float>("Score")
                         .HasColumnType("real");
 
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("BracketId");
+                    b.HasIndex("LeftTeamId");
 
-                    b.HasIndex("LeftBracketId");
-
-                    b.HasIndex("ParentBracketId");
-
-                    b.HasIndex("RightBracketId");
+                    b.HasIndex("RightTeamId");
 
                     b.HasIndex("RootBracketId");
 
@@ -608,7 +1030,7 @@ namespace API.Migrations
 
                     b.HasIndex("RightBracketId");
 
-                    b.ToTable("BracketToBracket");
+                    b.ToTable("BracketToBrackets");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
@@ -718,15 +1140,66 @@ namespace API.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("API.Entities.Column", b =>
+            modelBuilder.Entity("API.Entities.BingoCell", b =>
                 {
-                    b.HasOne("API.Entities.Row", "Row")
-                        .WithMany("Columns")
-                        .HasForeignKey("RowId")
+                    b.HasOne("API.Entities.PostBingo", null)
+                        .WithMany("BingoCells")
+                        .HasForeignKey("PostBingoId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("API.Entities.Team", "Team")
+                        .WithMany()
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Team");
+                });
+
+            modelBuilder.Entity("API.Entities.BingoTemplate", b =>
+                {
+                    b.HasOne("API.Entities.AppUser", "User")
+                        .WithMany("BingoTemplates")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Row");
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("API.Entities.BracketTemplate", b =>
+                {
+                    b.HasOne("API.Entities.AppUser", "User")
+                        .WithMany("BracketTemplates")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("API.Entities.Category", b =>
+                {
+                    b.HasOne("API.Entities.Category", "ParentCategory")
+                        .WithMany("SubCategories")
+                        .HasForeignKey("ParentCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ParentCategory");
+                });
+
+            modelBuilder.Entity("API.Entities.Column", b =>
+                {
+                    b.HasOne("API.Entities.Row", null)
+                        .WithMany("Columns")
+                        .HasForeignKey("RowId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("API.Entities.Team", "Team")
+                        .WithMany()
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Team");
                 });
 
             modelBuilder.Entity("API.Entities.Comment", b =>
@@ -742,19 +1215,21 @@ namespace API.Migrations
                         .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("API.Entities.PostBracket", "PostBracket")
-                        .WithMany("Comments")
-                        .HasForeignKey("PostBracketId")
-                        .OnDelete(DeleteBehavior.NoAction);
+                        .WithMany()
+                        .HasForeignKey("PostBracketId");
 
                     b.HasOne("API.Entities.PostRank", "PostRank")
+                        .WithMany()
+                        .HasForeignKey("PostRankId");
+
+                    b.HasOne("API.Entities.Prediction", null)
                         .WithMany("Comments")
-                        .HasForeignKey("PostRankId")
-                        .OnDelete(DeleteBehavior.NoAction);
+                        .HasForeignKey("PredictionId");
 
                     b.HasOne("API.Entities.AppUser", "User")
-                        .WithMany("Comments")
+                        .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("DiscussionPost");
@@ -764,6 +1239,24 @@ namespace API.Migrations
                     b.Navigation("PostBracket");
 
                     b.Navigation("PostRank");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("API.Entities.CreationFlow", b =>
+                {
+                    b.HasOne("API.Entities.Prediction", "Prediction")
+                        .WithMany()
+                        .HasForeignKey("PredictionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("API.Entities.AppUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Prediction");
 
                     b.Navigation("User");
                 });
@@ -788,23 +1281,54 @@ namespace API.Migrations
                     b.Navigation("AppUser");
                 });
 
-            modelBuilder.Entity("API.Entities.PostBracket", b =>
+            modelBuilder.Entity("API.Entities.PostBingo", b =>
                 {
-                    b.HasOne("API.Entities.RootBracket", "RootBracket")
-                        .WithOne("PostBracket")
-                        .HasForeignKey("API.Entities.PostBracket", "Id")
+                    b.HasOne("API.Entities.BingoTemplate", null)
+                        .WithMany("PostBingo")
+                        .HasForeignKey("BingoTemplateId");
+
+                    b.HasOne("API.Entities.Prediction", "Prediction")
+                        .WithMany("PostBingos")
+                        .HasForeignKey("PredictionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("API.Entities.AppUser", "User")
+                        .WithMany("PostBingos")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("API.Entities.Prediction", null)
+                    b.Navigation("Prediction");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("API.Entities.PostBracket", b =>
+                {
+                    b.HasOne("API.Entities.BracketTemplate", null)
                         .WithMany("PostBrackets")
-                        .HasForeignKey("PredictionId");
+                        .HasForeignKey("BracketTemplateId");
+
+                    b.HasOne("API.Entities.Prediction", "Prediction")
+                        .WithMany("PostBrackets")
+                        .HasForeignKey("PredictionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("API.Entities.RootBracket", "RootBracket")
+                        .WithMany()
+                        .HasForeignKey("RootBracketId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("API.Entities.AppUser", "User")
                         .WithMany("PostBrackets")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.Navigation("Prediction");
 
                     b.Navigation("RootBracket");
 
@@ -813,15 +1337,23 @@ namespace API.Migrations
 
             modelBuilder.Entity("API.Entities.PostRank", b =>
                 {
-                    b.HasOne("API.Entities.Prediction", null)
-                        .WithMany("PostRankings")
-                        .HasForeignKey("PredictionId");
+                    b.HasOne("API.Entities.Prediction", "Prediction")
+                        .WithMany("PostRanks")
+                        .HasForeignKey("PredictionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("API.Entities.RankingTemplate", null)
+                        .WithMany("PostRanks")
+                        .HasForeignKey("RankingTemplateId");
 
                     b.HasOne("API.Entities.AppUser", "User")
                         .WithMany("PostRanks")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.Navigation("Prediction");
 
                     b.Navigation("User");
                 });
@@ -832,6 +1364,47 @@ namespace API.Migrations
                         .WithMany("Predictions")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("API.Entities.PredictionCategory", b =>
+                {
+                    b.HasOne("API.Entities.Prediction", "Prediction")
+                        .WithMany("Categories")
+                        .HasForeignKey("PredictionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("API.Entities.Category", "Category")
+                        .WithMany("PredictionCategories")
+                        .HasForeignKey("categoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Prediction");
+                });
+
+            modelBuilder.Entity("API.Entities.RankTable", b =>
+                {
+                    b.HasOne("API.Entities.PostRank", "PostRank")
+                        .WithOne("RankTable")
+                        .HasForeignKey("API.Entities.RankTable", "PostRankId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PostRank");
+                });
+
+            modelBuilder.Entity("API.Entities.RankingTemplate", b =>
+                {
+                    b.HasOne("API.Entities.AppUser", "User")
+                        .WithMany("RankingTemplates")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -848,65 +1421,80 @@ namespace API.Migrations
 
             modelBuilder.Entity("API.Entities.RootBracket", b =>
                 {
-                    b.HasOne("Bracket", "LeftBracket")
+                    b.HasOne("API.Entities.Team", "LeftTeam")
                         .WithMany()
-                        .HasForeignKey("LeftBracketId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .HasForeignKey("LeftTeamId");
 
-                    b.HasOne("Bracket", "RightBracket")
+                    b.HasOne("API.Entities.Team", "RightTeam")
                         .WithMany()
-                        .HasForeignKey("RightBracketId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .HasForeignKey("RightTeamId");
 
-                    b.Navigation("LeftBracket");
+                    b.Navigation("LeftTeam");
 
-                    b.Navigation("RightBracket");
+                    b.Navigation("RightTeam");
                 });
 
             modelBuilder.Entity("API.Entities.Row", b =>
                 {
-                    b.HasOne("API.Entities.PostRank", "PostRank")
+                    b.HasOne("API.Entities.RankTable", null)
                         .WithMany("Rows")
-                        .HasForeignKey("PostRankId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasForeignKey("RankTableId")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("API.Entities.Team", b =>
+                {
+                    b.HasOne("API.Entities.BingoTemplate", null)
+                        .WithMany("Teams")
+                        .HasForeignKey("BingoTemplateId");
+
+                    b.HasOne("API.Entities.BracketTemplate", null)
+                        .WithMany("Teams")
+                        .HasForeignKey("BracketTemplateId");
+
+                    b.HasOne("API.Entities.AppUser", "CreatedByUser")
+                        .WithMany("Teams")
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.Navigation("PostRank");
+                    b.HasOne("API.Entities.PostBingo", null)
+                        .WithMany("Teams")
+                        .HasForeignKey("PostBingoId");
+
+                    b.HasOne("API.Entities.PostBracket", null)
+                        .WithMany("Teams")
+                        .HasForeignKey("PostBracketId");
+
+                    b.HasOne("API.Entities.PostRank", null)
+                        .WithMany("Teams")
+                        .HasForeignKey("PostRankId");
+
+                    b.HasOne("API.Entities.RankingTemplate", null)
+                        .WithMany("Teams")
+                        .HasForeignKey("RankingTemplateId");
+
+                    b.Navigation("CreatedByUser");
                 });
 
             modelBuilder.Entity("Bracket", b =>
                 {
-                    b.HasOne("Bracket", null)
-                        .WithMany("Children")
-                        .HasForeignKey("BracketId");
-
-                    b.HasOne("Bracket", "LeftBracket")
+                    b.HasOne("API.Entities.Team", "LeftTeam")
                         .WithMany()
-                        .HasForeignKey("LeftBracketId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("LeftTeamId");
 
-                    b.HasOne("Bracket", "ParentBracket")
+                    b.HasOne("API.Entities.Team", "RightTeam")
                         .WithMany()
-                        .HasForeignKey("ParentBracketId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Bracket", "RightBracket")
-                        .WithMany()
-                        .HasForeignKey("RightBracketId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("RightTeamId");
 
                     b.HasOne("API.Entities.RootBracket", "RootBracket")
                         .WithMany("Brackets")
                         .HasForeignKey("RootBracketId")
                         .OnDelete(DeleteBehavior.NoAction);
 
-                    b.Navigation("LeftBracket");
+                    b.Navigation("LeftTeam");
 
-                    b.Navigation("ParentBracket");
-
-                    b.Navigation("RightBracket");
+                    b.Navigation("RightTeam");
 
                     b.Navigation("RootBracket");
                 });
@@ -973,11 +1561,15 @@ namespace API.Migrations
 
             modelBuilder.Entity("API.Entities.AppUser", b =>
                 {
-                    b.Navigation("Comments");
+                    b.Navigation("BingoTemplates");
+
+                    b.Navigation("BracketTemplates");
 
                     b.Navigation("DiscussionPosts");
 
                     b.Navigation("Photo");
+
+                    b.Navigation("PostBingos");
 
                     b.Navigation("PostBrackets");
 
@@ -985,9 +1577,34 @@ namespace API.Migrations
 
                     b.Navigation("Predictions");
 
+                    b.Navigation("RankingTemplates");
+
                     b.Navigation("RefreshTokens");
 
+                    b.Navigation("Teams");
+
                     b.Navigation("UserRoles");
+                });
+
+            modelBuilder.Entity("API.Entities.BingoTemplate", b =>
+                {
+                    b.Navigation("PostBingo");
+
+                    b.Navigation("Teams");
+                });
+
+            modelBuilder.Entity("API.Entities.BracketTemplate", b =>
+                {
+                    b.Navigation("PostBrackets");
+
+                    b.Navigation("Teams");
+                });
+
+            modelBuilder.Entity("API.Entities.Category", b =>
+                {
+                    b.Navigation("PredictionCategories");
+
+                    b.Navigation("SubCategories");
                 });
 
             modelBuilder.Entity("API.Entities.Comment", b =>
@@ -1000,41 +1617,59 @@ namespace API.Migrations
                     b.Navigation("Comments");
                 });
 
+            modelBuilder.Entity("API.Entities.PostBingo", b =>
+                {
+                    b.Navigation("BingoCells");
+
+                    b.Navigation("Teams");
+                });
+
             modelBuilder.Entity("API.Entities.PostBracket", b =>
                 {
-                    b.Navigation("Comments");
+                    b.Navigation("Teams");
                 });
 
             modelBuilder.Entity("API.Entities.PostRank", b =>
                 {
-                    b.Navigation("Comments");
+                    b.Navigation("RankTable")
+                        .IsRequired();
 
-                    b.Navigation("Rows");
+                    b.Navigation("Teams");
                 });
 
             modelBuilder.Entity("API.Entities.Prediction", b =>
                 {
+                    b.Navigation("Categories");
+
+                    b.Navigation("Comments");
+
+                    b.Navigation("PostBingos");
+
                     b.Navigation("PostBrackets");
 
-                    b.Navigation("PostRankings");
+                    b.Navigation("PostRanks");
+                });
+
+            modelBuilder.Entity("API.Entities.RankTable", b =>
+                {
+                    b.Navigation("Rows");
+                });
+
+            modelBuilder.Entity("API.Entities.RankingTemplate", b =>
+                {
+                    b.Navigation("PostRanks");
+
+                    b.Navigation("Teams");
                 });
 
             modelBuilder.Entity("API.Entities.RootBracket", b =>
                 {
                     b.Navigation("Brackets");
-
-                    b.Navigation("PostBracket")
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("API.Entities.Row", b =>
                 {
                     b.Navigation("Columns");
-                });
-
-            modelBuilder.Entity("Bracket", b =>
-                {
-                    b.Navigation("Children");
                 });
 #pragma warning restore 612, 618
         }

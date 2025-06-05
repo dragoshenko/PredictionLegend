@@ -1,55 +1,80 @@
-<!-- nav.component.html -->
 <nav class="navbar navbar-expand-lg bg-dark" data-bs-theme="dark">
   <div class="container-fluid">
-    <a class="navbar-brand" routerLink="/">PredictionMaker</a>
+    <a class="navbar-brand brand-logo" routerLink="/">
+      Prediction<span class="neon-text">Maker</span>
+    </a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarColor02" aria-controls="navbarColor02" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navbarColor02">
+
+      <!-- Left side navigation -->
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
         <li class="nav-item">
-          <a class="nav-link" routerLink="/categories" routerLinkActive="active">Categories</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" routerLink="/site-predictions" routerLinkActive="active">Official Site Predictions</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" routerLink="/trending-predictions" routerLinkActive="active">Custom Trending Predictions</a>
+          <a class="nav-link" routerLink="/published-posts" routerLinkActive="active">Published Posts</a>
         </li>
       </ul>
-      <form class="d-flex me-2">
-        <div class="input-group">
-          <input class="form-control" type="search" placeholder="Search" aria-label="Search">
-          <button class="btn btn-outline-light" type="submit">Search</button>
-        </div>
-      </form>
-      <ul class="navbar-nav">
+
+      <!-- Centered Search Only -->
+      <div class="d-none d-lg-flex justify-content-center flex-grow-1 mx-4">
+        <app-search-dropdown></app-search-dropdown>
+      </div>
+
+      <!-- Right side items -->
+      <ul class="navbar-nav ms-auto">
         <li class="nav-item me-2">
-          <a [routerLink]="['/create-prediction']" class="nav-link btn btn-primary text-white px-3">Create Custom Prediction</a>
+          <a [routerLink]="['/create-prediction']" class="nav-link btn btn-primary text-white px-3">Create Prediction</a>
         </li>
         <!-- Authentication Menu -->
-        <li class="nav-item dropdown" *ngIf="(accountService.currentUser$ | async)">
+        <li class="nav-item dropdown" *ngIf="(accountService.currentUser())">
           <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <span *ngIf="(accountService.currentUser$ | async)?.photoUrl">
-              <img src="{{(accountService.currentUser$ | async)?.photoUrl}}" alt="user" class="rounded-circle me-1" style="height: 30px; width: 30px; object-fit: cover;">
+            <span *ngIf="(accountService.currentUser())?.photoUrl">
+              <img src="{{(accountService.currentUser())?.photoUrl}}" alt="user" class="rounded-circle me-1" style="height: 30px; width: 30px; object-fit: cover;">
             </span>
-            {{(accountService.currentUser$ | async)?.displayName}}
+            {{(accountService.currentUser())?.displayName}}
           </a>
           <ul class="dropdown-menu dropdown-menu-end">
-            <li><a class="dropdown-item" routerLink="/profile">My Profile</a></li>
-            <li><a class="dropdown-item" routerLink="/my-predictions">My Predictions</a></li>
+            <li *ngIf="(accountService.roles().includes('Admin'))">
+              <a class="dropdown-item" routerLink="/admin">
+                <i class="fa fa-shield me-2"></i> Admin Dashboard
+              </a>
+            </li>
+            <li><a class="dropdown-item" routerLink="/profile">
+              <i class="fa fa-user me-2"></i>My Profile
+            </a></li>
+            <li><a class="dropdown-item" routerLink="/my-predictions">
+              <i class="fa fa-list me-2"></i>My Predictions
+            </a></li>
             <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" (click)="accountService.logout()" style="cursor: pointer">Logout</a></li>
+            <li><a class="dropdown-item" (click)="accountService.logout()" style="cursor: pointer">
+              <i class="fa fa-sign-out me-2"></i>Logout
+            </a></li>
           </ul>
         </li>
+        <!-- Desktop-only login button -->
+        <li class="nav-item" *ngIf="!(accountService.currentUser())">
+          <a class="nav-link btn btn-outline-light" routerLink="/auth">Login</a>
+        </li>
       </ul>
-      <!-- Login button in its own div for better mobile centering -->
-      <div class="d-lg-none w-100 text-center mt-3">
-        <a *ngIf="!(accountService.currentUser$ | async)" class="btn btn-outline-light" routerLink="/auth">Login</a>
-      </div>
-      <!-- Desktop-only login button -->
-      <div class="d-none d-lg-block">
-        <a *ngIf="!(accountService.currentUser$ | async)" class="btn btn-outline-light" routerLink="/auth">Login</a>
+
+      <!-- Mobile Navigation -->
+      <div class="d-lg-none w-100 mt-3">
+        <!-- Mobile Published Posts -->
+        <div class="mb-3 text-center">
+          <a class="btn btn-outline-secondary w-100" routerLink="/published-posts" routerLinkActive="active">
+            <i class="fa fa-globe me-2"></i>Published Posts
+          </a>
+        </div>
+
+        <!-- Mobile Search -->
+        <div class="mb-3">
+          <app-search-dropdown></app-search-dropdown>
+        </div>
+
+        <!-- Mobile Login Button -->
+        <div class="text-center">
+          <a *ngIf="!(accountService.currentUser())" class="btn btn-outline-light" routerLink="/auth">Login</a>
+        </div>
       </div>
     </div>
   </div>

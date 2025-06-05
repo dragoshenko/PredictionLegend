@@ -4,5 +4,4 @@ public enum PrivacyType
 {
     Public,
     Private,
-    FriendsOnly
 }

@@ -4,10 +4,57 @@
   position: relative;
 }
 
-.navbar-brand {
+/* Enhanced Brand Logo with Neon Effect */
+.navbar-brand.brand-logo {
   font-weight: bold;
-  font-size: 1.6rem; /* Increased font size */
+  font-size: 2rem; /* Increased from 1.6rem */
   padding: 0.25rem 0;
+  color: #fff;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.navbar-brand.brand-logo:hover {
+  color: #fff;
+  text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+}
+
+/* Subtle Neon "Maker" Text Effect */
+.neon-text {
+  color: #00d4ff; /* Softer cyan color */
+  text-shadow:
+    0 0 3px #00d4ff,
+    0 0 6px #00d4ff,
+    0 0 9px rgba(0, 212, 255, 0.5); /* Reduced intensity */
+  /* Removed animation for less "in your face" effect */
+}
+
+/* Optional: Subtle pulse on hover instead of constant flicker */
+.navbar-brand.brand-logo:hover .neon-text {
+  text-shadow:
+    0 0 5px #00d4ff,
+    0 0 10px #00d4ff,
+    0 0 15px rgba(0, 212, 255, 0.7);
+  transition: text-shadow 0.3s ease;
+}
+
+/* Alternative neon colors you can use */
+.neon-text.purple {
+  color: #ff00ff;
+  text-shadow:
+    0 0 5px #ff00ff,
+    0 0 10px #ff00ff,
+    0 0 15px #ff00ff,
+    0 0 20px #ff00ff;
+}
+
+.neon-text.green {
+  color: #00ff00;
+  text-shadow:
+    0 0 5px #00ff00,
+    0 0 10px #00ff00,
+    0 0 15px #00ff00,
+    0 0 20px #00ff00;
 }
 
 .nav-link {
@@ -30,6 +77,7 @@
   width: 70%;
   height: 3px;
   background-color: #0d6efd;
+  border-radius: 2px;
 }
 
 /* Make search bar bigger */
@@ -80,10 +128,33 @@
   .navbar-nav .nav-item {
     margin-bottom: 0.5rem;
   }
+
+  /* Adjust brand size for mobile */
+  .navbar-brand.brand-logo {
+    font-size: 1.7rem; /* Slightly smaller on mobile */
+  }
 }
 
 /* Make sure the login button is always visible in collapsed mode */
 .navbar-collapse.show .d-lg-none.w-100,
 .navbar-collapse.collapsing .d-lg-none.w-100 {
   display: block !important;
+}
+
+/* Enhanced hover effects */
+.nav-link:hover {
+  color: #00d4ff !important; /* Updated to match subtle neon color */
+  text-shadow: 0 0 3px rgba(0, 212, 255, 0.3); /* Subtle glow */
+  transition: all 0.3s ease;
+}
+
+/* Button hover effects */
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
+}
+
+.btn-outline-light:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(255, 255, 255, 0.2);
 }

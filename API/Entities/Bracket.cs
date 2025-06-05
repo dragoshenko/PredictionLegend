@@ -3,27 +3,33 @@ using API.Entities;
 public class Bracket
 {
     public int Id { get; set; }
-    public string Content { get; set; } = string.Empty;
     public float Score { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-    // Root bracket reference
     public int? RootBracketId { get; set; }
     public RootBracket? RootBracket { get; set; }
 
-    // Parent bracket
-    public int? ParentBracketId { get; set; }
-    public Bracket? ParentBracket { get; set; }
+    public Team? LeftTeam { get; set; }
+    public int OfficialScoreLeftTeam { get; set; } = 0;
+    public Team? RightTeam { get; set; }
+    public int OfficialScoreRightTeam { get; set; } = 0;
 
-    // Self-referencing left/right brackets
-    public int? LeftBracketId { get; set; }
-    public Bracket? LeftBracket { get; set; }
+    public bool IsWrong { get; set; } = false;
 
-    public int? RightBracketId { get; set; }
-    public Bracket? RightBracket { get; set; }
 
     public int Order { get; set; } = 0;
 
-    public ICollection<Bracket> Children { get; set; } = [];
+    public Bracket() { }
+    public Bracket(BracketType bracketType, int order)
+    {
+        Order = order;
+        if (bracketType == BracketType.SingleTeam)
+        {
+            LeftTeam = new Team();
+        }
+        else
+        {
+            LeftTeam = new Team();
+            RightTeam = new Team();
+        }
+    }
 }

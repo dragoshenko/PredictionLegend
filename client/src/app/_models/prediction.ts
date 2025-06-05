@@ -1,26 +1,25 @@
+import { Category } from "./category";
+import { PostBracket } from "./postBracket";
+import { PredictionType } from "./predictionType";
+import { PrivacyType } from "./privacyType";
+import { PostRank } from "./postRank";
+import { PostBingo } from "./postBingo";
+
 export interface Prediction {
   id: number;
-  title: string;
+  title? : string;
   description?: string;
-  predictionType: string;
-  privacyType: string;
-  rows: number;
-  columns: number;
+  predictionType: PredictionType;
+  privacyType: PrivacyType;
+  isDraft: boolean;
+  accessCode?: string;
   createdAt: Date;
   lastModified?: Date;
-  isPublished: boolean;
-  author?: {
-    id: number;
-    displayName: string;
-    photoUrl?: string;
-  };
-}
-
-export interface CreatePredictionRequest {
-  title: string;
-  description?: string;
-  predictionType: string;
-  privacyType: string;
-  rows: number;
-  columns: number;
+  categories?: Category[];
+  startDate?: Date;
+  endDate?: Date;
+  isActive?: boolean;
+  postBrackets?: PostBracket[];
+  postRankings?: PostRank[];
+  postBingos?: PostBingo[];
 }

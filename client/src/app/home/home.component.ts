@@ -1,7 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+// client/src/app/home/home.component.ts - UPDATED
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { trigger, state, style, animate, transition } from '@angular/animations';
+import { CategoryService } from '../_services/category.service';
+import { Category } from '../_models/category';
 
 @Component({
   selector: 'app-home',
@@ -25,14 +28,11 @@ import { trigger, state, style, animate, transition } from '@angular/animations'
   ]
 })
 export class HomeComponent implements OnInit {
-  hoveredCategory: number | null = null;
+  private router = inject(Router);
+  private categoryService = inject(CategoryService);
 
-  categories = [
-    { id: 1, name: 'Sports', icon: '🏆', color: '#e74c3c' },
-    { id: 2, name: 'Entertainment', icon: '🎬', color: '#9b59b6' },
-    { id: 3, name: 'Finance', icon: '📈', color: '#2ecc71' },
-    { id: 4, name: 'Technology', icon: '💻', color: '#3498db' }
-  ];
+  hoveredCategory: number | null = null;
+  categories: Category[] = [];
 
   steps = [
     { id: 1, title: 'Create', description: 'Make your own prediction or join an existing one', icon: 'fa-lightbulb-o' },
@@ -43,6 +43,70 @@ export class HomeComponent implements OnInit {
   constructor() { }
 
   ngOnInit(): void {
-    // Animation initialization can go here if needed
+    this.loadCategories();
+  }
+
+  private loadCategories(): void {
+    // Load categories from the service
+    this.categoryService.getCategories();
+
+    // Get the root categories after they're loaded
+    setTimeout(() => {
+      const rootCategories = this.categoryService.rootCategories();
+
+      // Map categories to display format with proper icons
+      this.categories = rootCategories.map(category => ({
+        ...category,
+        // Map category names to appropriate icons and colors
+        displayIcon: this.getCategoryIcon(category.name),
+        displayColor: category.colorCode || this.getCategoryColor(category.name)
+      }));
+
+      console.log('Loaded categories for home page:', this.categories);
+    }, 100);
+  }
+
+  private getCategoryIcon(categoryName: string): string {
+    const iconMap: { [key: string]: string } = {
+      'Sports': '🏆',
+      'Entertainment': '🎬',
+      'Business': '📈',
+      'Technology': '💻',
+      'Politics': '🏛️',
+      'Science': '🔬',
+      'Finance': '📊',
+      'Gaming': '🎮',
+      'Music': '🎵',
+      'Movies': '🎥'
+    };
+    return iconMap[categoryName] || '📋';
+  }
+
+  private getCategoryColor(categoryName: string): string {
+    const colorMap: { [key: string]: string } = {
+      'Sports': '#e74c3c',
+      'Entertainment': '#9b59b6',
+      'Business': '#2ecc71',
+      'Technology': '#3498db',
+      'Politics': '#e67e22',
+      'Science': '#1abc9c',
+      'Finance': '#27ae60',
+      'Gaming': '#8e44ad',
+      'Music': '#f39c12',
+      'Movies': '#c0392b'
+    };
+    return colorMap[categoryName] || '#6c757d';
+  }
+
+  // Add click handler for category navigation
+  onCategoryClick(category: Category): void {
+    console.log('Category clicked:', category.name, 'ID:', category.id);
+
+    // Navigate to published posts with the selected category filter
+    this.router.navigate(['/published-posts'], {
+      queryParams: {
+        category: category.id
+      }
+    });
   }
 }

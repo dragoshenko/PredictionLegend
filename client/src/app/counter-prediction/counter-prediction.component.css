@@ -1,0 +1,447 @@
+/* Enhanced Counter Prediction Component Styles with Drag & Drop */
+
+.counter-prediction-container {
+  --primary-color: #007bff;
+  --success-color: #28a745;
+  --warning-color: #ffc107;
+  --info-color: #17a2b8;
+  --secondary-color: #6c757d;
+  --dark-color: #343a40;
+  --border-radius: 8px;
+  --transition: all 0.2s ease;
+}
+
+/* Typography */
+.counter-prediction-container .very-small {
+  font-size: 0.7rem;
+  line-height: 1.2;
+}
+
+.counter-prediction-container .small {
+  font-size: 0.875rem;
+  line-height: 1.25;
+}
+
+/* Drag and Drop Enhancements */
+.counter-prediction-container .team-item {
+  transition: var(--transition);
+  border-radius: var(--border-radius);
+  position: relative;
+  overflow: hidden;
+}
+
+.counter-prediction-container .team-item.cdk-drag-dragging {
+  box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
+  transform: rotate(2deg);
+  opacity: 0.8;
+  z-index: 1000;
+}
+
+.counter-prediction-container .team-item:not(.cdk-drag-dragging) {
+  cursor: grab;
+}
+
+.counter-prediction-container .team-item:not(.cdk-drag-dragging):active {
+  cursor: grabbing;
+}
+
+/* Custom Drag Preview */
+.counter-prediction-container .drag-preview {
+  transform: rotate(2deg) scale(1.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  border-radius: var(--border-radius);
+  max-width: 200px;
+  z-index: 1000;
+}
+
+/* Drop Zone Styling */
+.counter-prediction-container .team-slot.cdk-drop-list-receiving {
+  border-color: var(--info-color) !important;
+  background: rgba(23, 162, 184, 0.15) !important;
+  transform: scale(1.02);
+  box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.25);
+}
+
+.counter-prediction-container .bingo-cell.cdk-drop-list-receiving {
+  border-color: var(--info-color) !important;
+  background: rgba(23, 162, 184, 0.15) !important;
+  transform: scale(1.05);
+  box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.25);
+}
+
+/* Drag Placeholder */
+.counter-prediction-container .cdk-drag-placeholder {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px dashed var(--secondary-color);
+  border-radius: var(--border-radius);
+  opacity: 0.5;
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.counter-prediction-container .cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Team Slot Styling */
+.counter-prediction-container .team-slot {
+  position: relative;
+  transition: var(--transition);
+  border: 2px solid var(--secondary-color);
+  background: rgba(108, 117, 125, 0.05);
+  min-height: 70px;
+  border-radius: var(--border-radius);
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.counter-prediction-container .team-slot.occupied {
+  border-color: var(--success-color);
+  background: rgba(40, 167, 69, 0.1);
+  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.1);
+}
+
+.counter-prediction-container .team-slot.empty {
+  border-style: dashed;
+  border-color: var(--secondary-color);
+  background: rgba(108, 117, 125, 0.05);
+}
+
+.counter-prediction-container .team-slot.empty:hover {
+  border-color: var(--info-color);
+  background: rgba(23, 162, 184, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(23, 162, 184, 0.2);
+}
+
+.counter-prediction-container .team-slot.selected {
+  border-color: var(--primary-color);
+  background: rgba(0, 123, 255, 0.15);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+  transform: scale(1.02);
+}
+
+/* Bingo Cell Styling */
+.counter-prediction-container .bingo-cell {
+  position: relative;
+  transition: var(--transition);
+  border: 2px solid var(--secondary-color);
+  background: rgba(108, 117, 125, 0.05);
+  aspect-ratio: 1;
+  border-radius: var(--border-radius);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  min-height: 80px;
+}
+
+.counter-prediction-container .bingo-cell.occupied {
+  border-color: var(--success-color);
+  background: rgba(40, 167, 69, 0.1);
+  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.1);
+}
+
+.counter-prediction-container .bingo-cell.empty {
+  border-style: dashed;
+  border-color: var(--secondary-color);
+  background: rgba(108, 117, 125, 0.05);
+}
+
+.counter-prediction-container .bingo-cell.empty:hover {
+  border-color: var(--info-color);
+  background: rgba(23, 162, 184, 0.1);
+  transform: scale(1.02);
+  box-shadow: 0 4px 8px rgba(23, 162, 184, 0.2);
+}
+
+.counter-prediction-container .bingo-cell.selected {
+  border-color: var(--primary-color);
+  background: rgba(0, 123, 255, 0.15);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+  transform: scale(1.05);
+}
+
+/* Team Item Enhancements for Drag & Drop */
+.counter-prediction-container .team-item.selectable {
+  border-color: var(--primary-color) !important;
+  cursor: grab;
+  background: rgba(0, 123, 255, 0.05);
+}
+
+.counter-prediction-container .team-item.selectable:hover {
+  background: rgba(0, 123, 255, 0.15) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2);
+}
+
+.counter-prediction-container .team-item.selectable:active {
+  cursor: grabbing;
+}
+
+.counter-prediction-container .team-item.available {
+  opacity: 0.7;
+  cursor: grab;
+}
+
+.counter-prediction-container .team-item.available:hover {
+  opacity: 1;
+  background: rgba(108, 117, 125, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Drag Handle */
+.counter-prediction-container .fa-grip-vertical {
+  color: rgba(255, 255, 255, 0.5);
+  transition: var(--transition);
+}
+
+.counter-prediction-container .team-item:hover .fa-grip-vertical {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Drop Zone Animations */
+.counter-prediction-container .team-slot.cdk-drop-list-receiving::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg,
+    rgba(23, 162, 184, 0.1) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(23, 162, 184, 0.1) 50%,
+    rgba(23, 162, 184, 0.1) 75%,
+    transparent 75%);
+  background-size: 20px 20px;
+  border-radius: var(--border-radius);
+  animation: slideBackground 1s linear infinite;
+  pointer-events: none;
+}
+
+.counter-prediction-container .bingo-cell.cdk-drop-list-receiving::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg,
+    rgba(23, 162, 184, 0.1) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(23, 162, 184, 0.1) 50%,
+    rgba(23, 162, 184, 0.1) 75%,
+    transparent 75%);
+  background-size: 15px 15px;
+  border-radius: var(--border-radius);
+  animation: slideBackground 1s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes slideBackground {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 20px 20px;
+  }
+}
+
+/* Selection Indicators */
+.counter-prediction-container .position-absolute {
+  pointer-events: none;
+  z-index: 10;
+}
+
+.counter-prediction-container .badge {
+  font-size: 0.75rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+/* Progress Styling */
+.counter-prediction-container .progress {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.counter-prediction-container .progress-bar {
+  transition: width 0.6s ease;
+  border-radius: 4px;
+}
+
+/* Button Enhancements */
+.counter-prediction-container .btn {
+  border-radius: var(--border-radius);
+  font-weight: 500;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.counter-prediction-container .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.counter-prediction-container .btn:active {
+  transform: translateY(0);
+}
+
+.counter-prediction-container .btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+/* Card Enhancements */
+.counter-prediction-container .card {
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: var(--transition);
+}
+
+.counter-prediction-container .card:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.counter-prediction-container .card-header {
+  border-radius: 12px 12px 0 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Alert Styling */
+.counter-prediction-container .alert {
+  border-radius: var(--border-radius);
+  border: none;
+  font-weight: 500;
+}
+
+.counter-prediction-container .alert-info {
+  background: linear-gradient(135deg, var(--info-color), #138496);
+  color: white;
+}
+
+.counter-prediction-container .alert-success {
+  background: linear-gradient(135deg, var(--success-color), #1e7e34);
+  color: white;
+}
+
+.counter-prediction-container .alert-warning {
+  background: linear-gradient(135deg, var(--warning-color), #e0a800);
+  color: #212529;
+}
+
+/* Form Controls */
+.counter-prediction-container .form-control {
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.counter-prediction-container .form-control:focus {
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  border-color: var(--primary-color);
+}
+
+/* Table Styling */
+.counter-prediction-container .table {
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.counter-prediction-container .table th {
+  background: linear-gradient(135deg, var(--primary-color), #0056b3);
+  color: white;
+  font-weight: 600;
+  text-align: center;
+  border: none;
+  padding: 1rem;
+}
+
+.counter-prediction-container .table td {
+  border-color: rgba(255, 255, 255, 0.1);
+  vertical-align: middle;
+  padding: 0.5rem;
+}
+
+/* Grid Layout */
+.counter-prediction-container .bingo-grid {
+  display: grid;
+  gap: 8px;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+}
+
+/* Drag & Drop Success Animation */
+.counter-prediction-container .drop-success {
+  animation: dropSuccess 0.6s ease-in-out;
+}
+
+@keyframes dropSuccess {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 20px rgba(40, 167, 69, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .counter-prediction-container .team-slot {
+    min-height: 60px;
+    padding: 8px;
+  }
+
+  .counter-prediction-container .bingo-cell {
+    min-height: 60px;
+    padding: 4px;
+  }
+
+  .counter-prediction-container .bingo-grid {
+    max-width: 300px;
+    gap: 4px;
+  }
+
+  .counter-prediction-container .team-item {
+    padding: 0.5rem;
+  }
+
+  .counter-prediction-container .very-small {
+    font-size: 0.6rem;
+  }
+}
+
+/* Accessibility */
+.counter-prediction-container .team-slot:focus,
+.counter-prediction-container .bingo-cell:focus,
+.counter-prediction-container .team-item:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .counter-prediction-container * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

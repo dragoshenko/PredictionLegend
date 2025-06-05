@@ -14,6 +14,15 @@ import { Router } from '@angular/router';
 import { take } from 'rxjs/operators';
 import { HttpHeaders } from '@angular/common/http';
 
+interface UserPredictionStats {
+  rankingCount: number;
+  bracketCount: number;
+  bingoCount: number;
+  totalCount: number;
+  publishedCount: number;
+  draftCount: number;
+}
+
 @Component({
   selector: 'app-profile',
   standalone: true,
@@ -32,14 +41,14 @@ export class ProfileComponent implements OnInit {
   user: User | null = null;
   profileForm!: FormGroup;
   passwordForm!: FormGroup;
-  addPasswordForm!: FormGroup; // New form for Google-authenticated users
+  addPasswordForm!: FormGroup;
   verificationForm!: FormGroup;
   editMode = false;
   passwordEditMode = false;
   verificationMode = false;
   loading = false;
-  userStats: { created: number, completed: number, answered: number } | null = null;
-  isGoogleAuthenticatedWithoutPassword = false; // New flag
+  predictionStats: UserPredictionStats | null = null;
+  isGoogleAuthenticatedWithoutPassword = false;
 
   ngOnInit(): void {
     // Initialize the form first
@@ -50,14 +59,14 @@ export class ProfileComponent implements OnInit {
 
     // Then load user data
     this.loadUser();
-    this.loadUserStats();
+    this.loadPredictionStats();
   }
 
   initializeForm() {
     this.profileForm = this.fb.group({
       displayName: ['', [Validators.required, Validators.minLength(2)]],
-      username: [{value: '', disabled: true}],
-      email: [{value: '', disabled: true}],
+      username: [{ value: '', disabled: true }],
+      email: [{ value: '', disabled: true }],
       bio: ['']
     });
   }
@@ -83,21 +92,20 @@ export class ProfileComponent implements OnInit {
   }
 
   loadUser() {
-    this.accountService.currentUser$.subscribe(user => {
-      this.user = user;
-      if (user) {
-        this.profileForm.patchValue({
-          displayName: user.displayName,
-          username: user.username,
-          email: user.email
-        });
+    const user = this.accountService.currentUser();
+    this.user = user;
+    if (user) {
+      this.profileForm.patchValue({
+        displayName: user.displayName,
+        username: user.username,
+        email: user.email
+      });
 
-        // Check if user is Google-authenticated without a password
-        this.isGoogleAuthenticatedWithoutPassword = !user.hasChangedGenericPassword;
-        console.log('User has changed generic password:', user.hasChangedGenericPassword);
-        console.log('Is Google authenticated without password:', this.isGoogleAuthenticatedWithoutPassword);
-      }
-    });
+      // Check if user is Google-authenticated without a password
+      this.isGoogleAuthenticatedWithoutPassword = !user.hasChangedGenericPassword;
+      console.log('User has changed generic password:', user.hasChangedGenericPassword);
+      console.log('Is Google authenticated without password:', this.isGoogleAuthenticatedWithoutPassword);
+    }
   }
 
   passwordMatchValidator(password: string, confirmPassword: string) {
@@ -119,20 +127,96 @@ export class ProfileComponent implements OnInit {
     };
   }
 
-  loadUserStats() {
-    this.userService.getUserStats().subscribe({
-      next: stats => {
-        this.userStats = stats;
-      },
-      error: error => {
-        console.error('Failed to load user stats', error);
-        this.userStats = {
-          created: 0,
-          completed: 0,
-          answered: 0
+  async loadPredictionStats(): Promise<void> {
+    try {
+      console.log('Loading user prediction stats...');
+
+      // Fetch user's predictions from the my-posts endpoint
+      const response = await this.http.get<any[]>(
+        `${environment.apiUrl}post/my-posts`
+      ).toPromise();
+
+      if (response && Array.isArray(response)) {
+        console.log('User posts loaded:', response);
+
+        // Count predictions by type
+        const stats: UserPredictionStats = {
+          rankingCount: 0,
+          bracketCount: 0,
+          bingoCount: 0,
+          totalCount: response.length,
+          publishedCount: 0,
+          draftCount: 0
+        };
+
+        response.forEach(post => {
+          // Count by prediction type
+          const predictionType = this.getPredictionTypeDisplayName(post.predictionType);
+          switch (predictionType) {
+            case 'Ranking':
+              stats.rankingCount++;
+              break;
+            case 'Bracket':
+              stats.bracketCount++;
+              break;
+            case 'Bingo':
+              stats.bingoCount++;
+              break;
+          }
+
+          // Count by status
+          if (post.isDraft) {
+            stats.draftCount++;
+          } else {
+            stats.publishedCount++;
+          }
+        });
+
+        this.predictionStats = stats;
+        console.log('Prediction stats calculated:', stats);
+      } else {
+        console.log('No predictions found or invalid response');
+        this.predictionStats = {
+          rankingCount: 0,
+          bracketCount: 0,
+          bingoCount: 0,
+          totalCount: 0,
+          publishedCount: 0,
+          draftCount: 0
         };
       }
-    });
+    } catch (error) {
+      console.error('Failed to load prediction stats:', error);
+      this.predictionStats = {
+        rankingCount: 0,
+        bracketCount: 0,
+        bingoCount: 0,
+        totalCount: 0,
+        publishedCount: 0,
+        draftCount: 0
+      };
+    }
+  }
+
+  private getPredictionTypeDisplayName(predictionType: any): string {
+    if (typeof predictionType === 'string') {
+      return predictionType;
+    }
+
+    // Convert numeric values to string names
+    switch (predictionType) {
+      case 0:
+      case '0':
+        return 'Ranking';
+      case 1:
+      case '1':
+        return 'Bracket';
+      case 2:
+      case '2':
+        return 'Bingo';
+      default:
+        return 'Unknown';
+    }
   }
 
   toggleEditMode() {
@@ -155,23 +239,46 @@ export class ProfileComponent implements OnInit {
     if (this.profileForm.valid) {
       this.loading = true;
 
+      // Store the original password flags before updating
+      const originalHasChangedGenericPassword = this.user?.hasChangedGenericPassword;
+      const originalWasWarnedAboutPasswordChange = this.user?.wasWarnedAboutPasswordChange;
+
+      // Use the same pattern as password change - direct API call
       const updateModel = {
-        DisplayName: this.profileForm.get('displayName')?.value,
-        Bio: this.profileForm.get('bio')?.value || ''
+        username: this.user?.username || '',
+        displayName: this.profileForm.get('displayName')?.value,
+        bio: this.profileForm.get('bio')?.value || ''
       };
 
-      // Direct API call to update profile
-      this.http.put(environment.apiUrl + 'user', updateModel).subscribe({
+      console.log('Sending direct profile update:', updateModel);
+
+      // Use the new direct endpoint (following password change pattern)
+      this.http.post(environment.apiUrl + 'user/direct-profile-update', updateModel).subscribe({
         next: (response) => {
           console.log('Profile update response:', response);
           this.toastr.success('Profile updated successfully');
-          this.refreshUserData();
+
+          // Update the local user object directly instead of calling refreshUserData
+          if (this.user) {
+            this.user.displayName = this.profileForm.get('displayName')?.value;
+            // Preserve the original password flags
+            this.user.hasChangedGenericPassword = originalHasChangedGenericPassword || false;
+            this.user.wasWarnedAboutPasswordChange = originalWasWarnedAboutPasswordChange || false;
+
+            // Update the account service with the modified user data
+            this.accountService.setCurrentUser(this.user, true);
+
+            // Update the flag for UI display
+            this.isGoogleAuthenticatedWithoutPassword = !this.user.hasChangedGenericPassword;
+          }
+
           this.loading = false;
           this.editMode = false;
         },
         error: error => {
           console.error('Update profile error:', error);
-          this.toastr.error(error.error || 'Failed to update profile');
+          console.error('Error details:', error.error);
+          this.toastr.error(error.error?.message || error.error || 'Failed to update profile');
           this.loading = false;
         }
       });
@@ -190,29 +297,29 @@ export class ProfileComponent implements OnInit {
       if (this.passwordForm.valid) {
         this.loading = true;
 
-      const loginCredentials = {
-        usernameOrEmail: this.user?.username || '',
-        password: this.passwordForm.get('currentPassword')?.value
-      };
+        const loginCredentials = {
+          usernameOrEmail: this.user?.username || '',
+          password: this.passwordForm.get('currentPassword')?.value
+        };
 
-      console.log('Verifying current password by login attempt');
+        console.log('Verifying current password by login attempt');
 
-      this.accountService.login(loginCredentials).subscribe({
-        next: () => {
-          // Password is correct, request verification code
-          this.requestVerificationCode();
-        },
-        error: error => {
-          console.error('Password verification error:', error);
-          this.toastr.error('Current password is incorrect');
-          this.loading = false;
-        }
-      });
-    } else {
-      this.markFormGroupTouched(this.passwordForm);
-      this.toastr.error('Please fix the validation errors');
+        this.accountService.login(loginCredentials).subscribe({
+          next: () => {
+            // Password is correct, request verification code
+            this.requestVerificationCode();
+          },
+          error: error => {
+            console.error('Password verification error:', error);
+            this.toastr.error('Current password is incorrect');
+            this.loading = false;
+          }
+        });
+      } else {
+        this.markFormGroupTouched(this.passwordForm);
+        this.toastr.error('Please fix the validation errors');
+      }
     }
-  }
   }
 
   requestVerificationCode() {
@@ -390,14 +497,26 @@ export class ProfileComponent implements OnInit {
   }
 
   refreshUserData() {
+    // Store the original password flags before refreshing
+    const originalHasChangedGenericPassword = this.user?.hasChangedGenericPassword;
+    const originalWasWarnedAboutPasswordChange = this.user?.wasWarnedAboutPasswordChange;
+
     this.accountService.refreshUserData().subscribe({
       next: user => {
         if (user) {
           console.log('Refreshed user data:', user);
           this.user = user;
 
-          // Update the flag based on fresh data
-          this.isGoogleAuthenticatedWithoutPassword = !user.hasChangedGenericPassword;
+          // If we're just updating profile (not password), preserve the original password flags
+          if (originalHasChangedGenericPassword !== undefined) {
+            this.user.hasChangedGenericPassword = originalHasChangedGenericPassword;
+          }
+          if (originalWasWarnedAboutPasswordChange !== undefined) {
+            this.user.wasWarnedAboutPasswordChange = originalWasWarnedAboutPasswordChange;
+          }
+
+          // Update the flag based on preserved data
+          this.isGoogleAuthenticatedWithoutPassword = !this.user.hasChangedGenericPassword;
 
           this.profileForm.patchValue({
             displayName: user.displayName,
@@ -405,9 +524,9 @@ export class ProfileComponent implements OnInit {
             email: user.email
           });
 
-          // Force nav component reload by updating the source
-          this.accountService.setCurrentUser(user, true);
-          this.loadUserStats();
+          // Force nav component reload by updating the source with preserved flags
+          this.accountService.setCurrentUser(this.user, true);
+          this.loadPredictionStats();
         }
       },
       error: error => {
@@ -475,5 +594,4 @@ export class ProfileComponent implements OnInit {
       }
     });
   }
-
 }

@@ -1,4 +1,3 @@
-namespace API.Extensions;
 using API.Data;
 using API.Helpers;
 using API.Interfaces;
@@ -30,10 +29,24 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IUserRepository, UserRespository>();
+        services.AddScoped<ITemplateRepository, TemplateRepository>();
+        services.AddScoped<IPostRepository, PostRepository>();
         services.AddScoped<IPredictionRepository, PredictionRepository>();
+        services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<ITeamRepository, TeamRepository>(); // Added missing registration
         services.AddScoped<IMapper, Mapper>();
+
+        services.AddScoped<ITemplateService, TemplateService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IPostService, PostService>();
         services.AddScoped<IPhotoService, PhotoService>();
+        services.AddScoped<IPredictionService, PredictionService>();
+        services.AddScoped<ITeamService, TeamService>();
+        services.AddScoped<ICreationFlowRepository, CreationFlowRepository>();
+        services.AddScoped<ICreationFlowService, CreationFlowService>();
+        services.AddScoped<IDiscussionRepository, DiscussionRepository>();
+        services.AddScoped<IDiscussionService, DiscussionService>();
+        services.AddScoped<ISearchService, SearchService>();
         
         return services;
     }

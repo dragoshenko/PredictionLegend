@@ -33,6 +33,64 @@ public class UserController : BaseAPIController
         _userManager = userManager;
 
     }
+    public class DirectProfileUpdateRequest
+    {
+        public string Username { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string Bio { get; set; } = string.Empty;
+    }
+
+    [HttpPost("direct-profile-update")]
+    public async Task<IActionResult> DirectProfileUpdate([FromBody] DirectProfileUpdateRequest request)
+    {
+        if (string.IsNullOrEmpty(request.Username))
+        {
+            return BadRequest("Username is required");
+        }
+
+        var user = await _userManager.FindByNameAsync(request.Username);
+        if (user == null)
+        {
+            return BadRequest("User not found");
+        }
+
+        // Store the original password flags to preserve them
+        var originalHasChangedGenericPassword = user.HasChangedGenericPassword;
+        var originalWasWarnedAboutPasswordChange = user.WasWarnedAboutPasswordChange;
+
+        // Update only the profile fields (same as password change approach)
+        if (!string.IsNullOrEmpty(request.DisplayName))
+        {
+            user.DisplayName = request.DisplayName;
+        }
+
+        if (request.Bio != null)
+        {
+            user.Bio = request.Bio;
+        }
+
+        // IMPORTANT: Preserve the password-related flags
+        user.HasChangedGenericPassword = originalHasChangedGenericPassword;
+        user.WasWarnedAboutPasswordChange = originalWasWarnedAboutPasswordChange;
+
+        // Use UserManager.UpdateAsync directly (same as password change)
+        var result = await _userManager.UpdateAsync(user);
+
+        if (result.Succeeded)
+        {
+            return Ok(new
+            {
+                message = "Profile updated successfully",
+                hasChangedGenericPassword = user.HasChangedGenericPassword,
+                wasWarnedAboutPasswordChange = user.WasWarnedAboutPasswordChange
+            });
+        }
+        else
+        {
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            return BadRequest(new { errors = errors });
+        }
+    }
 
     // Get current user data
     [HttpGet]
@@ -76,6 +134,11 @@ public class UserController : BaseAPIController
 
         if (user == null) return NotFound();
 
+        // Log the incoming data for debugging
+        Console.WriteLine($"Received update request for user: {user.UserName}");
+        Console.WriteLine($"New DisplayName: {memberUpdateDTO.DisplayName}");
+        Console.WriteLine($"New Bio: {memberUpdateDTO.Bio}");
+
         // Check if display name is being updated
         if (!string.IsNullOrEmpty(memberUpdateDTO.DisplayName) &&
             memberUpdateDTO.DisplayName != user.DisplayName)
@@ -91,28 +154,74 @@ public class UserController : BaseAPIController
         }
 
         // Update other user properties
-        if (!string.IsNullOrEmpty(memberUpdateDTO.Bio))
+        if (memberUpdateDTO.Bio != null)
             user.Bio = memberUpdateDTO.Bio;
         else
             user.Bio = string.Empty;
 
-        // Save changes
-            var result = await _userManager.UpdateAsync(user);
-
-        if (!result.Succeeded) return BadRequest("Failed to update user profile");
-
-        // Only update completed if changes done
-        if (await _unitOfWork.Complete())
+        try
         {
+            // FOLLOW THE SAME PATTERN AS PASSWORD CHANGE
+            // Instead of using UserManager.UpdateAsync, use the repository pattern directly
+            // like your working password change does
+
+            // Update the user using the repository (similar to how password change works)
+            var repositoryResult = await _unitOfWork.UserRepository.UpdateAsync(user);
+
+            if (!repositoryResult.Succeeded)
+            {
+                var errors = string.Join(", ", repositoryResult.Errors.Select(e => e.Description));
+                Console.WriteLine($"Repository UpdateAsync failed with errors: {errors}");
+                return BadRequest($"Failed to update user profile: {errors}");
+            }
+
+            // Save changes to database - THIS IS THE KEY STEP that might be missing
+            var saveResult = await _unitOfWork.Complete();
+
+            if (!saveResult)
+            {
+                Console.WriteLine("UnitOfWork.Complete() returned false - database save failed");
+
+                // Try alternative approach - direct UserManager update without repository
+                user.DisplayName = memberUpdateDTO.DisplayName ?? user.DisplayName;
+                user.Bio = memberUpdateDTO.Bio ?? user.Bio;
+
+                var directResult = await _userManager.UpdateAsync(user);
+                if (directResult.Succeeded)
+                {
+                    Console.WriteLine("Direct UserManager update succeeded");
+                    return Ok(new
+                    {
+                        displayName = user.DisplayName,
+                        bio = user.Bio,
+                        message = "Profile updated successfully"
+                    });
+                }
+                else
+                {
+                    var directErrors = string.Join(", ", directResult.Errors.Select(e => e.Description));
+                    Console.WriteLine($"Direct UserManager update also failed: {directErrors}");
+                    return BadRequest($"Failed to save changes to database. Repository errors: Database save failed. UserManager errors: {directErrors}");
+                }
+            }
+
+            Console.WriteLine("User profile updated successfully");
+
             // Return the updated user info
             return Ok(new
             {
                 displayName = user.DisplayName,
+                bio = user.Bio,
                 message = "Profile updated successfully"
             });
         }
-
-        return BadRequest("Failed to update user profile");
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception during user update: {ex.Message}");
+            Console.WriteLine($"Inner exception: {ex.InnerException?.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return BadRequest($"An error occurred while updating profile: {ex.Message}");
+        }
     }
 
     // Request password change with verification code
@@ -172,7 +281,7 @@ public class UserController : BaseAPIController
 
     // Get user statistics
     [HttpGet("stats")]
-    public async Task<ActionResult<UserStatsDTO>> GetUserStats()
+    public ActionResult<UserStatsDTO> GetUserStats()
     {
         var username = User.GetUsername();
 

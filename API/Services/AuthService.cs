@@ -6,12 +6,13 @@ using API.Helpers;
 using API.Interfaces;
 using AutoMapper;
 using Google.Apis.Auth;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using PasswordGenerator;
 
 namespace API.Services;
 
-public class AuthService(IUnitOfWork unitOfWork, ITokenService tokenService, IMapper mapper, IEmailService emailService, IConfiguration config) : IAuthService
+public class AuthService(IUnitOfWork unitOfWork, ITokenService tokenService, IMapper mapper, IEmailService emailService, IConfiguration config, UserManager<AppUser> userManager) : IAuthService
 {
     public Task<bool> ValidateUserCredentialsAsync(AppUser user, string password)
     {
@@ -49,7 +50,11 @@ public class AuthService(IUnitOfWork unitOfWork, ITokenService tokenService, IMa
         {
             return new BadRequestObjectResult("Problem creating user account");
         }
-
+        var addToRoleResult = await userManager.AddToRoleAsync(user, "Member");
+        if(addToRoleResult.Succeeded == false)
+        {
+            return new BadRequestObjectResult("Problem adding user to role");
+        }
         // Generate a 6-digit verification code instead of a token
         var verificationCode = await unitOfWork.UserRepository.GenerateEmailVerificationCodeAsync(user);
 

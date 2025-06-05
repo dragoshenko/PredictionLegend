@@ -1,0 +1,466 @@
+<div class="container-fluid mt-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <!-- Header -->
+      <div class="card bg-primary border-primary mb-4">
+        <div class="card-header bg-primary border-primary">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h2 class="text-light mb-1">
+                <i class="fa fa-cogs me-2"></i>
+                Choose {{ predictionType }} Template
+              </h2>
+              <p class="text-light mb-0 opacity-75">
+                Select from official templates or create your own custom template
+              </p>
+            </div>
+            <button class="btn btn-outline-light" (click)="goBack()">
+              <i class="fa fa-arrow-left me-2"></i>Back
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="isLoading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3 text-muted">Loading templates...</p>
+      </div>
+
+      <!-- Content -->
+      <div *ngIf="!isLoading">
+        <!-- Official Templates Section -->
+        <div class="card bg-secondary border-secondary mb-4">
+          <div class="card-header bg-secondary border-secondary">
+            <h4 class="text-light mb-0">
+              <i class="fa fa-star me-2 text-warning"></i>
+              Official {{ predictionType }} Templates
+            </h4>
+          </div>
+          <div class="card-body">
+            <!-- Ranking Templates -->
+            <div *ngIf="predictionType === 'Ranking'">
+              <div *ngIf="officialRankingTemplates().length === 0" class="text-center py-4">
+                <i class="fa fa-inbox fa-3x text-muted mb-3"></i>
+                <p class="text-muted">No official ranking templates available</p>
+              </div>
+              <div class="row" *ngIf="officialRankingTemplates().length > 0">
+                <div class="col-md-6 col-lg-4 mb-3"
+                  *ngFor="let template of officialRankingTemplates(); trackBy: trackById">
+                  <div class="card bg-dark border-dark h-100"
+                    [class.border-primary]="selectedTemplate?.id === template.id"
+                    [class.bg-primary]="selectedTemplate?.id === template.id" style="cursor: pointer;"
+                    (click)="selectTemplate(template)">
+                    <div class="card-body text-center">
+                      <i class="fa fa-list-ol fa-2x text-primary mb-3"
+                        [class.text-light]="selectedTemplate?.id === template.id"></i>
+                      <h6 class="card-title text-light">{{ template.numberOfRows }} x {{ template.numberOfColumns }}
+                      </h6>
+                      <p class="card-text text-muted small">
+                        {{ template.numberOfRows }} rows, {{ template.numberOfColumns }} columns
+                      </p>
+                      <div class="mt-2">
+                        <span class="badge bg-warning text-dark">
+                          <i class="fa fa-star me-1"></i>Official
+                        </span>
+                      </div>
+                      <div class="mt-2">
+                        <span class="badge bg-secondary text-light">
+                          <i class="fa fa-tag me-1"></i>{{ template.name }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bracket Templates -->
+            <div *ngIf="predictionType === 'Bracket'">
+              <div *ngIf="officialBracketTemplates().length === 0" class="text-center py-4">
+                <i class="fa fa-inbox fa-3x text-muted mb-3"></i>
+                <p class="text-muted">No official bracket templates available</p>
+              </div>
+              <div class="row" *ngIf="officialBracketTemplates().length > 0">
+                <div class="col-md-6 col-lg-4 mb-3"
+                  *ngFor="let template of officialBracketTemplates(); trackBy: trackById">
+                  <div class="card bg-dark border-dark h-100"
+                    [class.border-primary]="selectedTemplate?.id === template.id"
+                    [class.bg-primary]="selectedTemplate?.id === template.id" style="cursor: pointer;"
+                    (click)="selectTemplate(template)">
+                    <div class="card-body text-center">
+                      <i class="fa fa-sitemap fa-2x text-primary mb-3"
+                        [class.text-light]="selectedTemplate?.id === template.id"></i>
+                      <h6 class="card-title text-light">{{ template.numberOfRounds }} Rounds</h6>
+                      <p class="card-text text-muted small">
+                        Tournament with {{ template.numberOfRounds }} elimination rounds
+                      </p>
+                      <p class="card-text text-muted small">
+                        Bracket Type: {{ template.bracketType === 'SingleTeam' ? 'Single Team' : 'Matchup' }}
+                      </p>
+                      <div class="mt-2">
+                        <span class="badge bg-warning text-dark">
+                          <i class="fa fa-star me-1"></i>Official
+                        </span>
+                      </div>
+                      <div class="mt-2">
+                        <span class="badge bg-secondary text-light">
+                          <i class="fa fa-tag me-1"></i>{{ template.name }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bingo Templates -->
+            <div *ngIf="predictionType === 'Bingo'">
+              <div *ngIf="officialBingoTemplates().length === 0" class="text-center py-4">
+                <i class="fa fa-inbox fa-3x text-muted mb-3"></i>
+                <p class="text-muted">No official bingo templates available</p>
+              </div>
+              <div class="row" *ngIf="officialBingoTemplates().length > 0">
+                <div class="col-md-6 col-lg-4 mb-3"
+                  *ngFor="let template of officialBingoTemplates(); trackBy: trackById">
+                  <div class="card bg-dark border-dark h-100"
+                    [class.border-primary]="selectedTemplate?.id === template.id"
+                    [class.bg-primary]="selectedTemplate?.id === template.id" style="cursor: pointer;"
+                    (click)="selectTemplate(template)">
+                    <div class="card-body text-center">
+                      <i class="fa fa-th fa-2x text-primary mb-3"
+                        [class.text-light]="selectedTemplate?.id === template.id"></i>
+                      <h6 class="card-title text-light">{{ template.gridSize }}x{{ template.gridSize }} Grid</h6>
+                      <p class="card-text text-muted small">
+                        Bingo card with {{ template.gridSize * template.gridSize }} squares
+                      </p>
+                      <div class="mt-2">
+                        <span class="badge bg-warning text-dark">
+                          <i class="fa fa-star me-1"></i>Official
+                        </span>
+                      </div>
+                      <div class="mt-2">
+                        <span class="badge bg-secondary text-light">
+                          <i class="fa fa-tag me-1"></i>{{ template.name }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- User Templates Section -->
+        <div class="card bg-secondary border-secondary mb-4"
+          *ngIf="(predictionType === 'Ranking' && userRankingTemplates().length > 0) ||
+                 (predictionType === 'Bracket' && userBracketTemplates().length > 0) ||
+                 (predictionType === 'Bingo' && userBingoTemplates().length > 0)">
+          <div class="card-header bg-secondary border-secondary">
+            <h4 class="text-light mb-0">
+              <i class="fa fa-user me-2 text-info"></i>
+              Your Custom Templates
+            </h4>
+          </div>
+          <div class="card-body">
+            <!-- User Ranking Templates -->
+            <div *ngIf="predictionType === 'Ranking' && userRankingTemplates().length > 0" class="row">
+              <div class="col-md-6 col-lg-4 mb-3" *ngFor="let template of userRankingTemplates(); trackBy: trackById">
+                <div class="card bg-dark border-dark h-100"
+                  [class.border-primary]="selectedTemplate?.id === template.id"
+                  [class.bg-primary]="selectedTemplate?.id === template.id" style="cursor: pointer;"
+                  (click)="selectTemplate(template)">
+                  <div class="card-body text-center">
+                    <i class="fa fa-list-ol fa-2x text-info mb-3"
+                      [class.text-light]="selectedTemplate?.id === template.id"></i>
+                    <h6 class="card-title text-light">{{ template.numberOfRows }} x {{ template.numberOfColumns }}</h6>
+                    <p class="card-text text-muted small">
+                      {{ template.numberOfRows }} rows, {{ template.numberOfColumns }} columns
+                    </p>
+                    <div class="mt-2">
+                      <span class="badge bg-info text-dark me-1">
+                        <i class="fa fa-user me-1"></i>Custom
+                      </span>
+                      <span class="badge bg-secondary text-light me-1">
+                        <i class="fa fa-tag me-1"></i>{{ template.name }}
+                      </span>
+                      <span class="badge bg-primary text-light">
+                        <i class="fa fa-users me-1"></i>{{ (template.teams || []).length }} Teams Included
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- User Bracket Templates -->
+            <div *ngIf="predictionType === 'Bracket' && userBracketTemplates().length > 0" class="row">
+              <div class="col-md-6 col-lg-4 mb-3" *ngFor="let template of userBracketTemplates(); trackBy: trackById">
+                <div class="card bg-dark border-dark h-100" [class.border-primary]="selectedTemplate?.id === template.id"
+                  [class.bg-primary]="selectedTemplate?.id === template.id" style="cursor: pointer;"
+                  (click)="selectTemplate(template)">
+                  <div class="card-body text-center">
+                    <i class="fa fa-sitemap fa-2x text-info mb-3"
+                      [class.text-light]="selectedTemplate?.id === template.id"></i>
+                    <h6 class="card-title text-light">{{ template.numberOfRounds }} Rounds</h6>
+                    <p class="card-text text-muted small">
+                      Tournament with {{ template.numberOfRounds }} elimination rounds
+                    </p>
+                    <p class="card-text text-muted small">
+                      Bracket Type: {{ template.bracketType === 'SingleTeam' ? 'Single Team' : 'Matchup' }}
+                    </p>
+                    <div class="mt-2">
+                      <span class="badge bg-info text-dark me-1">
+                        <i class="fa fa-user me-1"></i>Custom
+                      </span>
+                      <span class="badge bg-secondary text-light me-1">
+                        <i class="fa fa-tag me-1"></i>{{ template.name }}
+                      </span>
+                      <span class="badge bg-primary text-light">
+                        <i class="fa fa-users me-1"></i>{{ (template.teams || []).length }} Teams Included
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- User Bingo Templates -->
+            <div *ngIf="predictionType === 'Bingo' && userBingoTemplates().length > 0" class="row">
+              <div class="col-md-6 col-lg-4 mb-3" *ngFor="let template of userBingoTemplates(); trackBy: trackById">
+                <div class="card bg-dark border-dark h-100" [class.border-primary]="selectedTemplate?.id === template.id"
+                  [class.bg-primary]="selectedTemplate?.id === template.id" style="cursor: pointer;"
+                  (click)="selectTemplate(template)">
+                  <div class="card-body text-center">
+                    <i class="fa fa-th fa-2x text-info mb-3"
+                      [class.text-light]="selectedTemplate?.id === template.id"></i>
+                    <h6 class="card-title text-light">{{ template.gridSize }}x{{ template.gridSize }} Grid</h6>
+                    <p class="card-text text-muted small">
+                      Bingo card with {{ template.gridSize * template.gridSize }} squares
+                    </p>
+                    <div class="mt-2">
+                      <span class="badge bg-info text-dark me-1">
+                        <i class="fa fa-user me-1"></i>Custom
+                      </span>
+                      <span class="badge bg-secondary text-light me-1">
+                        <i class="fa fa-tag me-1"></i>{{ template.name }}
+                      </span>
+                      <span class="badge bg-primary text-light">
+                        <i class="fa fa-users me-1"></i>{{ (template.teams || []).length }} Teams Included
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Create Custom Template Section -->
+        <div class="card bg-secondary border-secondary mb-4">
+          <div class="card-header bg-secondary border-secondary">
+            <div class="d-flex justify-content-between align-items-center">
+              <h4 class="text-light mb-0">
+                <i class="fa fa-plus-circle me-2 text-success"></i>
+                Create Custom Template
+              </h4>
+              <button class="btn btn-outline-success btn-sm" (click)="toggleCustomForm()">
+                <i class="fa" [class.fa-plus]="!showCustomForm" [class.fa-minus]="showCustomForm"></i>
+                {{ showCustomForm ? 'Cancel' : 'Create Custom' }}
+              </button>
+            </div>
+          </div>
+          <div class="card-body" *ngIf="showCustomForm">
+            <!-- Custom Ranking Form -->
+            <form *ngIf="predictionType === 'Ranking'" [formGroup]="customRankingForm"
+              (ngSubmit)="createCustomRankingTemplate()">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label text-light">Template Name</label>
+                  <input type="text" class="form-control bg-dark border-dark text-light" formControlName="name"
+                    maxlength="50">
+                  <div class="form-text text-muted">Enter a name for your template (max 50 characters)</div>
+                  <div *ngIf="customRankingForm.get('name')?.invalid && customRankingForm.get('name')?.touched"
+                    class="text-danger small mt-1">
+                    Please enter a valid template name (1-50 characters)
+                  </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label text-light">Number of Rows</label>
+                  <input type="number" class="form-control bg-dark border-dark text-light"
+                    formControlName="numberOfRows" min="3" max="50">
+                  <div class="form-text text-muted">Between 3 and 50 rows</div>
+                  <div
+                    *ngIf="customRankingForm.get('numberOfRows')?.invalid && customRankingForm.get('numberOfRows')?.touched"
+                    class="text-danger small mt-1">
+                    Please enter a valid number of rows (3-50)
+                  </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label text-light">Number of Columns</label>
+                  <input type="number" class="form-control bg-dark border-dark text-light"
+                    formControlName="numberOfColumns" min="1" max="10">
+                  <div class="form-text text-muted">Between 1 and 10 columns</div>
+                  <div
+                    *ngIf="customRankingForm.get('numberOfColumns')?.invalid && customRankingForm.get('numberOfColumns')?.touched"
+                    class="text-danger small mt-1">
+                    Please enter a valid number of columns (1-10)
+                  </div>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-success"
+                [disabled]="customRankingForm.invalid || isCreatingTemplate">
+                <span *ngIf="isCreatingTemplate" class="spinner-border spinner-border-sm me-2"></span>
+                <i class="fa fa-save me-2" *ngIf="!isCreatingTemplate"></i>
+                Create Ranking Template
+              </button>
+            </form>
+
+            <!-- Custom Bracket Form -->
+            <form *ngIf="predictionType === 'Bracket'" [formGroup]="customBracketForm"
+              (ngSubmit)="createCustomBracketTemplate()">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label text-light">Template Name</label>
+                  <input type="text" class="form-control bg-dark border-dark text-light" formControlName="name"
+                    maxlength="50">
+                  <div class="form-text text-muted">Enter a name for your template (max 50 characters)</div>
+                  <div *ngIf="customBracketForm.get('name')?.invalid && customBracketForm.get('name')?.touched"
+                    class="text-danger small mt-1">
+                    Please enter a valid template name (1-50 characters)
+                  </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label text-light">Number of Rounds</label>
+                  <input type="number" class="form-control bg-dark border-dark text-light"
+                    formControlName="numberOfRounds" min="2" max="10">
+                  <div class="form-text text-muted">Between 2 and 10 rounds</div>
+                  <div
+                    *ngIf="customBracketForm.get('numberOfRounds')?.invalid && customBracketForm.get('numberOfRounds')?.touched"
+                    class="text-danger small mt-1">
+                    Please enter a valid number of rounds (2-10)
+                  </div>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-success"
+                [disabled]="customBracketForm.invalid || isCreatingTemplate">
+                <span *ngIf="isCreatingTemplate" class="spinner-border spinner-border-sm me-2"></span>
+                <i class="fa fa-save me-2" *ngIf="!isCreatingTemplate"></i>
+                Create Bracket Template
+              </button>
+            </form>
+
+            <!-- Custom Bingo Form -->
+            <form *ngIf="predictionType === 'Bingo'" [formGroup]="customBingoForm"
+              (ngSubmit)="createCustomBingoTemplate()">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label text-light">Template Name</label>
+                  <input type="text" class="form-control bg-dark border-dark text-light" formControlName="name"
+                    maxlength="50">
+                  <div class="form-text text-muted">Enter a name for your template (max 50 characters)</div>
+                  <div *ngIf="customBingoForm.get('name')?.invalid && customBingoForm.get('name')?.touched"
+                    class="text-danger small mt-1">
+                    Please enter a valid template name (1-50 characters)
+                  </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label text-light">Grid Size</label>
+                  <input type="number" class="form-control bg-dark border-dark text-light" formControlName="gridSize"
+                    min="3" max="10">
+                  <div class="form-text text-muted">Between 3x3 and 10x10 grid</div>
+                  <div *ngIf="customBingoForm.get('gridSize')?.invalid && customBingoForm.get('gridSize')?.touched"
+                    class="text-danger small mt-1">
+                    Please enter a valid grid size (3-10)
+                  </div>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-success" [disabled]="customBingoForm.invalid || isCreatingTemplate">
+                <span *ngIf="isCreatingTemplate" class="spinner-border spinner-border-sm me-2"></span>
+                <i class="fa fa-save me-2" *ngIf="!isCreatingTemplate"></i>
+                Create Bingo Template
+              </button>
+            </form>
+          </div>
+
+          <!-- No Selection Message -->
+          <div *ngIf="!selectedTemplate && !showCustomForm" class="card-body">
+            <div class="text-center py-5">
+              <i class="fa fa-hand-pointer-o fa-3x text-muted mb-3"></i>
+              <h5 class="text-muted">Select a template to continue</h5>
+              <p class="text-muted">Choose from official templates or create your own custom template</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selected Template Preview -->
+        <div *ngIf="selectedTemplate" class="card bg-dark border-success shadow mb-4">
+          <div class="card-header bg-success border-success d-flex justify-content-between align-items-center">
+            <h4 class="text-light mb-0">
+              <i class="fa fa-check-circle me-2"></i> Selected {{ predictionType }} Template
+            </h4>
+            <span class="badge" [class.bg-warning]="selectedTemplate.officialTemplate"
+              [class.bg-info]="!selectedTemplate.officialTemplate"
+              [class.text-dark]="selectedTemplate.officialTemplate">
+              <i class="fa" [class.fa-star]="selectedTemplate.officialTemplate"
+                [class.fa-user]="!selectedTemplate.officialTemplate"></i>
+              {{ selectedTemplate.officialTemplate ? 'Official' : 'Custom' }}
+            </span>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-8">
+                <h5 class="text-light mb-3"><i class="fa fa-info-circle me-2"></i>Template Details</h5>
+
+                <!-- Ranking -->
+                <ng-container *ngIf="predictionType === 'Ranking'">
+                  <p class="text-light mb-2">
+                    <strong>Dimensions:</strong> {{ selectedTemplate.numberOfRows }} rows × {{
+                    selectedTemplate.numberOfColumns }} columns
+                  </p>
+                  <p class="text-light mb-2">
+                    <strong>Total Items:</strong> {{ selectedTemplate.numberOfRows * selectedTemplate.numberOfColumns
+                    }}
+                  </p>
+                </ng-container>
+
+                <!-- Bracket -->
+                <ng-container *ngIf="predictionType === 'Bracket'">
+                  <p class="text-light mb-2">
+                    <strong>Rounds:</strong> {{ selectedTemplate.numberOfRounds }}
+                  </p>
+                  <p class="text-light mb-2">
+                    <strong>Max Participants:</strong> {{ pow(2, selectedTemplate.numberOfRounds) }}
+                  </p>
+                  <p class="text-light mb-2">
+                    <strong>Bracket Type:</strong> {{ selectedTemplate.bracketType === 'SingleTeam' ? 'Single Team' :
+                    'Matchup' }}
+                  </p>
+                </ng-container>
+
+                <!-- Bingo -->
+                <ng-container *ngIf="predictionType === 'Bingo'">
+                  <p class="text-light mb-2">
+                    <strong>Grid Size:</strong> {{ selectedTemplate.gridSize }}×{{ selectedTemplate.gridSize }}
+                  </p>
+                  <p class="text-light mb-2">
+                    <strong>Total Squares:</strong> {{ selectedTemplate.gridSize * selectedTemplate.gridSize }}
+                  </p>
+                </ng-container>
+              </div>
+
+              <div class="col-md-4 text-end d-flex align-items-end justify-content-end">
+                <button class="btn btn-outline-light btn-lg mt-3" (click)="proceedWithTemplate()">
+                  <i class="fa fa-arrow-right me-2"></i> Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

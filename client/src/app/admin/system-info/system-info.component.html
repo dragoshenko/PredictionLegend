@@ -1,0 +1,76 @@
+<!-- client/src/app/admin/system-info/system-info.component.html -->
+<div class="card">
+  <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">System Information</h5>
+    <button class="btn btn-sm btn-light" (click)="refreshSystemInfo()" [disabled]="loading">
+      <i class="fa fa-refresh" [class.fa-spin]="loading"></i> Refresh
+    </button>
+  </div>
+  <div class="card-body">
+    <!-- Loading spinner -->
+    <div *ngIf="loading" class="text-center py-3">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="mt-2">Loading system information...</p>
+    </div>
+
+    <!-- Error message -->
+    <div *ngIf="error" class="alert alert-danger">
+      {{ error }}
+    </div>
+
+    <!-- System Info -->
+    <div *ngIf="!loading && !error && systemInfo" class="row g-3">
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h6 class="card-title">Application Information</h6>
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item d-flex justify-content-between">
+                <span>Version:</span>
+                <span class="badge bg-info">{{ systemInfo.appVersion }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between">
+                <span>Environment:</span>
+                <span class="badge"
+                      [ngClass]="systemInfo.environment === 'Production' ? 'bg-success' : 'bg-warning text-dark'">
+                  {{ systemInfo.environment }}
+                </span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between">
+                <span>Server Time:</span>
+                <span>{{ formatDate(systemInfo.serverTime) }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between">
+                <span>Server Uptime:</span>
+                <span>{{ systemInfo.serverUptime }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h6 class="card-title">System Statistics</h6>
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item d-flex justify-content-between">
+                <span>Active Users (30 days):</span>
+                <span class="badge bg-success">{{ systemInfo.totalActiveUsers }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between">
+                <span>Total Predictions:</span>
+                <span class="badge bg-primary">{{ systemInfo.totalPredictions }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between">
+                <span>Last Database Backup:</span>
+                <span>{{ systemInfo.lastDatabaseBackup ? formatDate(systemInfo.lastDatabaseBackup) : 'Not available' }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

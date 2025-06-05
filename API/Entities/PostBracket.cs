@@ -9,8 +9,17 @@ public class PostBracket
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public int UserId { get; set; }
     public AppUser User { get; set; } = null!;
-    public ICollection<Comment> Comments { get; set; } = [];
+    public int PredictionId { get; set; }
+    public Prediction Prediction { get; set; } = null!;
     public RootBracket RootBracket { get; set; } = null!;
     public float TotalScore { get; set; }
     public bool IsOfficialResult { get; set; } = false;
+    public ICollection<Team> Teams { get; set; } = [];
+
+    public PostBracket() { }
+    public PostBracket(BracketType bracketType, int numberOfBrackets)
+    {
+        RootBracket = new RootBracket(bracketType, numberOfBrackets);
+        TotalScore = 0;
+    }
 }

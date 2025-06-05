@@ -1,0 +1,43 @@
+/* client/src/app/admin/user-detail/user-detail.component.css */
+.card {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.card-header {
+  border-top-left-radius: 8px !important;
+  border-top-right-radius: 8px !important;
+}
+
+.form-check {
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  border: 1px solid #dee2e6;
+  transition: all 0.2s;
+}
+
+.form-check:hover {
+  background-color: #f8f9fa;
+}
+
+.form-check-input:checked + .form-check-label {
+  font-weight: bold;
+}
+
+.badge {
+  padding: 0.5em 0.75em;
+}
+
+.mb-4{
+  color: black;
+}
+
+.card-body{
+  color:black;
+}
+
+.container mt-5{
+  color:black;
+}
