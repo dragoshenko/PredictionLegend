@@ -1,4 +1,4 @@
-// client/src/app/prediction-details/prediction-details.component.ts - UPDATED
+// client/src/app/prediction-details/prediction-details.component.ts - UPDATED FOR OFFICIAL RESULTS
 
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -46,6 +46,7 @@ interface CounterPredictionData {
   postBracket?: any;
   postBingo?: any;
   userId: number;
+  isOfficialResult?: boolean; // NEW: Track if this is the official result
 }
 
 @Component({
@@ -133,7 +134,7 @@ export class PredictionDetailsComponent implements OnInit {
     }
   }
 
-  // MAIN CHANGE: Updated canShowCounterPrediction to allow original author
+  // UPDATED: Modified canShowCounterPrediction to allow original author for counter predictions (not official results)
   canShowCounterPrediction(): boolean {
     const currentUser = this.accountService.currentUser();
     if (!currentUser || !this.predictionDetail) {
@@ -159,21 +160,20 @@ export class PredictionDetailsComponent implements OnInit {
       return false;
     }
 
+    // UPDATED: Original author can't create counter predictions since their post IS the official result
+    if (this.predictionDetail.userId === currentUser.id) {
+      return false;
+    }
+
     // Check if user already has a counter prediction
     const hasExistingCounter = this.userHasCounterPrediction(currentUser.id);
 
-    // CHANGE: Allow original author to create counter predictions
-    // but not if they already have one
     return !hasExistingCounter;
   }
 
-  // Updated method to determine if this is the author creating a counter prediction
+  // UPDATED: Remove method since original authors can't create counter predictions
   isAuthorCreatingCounterPrediction(): boolean {
-    const currentUser = this.accountService.currentUser();
-    if (!currentUser || !this.predictionDetail) {
-      return false;
-    }
-    return this.predictionDetail.userId === currentUser.id;
+    return false; // Original authors cannot create counter predictions
   }
 
   userHasCounterPrediction(userId: number): boolean {
@@ -181,42 +181,45 @@ export class PredictionDetailsComponent implements OnInit {
     return allCounters.some(counter => counter.userId === userId);
   }
 
+  // UPDATED: Modified to properly separate official results from counter predictions
   getAllCounterPredictions(): CounterPredictionData[] {
     const counters: CounterPredictionData[] = [];
 
-    // Get counter rankings (exclude original by author ONLY if it's the first/original post)
+    // Get counter rankings (exclude the official result by the author)
     if (this.predictionDetail?.postRanks) {
       this.predictionDetail.postRanks.forEach((postRank, index) => {
-        // The first post by the author is the "original" - subsequent posts are counter predictions
-        const isOriginalPost = postRank.userId === this.predictionDetail?.userId && index === 0;
+        // The author's post is the official result, not a counter prediction
+        const isOfficialResult = postRank.userId === this.predictionDetail?.userId;
 
-        if (!isOriginalPost) {
+        if (!isOfficialResult) {
           counters.push({
             id: postRank.id,
             author: postRank.user,
             createdAt: new Date(postRank.createdAt),
             totalScore: postRank.totalScore,
             postRank: postRank,
-            userId: postRank.userId
+            userId: postRank.userId,
+            isOfficialResult: false
           });
         }
       });
     }
 
-    // Get counter bingos (exclude original by author ONLY if it's the first/original post)
+    // Get counter bingos (exclude the official result by the author)
     if (this.predictionDetail?.postBingos) {
       this.predictionDetail.postBingos.forEach((postBingo, index) => {
-        // The first post by the author is the "original" - subsequent posts are counter predictions
-        const isOriginalPost = postBingo.userId === this.predictionDetail?.userId && index === 0;
+        // The author's post is the official result, not a counter prediction
+        const isOfficialResult = postBingo.userId === this.predictionDetail?.userId;
 
-        if (!isOriginalPost) {
+        if (!isOfficialResult) {
           counters.push({
             id: postBingo.id,
             author: postBingo.user,
             createdAt: new Date(postBingo.createdAt),
             totalScore: postBingo.totalScore,
             postBingo: postBingo,
-            userId: postBingo.userId
+            userId: postBingo.userId,
+            isOfficialResult: false
           });
         }
       });
@@ -226,39 +229,100 @@ export class PredictionDetailsComponent implements OnInit {
     return counters.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
-  // Updated method to get the original post data (always the first one by the author)
+  // UPDATED: New method to get official results (always the author's posts)
+  getOfficialResults(): CounterPredictionData[] {
+    const officialResults: CounterPredictionData[] = [];
+
+    // Get official ranking results (author's posts)
+    if (this.predictionDetail?.postRanks) {
+      this.predictionDetail.postRanks.forEach((postRank) => {
+        const isOfficialResult = postRank.userId === this.predictionDetail?.userId;
+
+        if (isOfficialResult) {
+          officialResults.push({
+            id: postRank.id,
+            author: postRank.user,
+            createdAt: new Date(postRank.createdAt),
+            totalScore: postRank.totalScore,
+            postRank: postRank,
+            userId: postRank.userId,
+            isOfficialResult: true
+          });
+        }
+      });
+    }
+
+    // Get official bingo results (author's posts)
+    if (this.predictionDetail?.postBingos) {
+      this.predictionDetail.postBingos.forEach((postBingo) => {
+        const isOfficialResult = postBingo.userId === this.predictionDetail?.userId;
+
+        if (isOfficialResult) {
+          officialResults.push({
+            id: postBingo.id,
+            author: postBingo.user,
+            createdAt: new Date(postBingo.createdAt),
+            totalScore: postBingo.totalScore,
+            postBingo: postBingo,
+            userId: postBingo.userId,
+            isOfficialResult: true
+          });
+        }
+      });
+    }
+
+    // UPDATED: Sort by creation date (OLDEST first for official results - first is primary)
+    return officialResults.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  }
+
+  // NEW: Separate getter methods for template
+  getOfficialRankingResults(): CounterPredictionData[] {
+    return this.getOfficialResults().filter(r => r.postRank);
+  }
+
+  getOfficialBingoResults(): CounterPredictionData[] {
+    return this.getOfficialResults().filter(r => r.postBingo);
+  }
+
+  // UPDATED: Get the primary official result (the first/oldest by the author)
   getOriginalRankingData(): any {
     if (!this.predictionDetail?.postRanks || this.predictionDetail.postRanks.length === 0) {
       return null;
     }
 
-    // Find the FIRST post by the prediction author (original post)
-    const originalPost = this.predictionDetail.postRanks.find(pr => pr.userId === this.predictionDetail?.userId);
-    if (originalPost) {
-      return originalPost;
+    // Find the FIRST (oldest) post by the prediction author (official result)
+    const officialPosts = this.predictionDetail.postRanks
+      .filter(pr => pr.userId === this.predictionDetail?.userId)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    if (officialPosts.length > 0) {
+      return officialPosts[0]; // Return the first (primary) official result
     }
 
     // Fallback to the first post if no author post found
     return this.predictionDetail.postRanks[0];
   }
 
-  // Updated method to get the original bingo data (always the first one by the author)
+  // UPDATED: Get the primary official bingo result (the first/oldest by the author)
   getOriginalBingoData(): any {
     if (!this.predictionDetail?.postBingos || this.predictionDetail.postBingos.length === 0) {
       return null;
     }
 
-    // Find the FIRST post by the prediction author (original post)
-    const originalPost = this.predictionDetail.postBingos.find(pb => pb.userId === this.predictionDetail?.userId);
-    if (originalPost) {
-      return originalPost;
+    // Find the FIRST (oldest) post by the prediction author (official result)
+    const officialPosts = this.predictionDetail.postBingos
+      .filter(pb => pb.userId === this.predictionDetail?.userId)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    if (officialPosts.length > 0) {
+      return officialPosts[0]; // Return the first (primary) official result
     }
 
     // Fallback to the first post if no author post found
     return this.predictionDetail.postBingos[0];
   }
 
-  // Updated getCounterPredictionUnavailableReason to reflect new logic
+  // UPDATED: Updated reason text to reflect that author posts are official results
   getCounterPredictionUnavailableReason(): string {
     const currentUser = this.accountService.currentUser();
 
@@ -286,21 +350,32 @@ export class PredictionDetailsComponent implements OnInit {
       return 'No teams are available for counter prediction.';
     }
 
+    if (this.predictionDetail.userId === currentUser.id) {
+      return 'You cannot create counter predictions for your own prediction since you set the official results.';
+    }
+
     if (this.userHasCounterPrediction(currentUser.id)) {
-      if (this.isAuthorCreatingCounterPrediction()) {
-        return 'You have already created a counter prediction for your own post.';
-      } else {
-        return 'You have already created a counter prediction for this post.';
-      }
+      return 'You have already created a counter prediction for this post.';
     }
 
     return 'Counter prediction is not available for this post.';
   }
 
-  // Rest of the methods remain the same...
-  // [Include all the other existing methods from the original file]
+  // UPDATED: Method to get all results sorted with official results first
+  getAllResultsSorted(): CounterPredictionData[] {
+    const officialResults = this.getOfficialResults();
+    const counterPredictions = this.getAllCounterPredictions();
 
-  // Counter Predictions Pagination Methods
+    // Return official results first, then counter predictions
+    return [...officialResults, ...counterPredictions];
+  }
+
+  // UPDATED: Check if current user has any official results
+  userHasOfficialResults(userId: number): boolean {
+    return this.predictionDetail?.userId === userId;
+  }
+
+  // Counter Predictions Pagination Methods (updated to work with new structure)
   getCounterPredictionTotalPages(): number {
     if (this.counterPredictionsPerPage >= 50) return 1; // Show all
     return Math.ceil(this.getAllCounterPredictions().length / this.counterPredictionsPerPage);
@@ -614,7 +689,7 @@ export class PredictionDetailsComponent implements OnInit {
     return null;
   }
 
-  // FIXED: Add the missing category icon methods from my-prediction-view
+  // Category icon methods
   getContrastColor(hexColor: string): string {
     if (!hexColor) return '#ffffff';
 
@@ -722,7 +797,6 @@ export class PredictionDetailsComponent implements OnInit {
     return 'fa-tag';
   }
 
-  // This is the key method that fixes the icon display issue
   getFullIconClass(iconName: string | undefined): string {
     const safeIcon = this.getSafeIconClass(iconName);
     return `fa ${safeIcon}`;

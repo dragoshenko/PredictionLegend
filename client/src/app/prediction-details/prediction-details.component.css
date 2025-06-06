@@ -464,3 +464,48 @@
     border: 1px solid #000;
   }
 }
+/* Official Result styling for bingo cells */
+.official-cell.has-team {
+  background: linear-gradient(135deg, var(--success-color), #1e7e34);
+  border-color: #155724;
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.4);
+}
+
+/* Enhanced styling for official result cards */
+.card.bg-success {
+  background: linear-gradient(135deg, #28a745, #1e7e34) !important;
+  border: 2px solid #155724 !important;
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.card-header.bg-success {
+  background: linear-gradient(135deg, #28a745, #1e7e34) !important;
+  border-bottom: 1px solid #155724 !important;
+}
+
+/* Official result badge styling */
+.badge.bg-white.text-success {
+  background-color: #ffffff !important;
+  color: #155724 !important;
+  font-weight: 600;
+  border: 1px solid #155724;
+}
+
+/* Section header badge for official result available */
+.badge.bg-success.text-white {
+  background: linear-gradient(45deg, #28a745, #20c997) !important;
+  border: 1px solid #1e7e34;
+  animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 0 5px rgba(40, 167, 69, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(40, 167, 69, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(40, 167, 69, 0.5);
+  }
+}
