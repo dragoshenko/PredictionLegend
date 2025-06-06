@@ -1,4 +1,4 @@
-// client/src/app/prediction-details/prediction-details.component.ts - UPDATED FOR OFFICIAL RESULTS
+// client/src/app/prediction-details/prediction-details.component.ts - FIXED OFFICIAL RESULTS LOGIC
 
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -46,7 +46,33 @@ interface CounterPredictionData {
   postBracket?: any;
   postBingo?: any;
   userId: number;
-  isOfficialResult?: boolean; // NEW: Track if this is the official result
+  isOfficialResult?: boolean;
+}
+
+interface ComparisonResult {
+  totalMatches: number;
+  totalPositions: number;
+  accuracy: number;
+  matches: PositionMatch[];
+  mismatches: PositionMismatch[];
+  hasComparison: boolean;
+}
+
+interface PositionMatch {
+  position: string;
+  rowIndex: number;
+  colIndex: number;
+  teamName: string;
+  matchType: 'exact' | 'partial';
+}
+
+interface PositionMismatch {
+  position: string;
+  rowIndex: number;
+  colIndex: number;
+  counterTeam: any;
+  officialTeam: any;
+  mismatchType: 'different-team' | 'extra-team' | 'missing-team';
 }
 
 @Component({
@@ -113,18 +139,14 @@ export class PredictionDetailsComponent implements OnInit {
         console.log('PostRanks count:', this.predictionDetail.postRanks?.length || 0);
         console.log('PostBingos count:', this.predictionDetail.postBingos?.length || 0);
 
-        // Log counter predictions
-        const counterRankings = this.getCounterRankings();
-        const counterBingos = this.getCounterBingos();
-        console.log('Counter Rankings:', counterRankings.length);
-        console.log('Counter Bingos:', counterBingos.length);
+        // Log different types of predictions
+        const originalData = this.getOriginalPostData();
+        const officialResults = this.getOfficialResults();
+        const counterPredictions = this.getAllCounterPredictions();
 
-        if (counterRankings.length > 0) {
-          console.log('First counter ranking:', counterRankings[0]);
-        }
-        if (counterBingos.length > 0) {
-          console.log('First counter bingo:', counterBingos[0]);
-        }
+        console.log('Original post data:', originalData);
+        console.log('Official Results:', officialResults.length);
+        console.log('Counter Predictions:', counterPredictions.length);
       }
     } catch (error) {
       console.error('Error loading prediction details:', error);
@@ -134,7 +156,6 @@ export class PredictionDetailsComponent implements OnInit {
     }
   }
 
-  // UPDATED: Modified canShowCounterPrediction to allow original author for counter predictions (not official results)
   canShowCounterPrediction(): boolean {
     const currentUser = this.accountService.currentUser();
     if (!currentUser || !this.predictionDetail) {
@@ -160,7 +181,7 @@ export class PredictionDetailsComponent implements OnInit {
       return false;
     }
 
-    // UPDATED: Original author can't create counter predictions since their post IS the official result
+    // Original author can't create counter predictions
     if (this.predictionDetail.userId === currentUser.id) {
       return false;
     }
@@ -171,27 +192,22 @@ export class PredictionDetailsComponent implements OnInit {
     return !hasExistingCounter;
   }
 
-  // UPDATED: Remove method since original authors can't create counter predictions
-  isAuthorCreatingCounterPrediction(): boolean {
-    return false; // Original authors cannot create counter predictions
-  }
-
   userHasCounterPrediction(userId: number): boolean {
     const allCounters = this.getAllCounterPredictions();
     return allCounters.some(counter => counter.userId === userId);
   }
 
-  // UPDATED: Modified to properly separate official results from counter predictions
+  // FIXED: Get counter predictions (exclude ALL author posts - both original and official results)
   getAllCounterPredictions(): CounterPredictionData[] {
     const counters: CounterPredictionData[] = [];
 
-    // Get counter rankings (exclude the official result by the author)
+    // Get counter rankings (exclude ALL author posts)
     if (this.predictionDetail?.postRanks) {
       this.predictionDetail.postRanks.forEach((postRank, index) => {
-        // The author's post is the official result, not a counter prediction
-        const isOfficialResult = postRank.userId === this.predictionDetail?.userId;
+        const isAuthorPost = postRank.userId === this.predictionDetail?.userId;
 
-        if (!isOfficialResult) {
+        // Only include non-author posts as counter predictions
+        if (!isAuthorPost) {
           counters.push({
             id: postRank.id,
             author: postRank.user,
@@ -205,13 +221,13 @@ export class PredictionDetailsComponent implements OnInit {
       });
     }
 
-    // Get counter bingos (exclude the official result by the author)
+    // Get counter bingos (exclude ALL author posts)
     if (this.predictionDetail?.postBingos) {
       this.predictionDetail.postBingos.forEach((postBingo, index) => {
-        // The author's post is the official result, not a counter prediction
-        const isOfficialResult = postBingo.userId === this.predictionDetail?.userId;
+        const isAuthorPost = postBingo.userId === this.predictionDetail?.userId;
 
-        if (!isOfficialResult) {
+        // Only include non-author posts as counter predictions
+        if (!isAuthorPost) {
           counters.push({
             id: postBingo.id,
             author: postBingo.user,
@@ -229,49 +245,51 @@ export class PredictionDetailsComponent implements OnInit {
     return counters.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
-  // UPDATED: New method to get official results (always the author's posts)
+  // FIXED: Get official results (author's posts EXCLUDING the first/original one)
   getOfficialResults(): CounterPredictionData[] {
     const officialResults: CounterPredictionData[] = [];
 
-    // Get official ranking results (author's posts)
+    // Get official ranking results (author's posts excluding the first one)
     if (this.predictionDetail?.postRanks) {
-      this.predictionDetail.postRanks.forEach((postRank) => {
-        const isOfficialResult = postRank.userId === this.predictionDetail?.userId;
+      const authorPosts = this.predictionDetail.postRanks
+        .filter(postRank => postRank.userId === this.predictionDetail?.userId)
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
-        if (isOfficialResult) {
-          officialResults.push({
-            id: postRank.id,
-            author: postRank.user,
-            createdAt: new Date(postRank.createdAt),
-            totalScore: postRank.totalScore,
-            postRank: postRank,
-            userId: postRank.userId,
-            isOfficialResult: true
-          });
-        }
+      // Skip the first post (index 0) and include the rest as official results
+      authorPosts.slice(1).forEach((postRank) => {
+        officialResults.push({
+          id: postRank.id,
+          author: postRank.user,
+          createdAt: new Date(postRank.createdAt),
+          totalScore: postRank.totalScore,
+          postRank: postRank,
+          userId: postRank.userId,
+          isOfficialResult: true
+        });
       });
     }
 
-    // Get official bingo results (author's posts)
+    // Get official bingo results (author's posts excluding the first one)
     if (this.predictionDetail?.postBingos) {
-      this.predictionDetail.postBingos.forEach((postBingo) => {
-        const isOfficialResult = postBingo.userId === this.predictionDetail?.userId;
+      const authorPosts = this.predictionDetail.postBingos
+        .filter(postBingo => postBingo.userId === this.predictionDetail?.userId)
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
-        if (isOfficialResult) {
-          officialResults.push({
-            id: postBingo.id,
-            author: postBingo.user,
-            createdAt: new Date(postBingo.createdAt),
-            totalScore: postBingo.totalScore,
-            postBingo: postBingo,
-            userId: postBingo.userId,
-            isOfficialResult: true
-          });
-        }
+      // Skip the first post (index 0) and include the rest as official results
+      authorPosts.slice(1).forEach((postBingo) => {
+        officialResults.push({
+          id: postBingo.id,
+          author: postBingo.user,
+          createdAt: new Date(postBingo.createdAt),
+          totalScore: postBingo.totalScore,
+          postBingo: postBingo,
+          userId: postBingo.userId,
+          isOfficialResult: true
+        });
       });
     }
 
-    // UPDATED: Sort by creation date (OLDEST first for official results - first is primary)
+    // Sort by creation date (oldest first for official results)
     return officialResults.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   }
 
@@ -284,45 +302,44 @@ export class PredictionDetailsComponent implements OnInit {
     return this.getOfficialResults().filter(r => r.postBingo);
   }
 
-  // UPDATED: Get the primary official result (the first/oldest by the author)
+  // FIXED: Get the FIRST (original) post by the author for display
   getOriginalRankingData(): any {
     if (!this.predictionDetail?.postRanks || this.predictionDetail.postRanks.length === 0) {
       return null;
     }
 
-    // Find the FIRST (oldest) post by the prediction author (official result)
-    const officialPosts = this.predictionDetail.postRanks
+    // Find the FIRST (oldest) post by the prediction author
+    const authorPosts = this.predictionDetail.postRanks
       .filter(pr => pr.userId === this.predictionDetail?.userId)
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
-    if (officialPosts.length > 0) {
-      return officialPosts[0]; // Return the first (primary) official result
+    if (authorPosts.length > 0) {
+      return authorPosts[0]; // Return the FIRST (original) post
     }
 
     // Fallback to the first post if no author post found
     return this.predictionDetail.postRanks[0];
   }
 
-  // UPDATED: Get the primary official bingo result (the first/oldest by the author)
+  // FIXED: Get the FIRST (original) bingo post by the author for display
   getOriginalBingoData(): any {
     if (!this.predictionDetail?.postBingos || this.predictionDetail.postBingos.length === 0) {
       return null;
     }
 
-    // Find the FIRST (oldest) post by the prediction author (official result)
-    const officialPosts = this.predictionDetail.postBingos
+    // Find the FIRST (oldest) post by the prediction author
+    const authorPosts = this.predictionDetail.postBingos
       .filter(pb => pb.userId === this.predictionDetail?.userId)
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
-    if (officialPosts.length > 0) {
-      return officialPosts[0]; // Return the first (primary) official result
+    if (authorPosts.length > 0) {
+      return authorPosts[0]; // Return the FIRST (original) post
     }
 
     // Fallback to the first post if no author post found
     return this.predictionDetail.postBingos[0];
   }
 
-  // UPDATED: Updated reason text to reflect that author posts are official results
   getCounterPredictionUnavailableReason(): string {
     const currentUser = this.accountService.currentUser();
 
@@ -351,7 +368,7 @@ export class PredictionDetailsComponent implements OnInit {
     }
 
     if (this.predictionDetail.userId === currentUser.id) {
-      return 'You cannot create counter predictions for your own prediction since you set the official results.';
+      return 'You cannot create counter predictions for your own prediction. You can add official results instead.';
     }
 
     if (this.userHasCounterPrediction(currentUser.id)) {
@@ -359,20 +376,6 @@ export class PredictionDetailsComponent implements OnInit {
     }
 
     return 'Counter prediction is not available for this post.';
-  }
-
-  // UPDATED: Method to get all results sorted with official results first
-  getAllResultsSorted(): CounterPredictionData[] {
-    const officialResults = this.getOfficialResults();
-    const counterPredictions = this.getAllCounterPredictions();
-
-    // Return official results first, then counter predictions
-    return [...officialResults, ...counterPredictions];
-  }
-
-  // UPDATED: Check if current user has any official results
-  userHasOfficialResults(userId: number): boolean {
-    return this.predictionDetail?.userId === userId;
   }
 
   // Counter Predictions Pagination Methods (updated to work with new structure)
@@ -616,6 +619,328 @@ export class PredictionDetailsComponent implements OnInit {
     }
 
     return [];
+  }
+  compareWithOfficialResults(counterPrediction: CounterPredictionData): ComparisonResult {
+    const officialResults = this.getOfficialResults();
+
+    if (officialResults.length === 0) {
+      return {
+        totalMatches: 0,
+        totalPositions: 0,
+        accuracy: 0,
+        matches: [],
+        mismatches: [],
+        hasComparison: false
+      };
+    }
+
+    // Use the first (primary) official result for comparison
+    const primaryOfficial = officialResults[0];
+
+    if (this.isRankingType() && counterPrediction.postRank && primaryOfficial.postRank) {
+      return this.compareRankings(counterPrediction.postRank, primaryOfficial.postRank);
+    } else if (this.isBingoType() && counterPrediction.postBingo && primaryOfficial.postBingo) {
+      return this.compareBingos(counterPrediction.postBingo, primaryOfficial.postBingo);
+    }
+
+    return {
+      totalMatches: 0,
+      totalPositions: 0,
+      accuracy: 0,
+      matches: [],
+      mismatches: [],
+      hasComparison: false
+    };
+  }
+
+  /**
+   * Compare two ranking predictions
+   */
+  private compareRankings(counterRank: any, officialRank: any): ComparisonResult {
+    const matches: PositionMatch[] = [];
+    const mismatches: PositionMismatch[] = [];
+
+    const counterRows = counterRank.rankTable?.rows || [];
+    const officialRows = officialRank.rankTable?.rows || [];
+
+    let totalPositions = 0;
+    let totalMatches = 0;
+
+    // Compare each position
+    for (let rowIndex = 0; rowIndex < Math.max(counterRows.length, officialRows.length); rowIndex++) {
+      const counterRow = counterRows[rowIndex];
+      const officialRow = officialRows[rowIndex];
+
+      if (!counterRow || !officialRow) continue;
+
+      const counterColumns = counterRow.columns || [];
+      const officialColumns = officialRow.columns || [];
+
+      for (let colIndex = 0; colIndex < Math.max(counterColumns.length, officialColumns.length); colIndex++) {
+        const counterColumn = counterColumns[colIndex];
+        const officialColumn = officialColumns[colIndex];
+
+        if (!counterColumn || !officialColumn) continue;
+
+        totalPositions++;
+
+        const counterTeamId = counterColumn.team?.id;
+        const officialTeamId = officialColumn.team?.id;
+
+        if (counterTeamId && officialTeamId && counterTeamId === officialTeamId) {
+          // Perfect match - same team in same position
+          totalMatches++;
+          matches.push({
+            position: `Rank ${rowIndex + 1}`,
+            rowIndex,
+            colIndex,
+            teamName: counterColumn.team.name,
+            matchType: 'exact'
+          });
+        } else if (counterTeamId && officialTeamId) {
+          // Different teams in this position
+          mismatches.push({
+            position: `Rank ${rowIndex + 1}`,
+            rowIndex,
+            colIndex,
+            counterTeam: counterColumn.team,
+            officialTeam: officialColumn.team,
+            mismatchType: 'different-team'
+          });
+        } else if (counterTeamId && !officialTeamId) {
+          // Counter has team, official is empty
+          mismatches.push({
+            position: `Rank ${rowIndex + 1}`,
+            rowIndex,
+            colIndex,
+            counterTeam: counterColumn.team,
+            officialTeam: null,
+            mismatchType: 'extra-team'
+          });
+        } else if (!counterTeamId && officialTeamId) {
+          // Official has team, counter is empty
+          mismatches.push({
+            position: `Rank ${rowIndex + 1}`,
+            rowIndex,
+            colIndex,
+            counterTeam: null,
+            officialTeam: officialColumn.team,
+            mismatchType: 'missing-team'
+          });
+        }
+      }
+    }
+
+    return {
+      totalMatches,
+      totalPositions,
+      accuracy: totalPositions > 0 ? Math.round((totalMatches / totalPositions) * 100) : 0,
+      matches,
+      mismatches,
+      hasComparison: true
+    };
+  }
+
+  /**
+   * Compare two bingo predictions
+   */
+  private compareBingos(counterBingo: any, officialBingo: any): ComparisonResult {
+    const matches: PositionMatch[] = [];
+    const mismatches: PositionMismatch[] = [];
+
+    const counterCells = counterBingo.bingoCells || [];
+    const officialCells = officialBingo.bingoCells || [];
+
+    let totalPositions = 0;
+    let totalMatches = 0;
+
+    // Compare each cell
+    const maxCells = Math.max(counterCells.length, officialCells.length);
+
+    for (let cellIndex = 0; cellIndex < maxCells; cellIndex++) {
+      const counterCell = counterCells[cellIndex];
+      const officialCell = officialCells[cellIndex];
+
+      if (!counterCell || !officialCell) continue;
+
+      totalPositions++;
+
+      const counterTeamId = counterCell.team?.id;
+      const officialTeamId = officialCell.team?.id;
+
+      if (counterTeamId && officialTeamId && counterTeamId === officialTeamId) {
+        // Perfect match
+        totalMatches++;
+        matches.push({
+          position: `Cell (${counterCell.row + 1}, ${counterCell.column + 1})`,
+          rowIndex: counterCell.row,
+          colIndex: counterCell.column,
+          teamName: counterCell.team.name,
+          matchType: 'exact'
+        });
+      } else if (counterTeamId && officialTeamId) {
+        // Different teams
+        mismatches.push({
+          position: `Cell (${counterCell.row + 1}, ${counterCell.column + 1})`,
+          rowIndex: counterCell.row,
+          colIndex: counterCell.column,
+          counterTeam: counterCell.team,
+          officialTeam: officialCell.team,
+          mismatchType: 'different-team'
+        });
+      } else if (counterTeamId && !officialTeamId) {
+        // Counter has team, official is empty
+        mismatches.push({
+          position: `Cell (${counterCell.row + 1}, ${counterCell.column + 1})`,
+          rowIndex: counterCell.row,
+          colIndex: counterCell.column,
+          counterTeam: counterCell.team,
+          officialTeam: null,
+          mismatchType: 'extra-team'
+        });
+      } else if (!counterTeamId && officialTeamId) {
+        // Official has team, counter is empty
+        mismatches.push({
+          position: `Cell (${counterCell.row + 1}, ${counterCell.column + 1})`,
+          rowIndex: counterCell.row,
+          colIndex: counterCell.column,
+          counterTeam: null,
+          officialTeam: officialCell.team,
+          mismatchType: 'missing-team'
+        });
+      }
+    }
+
+    return {
+      totalMatches,
+      totalPositions,
+      accuracy: totalPositions > 0 ? Math.round((totalMatches / totalPositions) * 100) : 0,
+      matches,
+      mismatches,
+      hasComparison: true
+    };
+  }
+
+  /**
+   * Check if a specific position matches the official result
+   */
+  isPositionMatch(counterPrediction: CounterPredictionData, rowIndex: number, colIndex: number): boolean {
+    const comparison = this.compareWithOfficialResults(counterPrediction);
+
+    if (this.isRankingType()) {
+      return comparison.matches.some(match =>
+        match.rowIndex === rowIndex && match.colIndex === colIndex
+      );
+    } else if (this.isBingoType()) {
+      // For bingo, we need to convert cell index back to row/col
+      const gridSize = counterPrediction.postBingo?.gridSize || 5;
+      const cellIndex = rowIndex * gridSize + colIndex;
+      const counterCells = counterPrediction.postBingo?.bingoCells || [];
+      const cell = counterCells[cellIndex];
+
+      if (cell) {
+        return comparison.matches.some(match =>
+          match.rowIndex === cell.row && match.colIndex === cell.column
+        );
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if a specific position is a mismatch
+   */
+  isPositionMismatch(counterPrediction: CounterPredictionData, rowIndex: number, colIndex: number): boolean {
+    const comparison = this.compareWithOfficialResults(counterPrediction);
+
+    if (this.isRankingType()) {
+      return comparison.mismatches.some(mismatch =>
+        mismatch.rowIndex === rowIndex && mismatch.colIndex === colIndex
+      );
+    } else if (this.isBingoType()) {
+      // For bingo, we need to convert cell index back to row/col
+      const gridSize = counterPrediction.postBingo?.gridSize || 5;
+      const cellIndex = rowIndex * gridSize + colIndex;
+      const counterCells = counterPrediction.postBingo?.bingoCells || [];
+      const cell = counterCells[cellIndex];
+
+      if (cell) {
+        return comparison.mismatches.some(mismatch =>
+          mismatch.rowIndex === cell.row && mismatch.colIndex === cell.column
+        );
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Get CSS classes for position styling based on comparison
+   */
+  getPositionComparisonClass(counterPrediction: CounterPredictionData, rowIndex: number, colIndex: number): string {
+    const officialResults = this.getOfficialResults();
+
+    if (officialResults.length === 0) {
+      return ''; // No comparison available
+    }
+
+    if (this.isPositionMatch(counterPrediction, rowIndex, colIndex)) {
+      return 'comparison-match';
+    } else if (this.isPositionMismatch(counterPrediction, rowIndex, colIndex)) {
+      return 'comparison-mismatch';
+    }
+
+    return 'comparison-neutral';
+  }
+
+  /**
+   * Get comparison tooltip text
+   */
+  getComparisonTooltip(counterPrediction: CounterPredictionData, rowIndex: number, colIndex: number): string {
+    const officialResults = this.getOfficialResults();
+
+    if (officialResults.length === 0) {
+      return 'No official results available for comparison';
+    }
+
+    if (this.isPositionMatch(counterPrediction, rowIndex, colIndex)) {
+      return '✅ Correct! This matches the official result';
+    } else if (this.isPositionMismatch(counterPrediction, rowIndex, colIndex)) {
+      return '❌ Incorrect - different from official result';
+    }
+
+    return 'Neutral position';
+  }
+
+  /**
+   * Get overall accuracy for a counter prediction
+   */
+  getAccuracy(counterPrediction: CounterPredictionData): number {
+    const comparison = this.compareWithOfficialResults(counterPrediction);
+    return comparison.accuracy;
+  }
+
+  /**
+   * Get accuracy badge class
+   */
+  getAccuracyBadgeClass(accuracy: number): string {
+    if (accuracy >= 80) return 'bg-success';
+    if (accuracy >= 60) return 'bg-warning text-dark';
+    if (accuracy >= 40) return 'bg-orange text-white';
+    return 'bg-danger';
+  }
+
+  /**
+   * Get accuracy description
+   */
+  getAccuracyDescription(accuracy: number): string {
+    if (accuracy >= 90) return 'Excellent prediction!';
+    if (accuracy >= 80) return 'Very good prediction';
+    if (accuracy >= 60) return 'Good prediction';
+    if (accuracy >= 40) return 'Fair prediction';
+    if (accuracy >= 20) return 'Poor prediction';
+    return 'Very different from official';
   }
 
   // HELPER METHODS FOR RANKING DATA
