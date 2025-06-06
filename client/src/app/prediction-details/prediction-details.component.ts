@@ -1,3 +1,5 @@
+// client/src/app/prediction-details/prediction-details.component.ts - UPDATED
+
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -131,6 +133,173 @@ export class PredictionDetailsComponent implements OnInit {
     }
   }
 
+  // MAIN CHANGE: Updated canShowCounterPrediction to allow original author
+  canShowCounterPrediction(): boolean {
+    const currentUser = this.accountService.currentUser();
+    if (!currentUser || !this.predictionDetail) {
+      return false;
+    }
+
+    // Don't show for draft predictions
+    if (this.predictionDetail.isDraft) {
+      return false;
+    }
+
+    // Only show for active predictions
+    if (!this.predictionDetail.isActive) {
+      return false;
+    }
+
+    // Only show if we have original post data and teams
+    const hasPostData = this.hasOriginalPostData();
+    const availableTeams = this.getAvailableTeams();
+    const hasTeams = availableTeams.length > 0;
+
+    if (!hasPostData || !hasTeams) {
+      return false;
+    }
+
+    // Check if user already has a counter prediction
+    const hasExistingCounter = this.userHasCounterPrediction(currentUser.id);
+
+    // CHANGE: Allow original author to create counter predictions
+    // but not if they already have one
+    return !hasExistingCounter;
+  }
+
+  // Updated method to determine if this is the author creating a counter prediction
+  isAuthorCreatingCounterPrediction(): boolean {
+    const currentUser = this.accountService.currentUser();
+    if (!currentUser || !this.predictionDetail) {
+      return false;
+    }
+    return this.predictionDetail.userId === currentUser.id;
+  }
+
+  userHasCounterPrediction(userId: number): boolean {
+    const allCounters = this.getAllCounterPredictions();
+    return allCounters.some(counter => counter.userId === userId);
+  }
+
+  getAllCounterPredictions(): CounterPredictionData[] {
+    const counters: CounterPredictionData[] = [];
+
+    // Get counter rankings (exclude original by author ONLY if it's the first/original post)
+    if (this.predictionDetail?.postRanks) {
+      this.predictionDetail.postRanks.forEach((postRank, index) => {
+        // The first post by the author is the "original" - subsequent posts are counter predictions
+        const isOriginalPost = postRank.userId === this.predictionDetail?.userId && index === 0;
+
+        if (!isOriginalPost) {
+          counters.push({
+            id: postRank.id,
+            author: postRank.user,
+            createdAt: new Date(postRank.createdAt),
+            totalScore: postRank.totalScore,
+            postRank: postRank,
+            userId: postRank.userId
+          });
+        }
+      });
+    }
+
+    // Get counter bingos (exclude original by author ONLY if it's the first/original post)
+    if (this.predictionDetail?.postBingos) {
+      this.predictionDetail.postBingos.forEach((postBingo, index) => {
+        // The first post by the author is the "original" - subsequent posts are counter predictions
+        const isOriginalPost = postBingo.userId === this.predictionDetail?.userId && index === 0;
+
+        if (!isOriginalPost) {
+          counters.push({
+            id: postBingo.id,
+            author: postBingo.user,
+            createdAt: new Date(postBingo.createdAt),
+            totalScore: postBingo.totalScore,
+            postBingo: postBingo,
+            userId: postBingo.userId
+          });
+        }
+      });
+    }
+
+    // Sort by creation date (newest first)
+    return counters.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  // Updated method to get the original post data (always the first one by the author)
+  getOriginalRankingData(): any {
+    if (!this.predictionDetail?.postRanks || this.predictionDetail.postRanks.length === 0) {
+      return null;
+    }
+
+    // Find the FIRST post by the prediction author (original post)
+    const originalPost = this.predictionDetail.postRanks.find(pr => pr.userId === this.predictionDetail?.userId);
+    if (originalPost) {
+      return originalPost;
+    }
+
+    // Fallback to the first post if no author post found
+    return this.predictionDetail.postRanks[0];
+  }
+
+  // Updated method to get the original bingo data (always the first one by the author)
+  getOriginalBingoData(): any {
+    if (!this.predictionDetail?.postBingos || this.predictionDetail.postBingos.length === 0) {
+      return null;
+    }
+
+    // Find the FIRST post by the prediction author (original post)
+    const originalPost = this.predictionDetail.postBingos.find(pb => pb.userId === this.predictionDetail?.userId);
+    if (originalPost) {
+      return originalPost;
+    }
+
+    // Fallback to the first post if no author post found
+    return this.predictionDetail.postBingos[0];
+  }
+
+  // Updated getCounterPredictionUnavailableReason to reflect new logic
+  getCounterPredictionUnavailableReason(): string {
+    const currentUser = this.accountService.currentUser();
+
+    if (!currentUser) {
+      return 'You must be logged in to create counter predictions.';
+    }
+
+    if (!this.predictionDetail) {
+      return 'Prediction data is still loading...';
+    }
+
+    if (this.predictionDetail.isDraft) {
+      return 'Counter predictions are not available for draft predictions.';
+    }
+
+    if (!this.predictionDetail.isActive) {
+      return 'This prediction is no longer active.';
+    }
+
+    if (!this.hasOriginalPostData()) {
+      return 'This prediction doesn\'t have any post data yet.';
+    }
+
+    if (this.getAvailableTeams().length === 0) {
+      return 'No teams are available for counter prediction.';
+    }
+
+    if (this.userHasCounterPrediction(currentUser.id)) {
+      if (this.isAuthorCreatingCounterPrediction()) {
+        return 'You have already created a counter prediction for your own post.';
+      } else {
+        return 'You have already created a counter prediction for this post.';
+      }
+    }
+
+    return 'Counter prediction is not available for this post.';
+  }
+
+  // Rest of the methods remain the same...
+  // [Include all the other existing methods from the original file]
+
   // Counter Predictions Pagination Methods
   getCounterPredictionTotalPages(): number {
     if (this.counterPredictionsPerPage >= 50) return 1; // Show all
@@ -214,83 +383,6 @@ export class PredictionDetailsComponent implements OnInit {
     const startIndex = (this.counterPredictionsCurrentPage - 1) * this.counterPredictionsPerPage;
     const endIndex = startIndex + this.counterPredictionsPerPage;
     return allCounters.slice(startIndex, endIndex);
-  }
-
-  // COUNTER PREDICTION METHODS
-  canShowCounterPrediction(): boolean {
-    const currentUser = this.accountService.currentUser();
-    if (!currentUser || !this.predictionDetail) {
-      return false;
-    }
-
-    // Don't show for own predictions
-    if (this.predictionDetail.userId === currentUser.id) {
-      return false;
-    }
-
-    // Don't show for draft predictions
-    if (this.predictionDetail.isDraft) {
-      return false;
-    }
-
-    // Only show for active predictions
-    if (!this.predictionDetail.isActive) {
-      return false;
-    }
-
-    // Only show if we have original post data and teams
-    const hasPostData = this.hasOriginalPostData();
-    const availableTeams = this.getAvailableTeams();
-    const hasTeams = availableTeams.length > 0;
-
-    // Check if user already has a counter prediction
-    const hasExistingCounter = this.userHasCounterPrediction(currentUser.id);
-
-    return hasPostData && hasTeams && !hasExistingCounter;
-  }
-
-  userHasCounterPrediction(userId: number): boolean {
-    const allCounters = this.getAllCounterPredictions();
-    return allCounters.some(counter => counter.userId === userId);
-  }
-
-  getAllCounterPredictions(): CounterPredictionData[] {
-    const counters: CounterPredictionData[] = [];
-
-    // Get counter rankings (exclude original by author)
-    if (this.predictionDetail?.postRanks) {
-      this.predictionDetail.postRanks.forEach(postRank => {
-        if (postRank.userId !== this.predictionDetail?.userId) {
-          counters.push({
-            id: postRank.id,
-            author: postRank.user,
-            createdAt: new Date(postRank.createdAt),
-            totalScore: postRank.totalScore,
-            postRank: postRank,
-            userId: postRank.userId
-          });
-        }
-      });
-    }
-
-    // Get counter bingos (exclude original by author)
-    if (this.predictionDetail?.postBingos) {
-      this.predictionDetail.postBingos.forEach(postBingo => {
-        if (postBingo.userId !== this.predictionDetail?.userId) {
-          counters.push({
-            id: postBingo.id,
-            author: postBingo.user,
-            createdAt: new Date(postBingo.createdAt),
-            totalScore: postBingo.totalScore,
-            postBingo: postBingo,
-            userId: postBingo.userId
-          });
-        }
-      });
-    }
-
-    // Sort by creation date (newest first)
-    return counters.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   getCounterRankings(): CounterPredictionData[] {
@@ -461,21 +553,6 @@ export class PredictionDetailsComponent implements OnInit {
     return isRanking && hasPostRanks && hasRankTable;
   }
 
-  getOriginalRankingData(): any {
-    if (!this.predictionDetail?.postRanks || this.predictionDetail.postRanks.length === 0) {
-      return null;
-    }
-
-    // Find the post by the prediction author (original post)
-    const originalPost = this.predictionDetail.postRanks.find(pr => pr.userId === this.predictionDetail?.userId);
-    if (originalPost) {
-      return originalPost;
-    }
-
-    // Fallback to the first post
-    return this.predictionDetail.postRanks[0];
-  }
-
   getOriginalRankingRows(): any[] {
     const originalData = this.getOriginalRankingData();
     return originalData?.rankTable?.rows || [];
@@ -493,21 +570,6 @@ export class PredictionDetailsComponent implements OnInit {
     const originalData = this.getOriginalBingoData();
     const hasBingoCells = originalData?.bingoCells && originalData.bingoCells.length > 0;
     return isBingo && hasPostBingos && hasBingoCells;
-  }
-
-  getOriginalBingoData(): any {
-    if (!this.predictionDetail?.postBingos || this.predictionDetail.postBingos.length === 0) {
-      return null;
-    }
-
-    // Find the post by the prediction author (original post)
-    const originalPost = this.predictionDetail.postBingos.find(pb => pb.userId === this.predictionDetail?.userId);
-    if (originalPost) {
-      return originalPost;
-    }
-
-    // Fallback to the first post
-    return this.predictionDetail.postBingos[0];
   }
 
   getOriginalBingoCells(): any[] {
@@ -579,7 +641,7 @@ export class PredictionDetailsComponent implements OnInit {
       'sport': 'fa-trophy',
       'soccer': 'fa-soccer-ball-o',
       'football': 'fa-football',
-      'basketball': 'fa-basketball',
+      'basketball': 'fa-basketball-ball',
       'baseball': 'fa-baseball',
       'tennis': 'fa-trophy',
       'golf': 'fa-trophy',
@@ -639,7 +701,7 @@ export class PredictionDetailsComponent implements OnInit {
     }
 
     const knownSafeIcons = [
-      'fa-trophy', 'fa-soccer-ball-o', 'fa-football', 'fa-basketball', 'fa-baseball',
+      'fa-trophy', 'fa-soccer-ball-o', 'fa-football', 'fa-basketball-ball', 'fa-baseball',
       'fa-music', 'fa-film', 'fa-tv', 'fa-gamepad', 'fa-laptop', 'fa-mobile',
       'fa-book', 'fa-graduation-cap', 'fa-university', 'fa-flask', 'fa-briefcase',
       'fa-money', 'fa-chart-line', 'fa-globe', 'fa-plane', 'fa-heart', 'fa-medkit',
@@ -753,44 +815,6 @@ export class PredictionDetailsComponent implements OnInit {
 
   getCurrentUserId(): number {
     return this.accountService.currentUser()?.id || 0;
-  }
-
-  getCounterPredictionUnavailableReason(): string {
-    const currentUser = this.accountService.currentUser();
-
-    if (!currentUser) {
-      return 'You must be logged in to create counter predictions.';
-    }
-
-    if (!this.predictionDetail) {
-      return 'Prediction data is still loading...';
-    }
-
-    if (this.predictionDetail.userId === currentUser.id) {
-      return 'You cannot counter-predict your own prediction.';
-    }
-
-    if (this.predictionDetail.isDraft) {
-      return 'Counter predictions are not available for draft predictions.';
-    }
-
-    if (!this.predictionDetail.isActive) {
-      return 'This prediction is no longer active.';
-    }
-
-    if (!this.hasOriginalPostData()) {
-      return 'This prediction doesn\'t have any post data yet.';
-    }
-
-    if (this.getAvailableTeams().length === 0) {
-      return 'No teams are available for counter prediction.';
-    }
-
-    if (this.userHasCounterPrediction(currentUser.id)) {
-      return 'You have already created a counter prediction for this post.';
-    }
-
-    return 'Counter prediction is not available for this post.';
   }
 
   goBack(): void {
