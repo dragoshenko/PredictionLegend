@@ -1,5 +1,3 @@
-// client/src/app/prediction-details/prediction-details.component.ts - FIXED OFFICIAL RESULTS LOGIC
-
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -181,8 +179,13 @@ export class PredictionDetailsComponent implements OnInit {
       return false;
     }
 
-    // Original author can't create counter predictions
+    // UPDATED: Block original author from creating counter predictions
     if (this.predictionDetail.userId === currentUser.id) {
+      return false;
+    }
+
+    // NEW: Block counter predictions if official results have been published
+    if (this.hasOfficialResults()) {
       return false;
     }
 
@@ -190,6 +193,12 @@ export class PredictionDetailsComponent implements OnInit {
     const hasExistingCounter = this.userHasCounterPrediction(currentUser.id);
 
     return !hasExistingCounter;
+  }
+
+  // NEW: Check if official results exist
+  hasOfficialResults(): boolean {
+    const officialResults = this.getOfficialResults();
+    return officialResults.length > 0;
   }
 
   userHasCounterPrediction(userId: number): boolean {
@@ -369,6 +378,11 @@ export class PredictionDetailsComponent implements OnInit {
 
     if (this.predictionDetail.userId === currentUser.id) {
       return 'You cannot create counter predictions for your own prediction. You can add official results instead.';
+    }
+
+    // NEW: Check for official results
+    if (this.hasOfficialResults()) {
+      return 'Counter predictions are no longer allowed. The author has published official results for this prediction.';
     }
 
     if (this.userHasCounterPrediction(currentUser.id)) {
@@ -620,6 +634,7 @@ export class PredictionDetailsComponent implements OnInit {
 
     return [];
   }
+
   compareWithOfficialResults(counterPrediction: CounterPredictionData): ComparisonResult {
     const officialResults = this.getOfficialResults();
 
