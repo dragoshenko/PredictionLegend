@@ -465,3 +465,317 @@
     border: 1px solid #000;
   }
 }
+.comparison-match {
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.2), rgba(40, 167, 69, 0.1)) !important;
+  border: 2px solid #28a745 !important;
+  box-shadow: 0 0 8px rgba(40, 167, 69, 0.3);
+  position: relative;
+}
+
+.comparison-mismatch {
+  background: linear-gradient(135deg, rgba(220, 53, 69, 0.2), rgba(220, 53, 69, 0.1)) !important;
+  border: 2px solid #dc3545 !important;
+  box-shadow: 0 0 8px rgba(220, 53, 69, 0.3);
+  position: relative;
+}
+
+.comparison-neutral {
+  background: rgba(108, 117, 125, 0.1);
+  border: 2px solid rgba(108, 117, 125, 0.3);
+}
+
+/* Enhanced match/mismatch indicators */
+.comparison-match::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #28a745, #20c997);
+  border-radius: inherit;
+  z-index: -1;
+  opacity: 0.3;
+}
+
+.comparison-mismatch::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #dc3545, #e74c3c);
+  border-radius: inherit;
+  z-index: -1;
+  opacity: 0.3;
+}
+
+/* Hover effects for comparison cells */
+.comparison-match:hover {
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.3), rgba(40, 167, 69, 0.2)) !important;
+  transform: scale(1.02);
+  box-shadow: 0 2px 12px rgba(40, 167, 69, 0.4);
+}
+
+.comparison-mismatch:hover {
+  background: linear-gradient(135deg, rgba(220, 53, 69, 0.3), rgba(220, 53, 69, 0.2)) !important;
+  transform: scale(1.02);
+  box-shadow: 0 2px 12px rgba(220, 53, 69, 0.4);
+}
+
+/* Accuracy badge styling */
+.badge.bg-orange {
+  background-color: #fd7e14 !important;
+  color: white !important;
+}
+
+/* Enhanced bingo cell comparison styling */
+.bingo-cell.comparison-match {
+  border-color: #28a745 !important;
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.25), rgba(40, 167, 69, 0.15)) !important;
+  box-shadow: 0 0 10px rgba(40, 167, 69, 0.4);
+}
+
+.bingo-cell.comparison-mismatch {
+  border-color: #dc3545 !important;
+  background: linear-gradient(135deg, rgba(220, 53, 69, 0.25), rgba(220, 53, 69, 0.15)) !important;
+  box-shadow: 0 0 10px rgba(220, 53, 69, 0.4);
+}
+
+/* Table cell comparison styling */
+.table td.comparison-match {
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.15), rgba(40, 167, 69, 0.05)) !important;
+  border-color: #28a745 !important;
+}
+
+.table td.comparison-mismatch {
+  background: linear-gradient(135deg, rgba(220, 53, 69, 0.15), rgba(220, 53, 69, 0.05)) !important;
+  border-color: #dc3545 !important;
+}
+
+/* Match/Mismatch indicator animations */
+@keyframes match-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes mismatch-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-2px);
+  }
+  75% {
+    transform: translateX(2px);
+  }
+}
+
+.fa-check-circle {
+  animation: match-pulse 2s infinite ease-in-out;
+}
+
+.fa-times-circle {
+  animation: mismatch-shake 3s infinite ease-in-out;
+}
+
+/* Comparison summary styling */
+.card-header .row {
+  margin: 0;
+}
+
+.card-header .row .col-4 {
+  padding: 2px 4px;
+}
+
+/* Enhanced accuracy badge with gradient */
+.badge[class*="bg-"]:not(.bg-primary):not(.bg-secondary) {
+  position: relative;
+  overflow: hidden;
+}
+
+.badge.bg-success {
+  background: linear-gradient(45deg, #28a745, #20c997) !important;
+}
+
+.badge.bg-warning {
+  background: linear-gradient(45deg, #ffc107, #fd7e14) !important;
+}
+
+.badge.bg-orange {
+  background: linear-gradient(45deg, #fd7e14, #dc3545) !important;
+}
+
+.badge.bg-danger {
+  background: linear-gradient(45deg, #dc3545, #c82333) !important;
+}
+
+/* Tooltip enhancement for comparison */
+[title] {
+  cursor: help;
+  position: relative;
+}
+
+/* Accuracy progress indicator */
+.accuracy-indicator {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 5px;
+}
+
+.accuracy-progress {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.accuracy-progress.excellent {
+  background: linear-gradient(90deg, #28a745, #20c997);
+}
+
+.accuracy-progress.good {
+  background: linear-gradient(90deg, #ffc107, #fd7e14);
+}
+
+.accuracy-progress.poor {
+  background: linear-gradient(90deg, #fd7e14, #dc3545);
+}
+
+.accuracy-progress.very-poor {
+  background: linear-gradient(90deg, #dc3545, #c82333);
+}
+
+/* Enhanced counter prediction cards with comparison */
+.counter-prediction-card {
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.counter-prediction-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 123, 255, 0.2);
+}
+
+/* High accuracy highlight */
+.counter-prediction-card.high-accuracy {
+  border-color: #28a745 !important;
+  box-shadow: 0 0 15px rgba(40, 167, 69, 0.3);
+}
+
+.counter-prediction-card.low-accuracy {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 15px rgba(220, 53, 69, 0.3);
+}
+
+/* Comparison legend */
+.comparison-legend {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.legend-match {
+  background: #28a745;
+}
+
+.legend-mismatch {
+  background: #dc3545;
+}
+
+.legend-neutral {
+  background: #6c757d;
+}
+
+/* Mobile responsiveness for comparison */
+@media (max-width: 768px) {
+  .comparison-match,
+  .comparison-mismatch {
+    border-width: 1px !important;
+  }
+
+  .fa-check-circle,
+  .fa-times-circle {
+    font-size: 10px !important;
+  }
+
+  .comparison-legend {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .card-header .row .col-4 {
+    margin-bottom: 5px;
+  }
+}
+
+/* Dark theme compatibility */
+.table-dark .comparison-match {
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.2), rgba(40, 167, 69, 0.1)) !important;
+}
+
+.table-dark .comparison-mismatch {
+  background: linear-gradient(135deg, rgba(220, 53, 69, 0.2), rgba(220, 53, 69, 0.1)) !important;
+}
+
+/* Performance optimization */
+.comparison-match,
+.comparison-mismatch,
+.comparison-neutral {
+  will-change: transform, box-shadow;
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .fa-check-circle,
+  .fa-times-circle {
+    animation: none !important;
+  }
+
+  .comparison-match:hover,
+  .comparison-mismatch:hover {
+    transform: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .comparison-match {
+    border-width: 3px !important;
+    border-color: #00ff00 !important;
+  }
+
+  .comparison-mismatch {
+    border-width: 3px !important;
+    border-color: #ff0000 !important;
+  }
+}

@@ -367,31 +367,6 @@ public class PostController : BaseAPIController
         }
     }
 
-    // Helper method to count counter predictions
-    private int GetCounterPredictionsCount(Prediction prediction)
-    {
-        try
-        {
-            if (prediction == null) return 0;
-
-            switch (prediction.PredictionType)
-            {
-                case PredictionType.Ranking:
-                    return prediction.PostRanks?.Count(pr => pr.UserId != prediction.UserId) ?? 0;
-                case PredictionType.Bracket:
-                    return prediction.PostBrackets?.Count(pb => pb.UserId != prediction.UserId) ?? 0;
-                case PredictionType.Bingo:
-                    return prediction.PostBingos?.Count(pb => pb.UserId != prediction.UserId) ?? 0;
-                default:
-                    return 0;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error counting counter predictions: {ex.Message}");
-            return 0;
-        }
-    }
 
     [HttpGet("prediction/{predictionId}/with-posts")]
     public async Task<ActionResult<PredictionWithPostsDTO>> GetPredictionWithPosts(int predictionId)
@@ -557,221 +532,266 @@ public class PostController : BaseAPIController
     }
 
     [HttpPost("counter-prediction")]
-    public async Task<ActionResult> CreateCounterPrediction([FromBody] CounterPredictionRequestDTO request)
+public async Task<ActionResult> CreateCounterPrediction([FromBody] CounterPredictionRequestDTO request)
+{
+    try
     {
-        try
+        var userId = User.GetUserId();
+
+        // Get the original prediction with all related data
+        var originalPrediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(
+            request.Id,
+            includeUser: true,
+            includePostRanks: true,
+            includePostBingos: true,
+            includePostBrackets: true
+        );
+
+        if (originalPrediction == null)
         {
+            Console.WriteLine("Original prediction not found");
+            return BadRequest(new { message = "Original prediction not found" });
+        }
 
+        Console.WriteLine($"Original prediction found: {originalPrediction.Title}");
+        Console.WriteLine($"Original prediction type: {originalPrediction.PredictionType}");
+        Console.WriteLine($"Original prediction owner: {originalPrediction.UserId}");
+        Console.WriteLine($"Current user: {userId}");
 
-            var userId = User.GetUserId();
+        // UPDATED: Allow original author to create counter predictions
+        // No longer block the original author from creating counter predictions
 
-            // Get the original prediction with all related data
-            var originalPrediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(
-                request.Id,
-                includeUser: true,
-                includePostRanks: true,
-                includePostBingos: true,
-                includePostBrackets: true
-            );
+        if (originalPrediction.IsDraft)
+        {
+            Console.WriteLine("Cannot counter-predict draft prediction");
+            return BadRequest(new { message = "Cannot create counter prediction for draft predictions" });
+        }
 
-            if (originalPrediction == null)
-            {
-                Console.WriteLine("Original prediction not found");
-                return BadRequest(new { message = "Original prediction not found" });
-            }
+        if (!originalPrediction.IsActive)
+        {
+            Console.WriteLine("Cannot counter-predict inactive prediction");
+            return BadRequest(new { message = "Cannot create counter prediction for inactive predictions" });
+        }
 
-            Console.WriteLine($"Original prediction found: {originalPrediction.Title}");
-            Console.WriteLine($"Original prediction type: {originalPrediction.PredictionType}");
-            Console.WriteLine($"Original prediction owner: {originalPrediction.UserId}");
+        // UPDATED: Check if user already has a counter prediction
+        // This now includes checking if the original author already has an alternative prediction
+        bool hasExistingCounterPrediction = false;
+        switch (originalPrediction.PredictionType)
+        {
+            case PredictionType.Ranking:
+                // For original author: check if they have MORE than 1 post (original + counter)
+                // For other users: check if they have ANY post
+                if (originalPrediction.UserId == userId)
+                {
+                    hasExistingCounterPrediction = originalPrediction.PostRanks.Count(pr => pr.UserId == userId) > 1;
+                }
+                else
+                {
+                    hasExistingCounterPrediction = originalPrediction.PostRanks.Any(pr => pr.UserId == userId);
+                }
+                break;
+            case PredictionType.Bracket:
+                if (originalPrediction.UserId == userId)
+                {
+                    hasExistingCounterPrediction = originalPrediction.PostBrackets.Count(pb => pb.UserId == userId) > 1;
+                }
+                else
+                {
+                    hasExistingCounterPrediction = originalPrediction.PostBrackets.Any(pb => pb.UserId == userId);
+                }
+                break;
+            case PredictionType.Bingo:
+                if (originalPrediction.UserId == userId)
+                {
+                    hasExistingCounterPrediction = originalPrediction.PostBingos.Count(pb => pb.UserId == userId) > 1;
+                }
+                else
+                {
+                    hasExistingCounterPrediction = originalPrediction.PostBingos.Any(pb => pb.UserId == userId);
+                }
+                break;
+        }
 
-            // Check if user can create counter prediction
+        if (hasExistingCounterPrediction)
+        {
+            Console.WriteLine("User already has counter prediction");
             if (originalPrediction.UserId == userId)
             {
-                Console.WriteLine("User trying to counter-predict own prediction");
-                return BadRequest(new { message = "You cannot create a counter prediction for your own prediction" });
+                return BadRequest(new { message = "You have already created an alternative prediction for your own post" });
             }
-
-            if (originalPrediction.IsDraft)
+            else
             {
-                Console.WriteLine("Cannot counter-predict draft prediction");
-                return BadRequest(new { message = "Cannot create counter prediction for draft predictions" });
-            }
-
-            if (!originalPrediction.IsActive)
-            {
-                Console.WriteLine("Cannot counter-predict inactive prediction");
-                return BadRequest(new { message = "Cannot create counter prediction for inactive predictions" });
-            }
-
-            // Check if user already has a counter prediction
-            bool hasExistingCounterPrediction = false;
-            switch (originalPrediction.PredictionType)
-            {
-                case PredictionType.Ranking:
-                    hasExistingCounterPrediction = originalPrediction.PostRanks.Any(pr => pr.UserId == userId);
-                    break;
-                case PredictionType.Bracket:
-                    hasExistingCounterPrediction = originalPrediction.PostBrackets.Any(pb => pb.UserId == userId);
-                    break;
-                case PredictionType.Bingo:
-                    hasExistingCounterPrediction = originalPrediction.PostBingos.Any(pb => pb.UserId == userId);
-                    break;
-            }
-
-            if (hasExistingCounterPrediction)
-            {
-                Console.WriteLine("User already has counter prediction");
                 return BadRequest(new { message = "You have already created a counter prediction for this post" });
             }
+        }
 
-            // Create counter prediction based on type
-            switch (originalPrediction.PredictionType)
-            {
-                case PredictionType.Ranking:
-                    Console.WriteLine("Creating ranking counter prediction");
-                    if (request.PostRank == null)
-                    {
-                        Console.WriteLine("PostRank data is null");
-                        return BadRequest(new { message = "PostRank data is required for ranking counter predictions" });
-                    }
+        // Create counter prediction based on type
+        switch (originalPrediction.PredictionType)
+        {
+            case PredictionType.Ranking:
+                Console.WriteLine("Creating ranking counter prediction");
+                if (request.PostRank == null)
+                {
+                    Console.WriteLine("PostRank data is null");
+                    return BadRequest(new { message = "PostRank data is required for ranking counter predictions" });
+                }
 
-                    // Set required fields
-                    request.PostRank.PredictionId = request.Id;
-                    request.PostRank.UserId = userId;
+                // Set required fields
+                request.PostRank.PredictionId = request.Id;
+                request.PostRank.UserId = userId;
 
-                    // Validate rank table structure
-                    if (request.PostRank.RankTable?.Rows == null || !request.PostRank.RankTable.Rows.Any())
-                    {
-                        return BadRequest(new { message = "RankTable with rows is required" });
-                    }
+                // Validate rank table structure
+                if (request.PostRank.RankTable?.Rows == null || !request.PostRank.RankTable.Rows.Any())
+                {
+                    return BadRequest(new { message = "RankTable with rows is required" });
+                }
 
-                    // Validate that at least some positions have teams
-                    var hasAnyTeamsInRanking = request.PostRank.RankTable.Rows
-                        .Any(row => row.Columns != null && row.Columns.Any(col => col.Team != null));
+                // Validate that at least some positions have teams
+                var hasAnyTeamsInRanking = request.PostRank.RankTable.Rows
+                    .Any(row => row.Columns != null && row.Columns.Any(col => col.Team != null));
 
-                    if (!hasAnyTeamsInRanking)
-                    {
-                        return BadRequest(new { message = "At least one position must have a team assigned" });
-                    }
+                if (!hasAnyTeamsInRanking)
+                {
+                    return BadRequest(new { message = "At least one position must have a team assigned" });
+                }
 
-                    Console.WriteLine($"Creating PostRank with {request.PostRank.RankTable.Rows.Count} rows");
-                    var rankResult = await _postService.CreatePostRankAsync(request.PostRank, userId);
+                Console.WriteLine($"Creating PostRank with {request.PostRank.RankTable.Rows.Count} rows");
+                var rankResult = await _postService.CreatePostRankAsync(request.PostRank, userId);
 
-                    if (rankResult.Result is BadRequestObjectResult badRankResult)
-                    {
-                        Console.WriteLine($"CreatePostRankAsync failed: {badRankResult.Value}");
-                        return badRankResult;
-                    }
+                if (rankResult.Result is BadRequestObjectResult badRankResult)
+                {
+                    Console.WriteLine($"CreatePostRankAsync failed: {badRankResult.Value}");
+                    return badRankResult;
+                }
 
+                // UPDATED: Success message for original author vs other users
+                if (originalPrediction.UserId == userId)
+                {
+                    Console.WriteLine("Author's alternative ranking prediction created successfully");
+                    return Ok(new { message = "Alternative ranking prediction created successfully", data = rankResult.Value });
+                }
+                else
+                {
                     Console.WriteLine("Ranking counter prediction created successfully");
                     return Ok(new { message = "Ranking counter prediction created successfully", data = rankResult.Value });
+                }
 
-                case PredictionType.Bingo:
-                    Console.WriteLine("Creating bingo counter prediction");
-                    if (request.PostBingo == null)
-                    {
-                        Console.WriteLine("PostBingo data is null");
-                        return BadRequest(new { message = "PostBingo data is required for bingo counter predictions" });
-                    }
+            case PredictionType.Bingo:
+                Console.WriteLine("Creating bingo counter prediction");
+                if (request.PostBingo == null)
+                {
+                    Console.WriteLine("PostBingo data is null");
+                    return BadRequest(new { message = "PostBingo data is required for bingo counter predictions" });
+                }
 
-                    // Set required fields
-                    request.PostBingo.UserId = userId;
+                // Set required fields
+                request.PostBingo.UserId = userId;
 
-                    // Validate bingo structure
-                    if (request.PostBingo.BingoCells == null || !request.PostBingo.BingoCells.Any())
-                    {
-                        return BadRequest(new { message = "BingoCells are required" });
-                    }
+                // Validate bingo structure
+                if (request.PostBingo.BingoCells == null || !request.PostBingo.BingoCells.Any())
+                {
+                    return BadRequest(new { message = "BingoCells are required" });
+                }
 
-                    // Validate that at least some cells have teams
-                    var hasAnyTeamsInBingo = request.PostBingo.BingoCells.Any(cell => cell.Team != null);
+                // Validate that at least some cells have teams
+                var hasAnyTeamsInBingo = request.PostBingo.BingoCells.Any(cell => cell.Team != null);
 
-                    if (!hasAnyTeamsInBingo)
-                    {
-                        return BadRequest(new { message = "At least one bingo cell must have a team assigned" });
-                    }
+                if (!hasAnyTeamsInBingo)
+                {
+                    return BadRequest(new { message = "At least one bingo cell must have a team assigned" });
+                }
 
-                    Console.WriteLine($"Creating PostBingo with {request.PostBingo.BingoCells.Count} cells");
-                    var bingoResult = await _postService.CreatePostBingoAsync(request.PostBingo, request.Id, userId);
+                Console.WriteLine($"Creating PostBingo with {request.PostBingo.BingoCells.Count} cells");
+                var bingoResult = await _postService.CreatePostBingoAsync(request.PostBingo, request.Id, userId);
 
-                    if (bingoResult.Result is BadRequestObjectResult badBingoResult)
-                    {
-                        Console.WriteLine($"CreatePostBingoAsync failed: {badBingoResult.Value}");
-                        return badBingoResult;
-                    }
+                if (bingoResult.Result is BadRequestObjectResult badBingoResult)
+                {
+                    Console.WriteLine($"CreatePostBingoAsync failed: {badBingoResult.Value}");
+                    return badBingoResult;
+                }
 
+                // UPDATED: Success message for original author vs other users
+                if (originalPrediction.UserId == userId)
+                {
+                    Console.WriteLine("Author's alternative bingo prediction created successfully");
+                    return Ok(new { message = "Alternative bingo prediction created successfully", data = bingoResult.Value });
+                }
+                else
+                {
                     Console.WriteLine("Bingo counter prediction created successfully");
                     return Ok(new { message = "Bingo counter prediction created successfully", data = bingoResult.Value });
+                }
 
-                case PredictionType.Bracket:
-                    Console.WriteLine("Bracket counter predictions not yet implemented");
-                    return BadRequest(new { message = "Bracket counter predictions are not yet implemented" });
+            case PredictionType.Bracket:
+                Console.WriteLine("Bracket counter predictions not yet implemented");
+                return BadRequest(new { message = "Bracket counter predictions are not yet implemented" });
 
-                default:
-                    Console.WriteLine($"Unsupported prediction type: {originalPrediction.PredictionType}");
-                    return BadRequest(new { message = "Unsupported prediction type" });
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"=== EXCEPTION IN CreateCounterPrediction ===");
-            Console.WriteLine($"Exception type: {ex.GetType().Name}");
-            Console.WriteLine($"Exception message: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
-
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
-                Console.WriteLine($"Inner stack trace: {ex.InnerException.StackTrace}");
-            }
-
-            return StatusCode(500, new
-            {
-                message = "An error occurred while creating the counter prediction",
-                error = ex.Message,
-                details = "Please try again later or contact support if the problem persists"
-            });
+            default:
+                Console.WriteLine($"Unsupported prediction type: {originalPrediction.PredictionType}");
+                return BadRequest(new { message = "Unsupported prediction type" });
         }
     }
-
-    [HttpGet("can-counter-predict/{id}")]
-    public async Task<ActionResult<bool>> CanUserCounterPredict(int id)
+    catch (Exception ex)
     {
-        try
+        Console.WriteLine($"=== EXCEPTION IN CreateCounterPrediction ===");
+        Console.WriteLine($"Exception type: {ex.GetType().Name}");
+        Console.WriteLine($"Exception message: {ex.Message}");
+        Console.WriteLine($"Stack trace: {ex.StackTrace}");
+
+        if (ex.InnerException != null)
         {
-            var userId = User.GetUserId();
-            var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(
-                id,
-                includePostRanks: true,
-                includePostBingos: true,
-                includePostBrackets: true
-            );
-
-            if (prediction == null)
-            {
-                return NotFound();
-            }
-
-            // Check conditions for counter prediction
-            bool canCounterPredict = !prediction.IsDraft &&
-                                   prediction.IsActive &&
-                                   prediction.UserId != userId &&
-                                   !HasUserCounterPredicted(prediction, userId);
-
-            Console.WriteLine($"CanUserCounterPredict check for user {userId}, prediction {id}: {canCounterPredict}");
-            Console.WriteLine($"  - IsDraft: {prediction.IsDraft}");
-            Console.WriteLine($"  - IsActive: {prediction.IsActive}");
-            Console.WriteLine($"  - UserId: {prediction.UserId}");
-            Console.WriteLine($"  - HasUserCounterPredicted: {HasUserCounterPredicted(prediction, userId)}");
-
-            return Ok(canCounterPredict);
+            Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+            Console.WriteLine($"Inner stack trace: {ex.InnerException.StackTrace}");
         }
-        catch (Exception ex)
+
+        return StatusCode(500, new
         {
-            Console.WriteLine($"Error checking counter prediction eligibility: {ex.Message}");
-            return StatusCode(500, new { message = "Error checking eligibility", error = ex.Message });
-        }
+            message = "An error occurred while creating the counter prediction",
+            error = ex.Message,
+            details = "Please try again later or contact support if the problem persists"
+        });
     }
+}
+
+[HttpGet("can-counter-predict/{id}")]
+public async Task<ActionResult<bool>> CanUserCounterPredict(int id)
+{
+    try
+    {
+        var userId = User.GetUserId();
+        var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(
+            id,
+            includePostRanks: true,
+            includePostBingos: true,
+            includePostBrackets: true
+        );
+
+        if (prediction == null)
+        {
+            return NotFound();
+        }
+
+        // UPDATED: Allow original author to create counter predictions
+        // Check conditions for counter prediction
+        bool canCounterPredict = !prediction.IsDraft &&
+                               prediction.IsActive &&
+                               !HasUserCounterPredicted(prediction, userId); // Removed userId != prediction.UserId
+
+        Console.WriteLine($"CanUserCounterPredict check for user {userId}, prediction {id}: {canCounterPredict}");
+        Console.WriteLine($"  - IsDraft: {prediction.IsDraft}");
+        Console.WriteLine($"  - IsActive: {prediction.IsActive}");
+        Console.WriteLine($"  - UserId: {prediction.UserId}");
+        Console.WriteLine($"  - IsOriginalAuthor: {prediction.UserId == userId}");
+        Console.WriteLine($"  - HasUserCounterPredicted: {HasUserCounterPredicted(prediction, userId)}");
+
+        return Ok(canCounterPredict);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error checking counter prediction eligibility: {ex.Message}");
+        return StatusCode(500, new { message = "Error checking eligibility", error = ex.Message });
+    }
+}
 
     // Helper method to check if user has already created a counter prediction
     private bool HasUserCounterPredicted(Prediction prediction, int userId)
@@ -779,14 +799,57 @@ public class PostController : BaseAPIController
         switch (prediction.PredictionType)
         {
             case PredictionType.Ranking:
-                return prediction.PostRanks.Any(pr => pr.UserId == userId && pr.UserId != prediction.UserId);
+                // For original author: check if they have more than 1 post (original + counter)
+                // For other users: check if they have any post
+                if (prediction.UserId == userId)
+                {
+                    return prediction.PostRanks.Count(pr => pr.UserId == userId) > 1;
+                }
+                else
+                {
+                    return prediction.PostRanks.Any(pr => pr.UserId == userId);
+                }
             case PredictionType.Bracket:
-                return prediction.PostBrackets.Any(pb => pb.UserId == userId && pb.UserId != prediction.UserId);
+                if (prediction.UserId == userId)
+                {
+                    return prediction.PostBrackets.Count(pb => pb.UserId == userId) > 1;
+                }
+                else
+                {
+                    return prediction.PostBrackets.Any(pb => pb.UserId == userId);
+                }
             case PredictionType.Bingo:
-                return prediction.PostBingos.Any(pb => pb.UserId == userId && pb.UserId != prediction.UserId);
+                if (prediction.UserId == userId)
+                {
+                    return prediction.PostBingos.Count(pb => pb.UserId == userId) > 1;
+                }
+                else
+                {
+                    return prediction.PostBingos.Any(pb => pb.UserId == userId);
+                }
         }
         return false;
     }
+private int GetCounterPredictionsCount(Prediction prediction)
+{
+    switch (prediction.PredictionType)
+    {
+        case PredictionType.Ranking:
+            // Count all posts except the first one by the original author
+            var rankingPosts = prediction.PostRanks.ToList();
+            var firstAuthorPost = rankingPosts.FirstOrDefault(pr => pr.UserId == prediction.UserId);
+            return rankingPosts.Count(pr => pr.Id != firstAuthorPost?.Id);
+        case PredictionType.Bracket:
+            var bracketPosts = prediction.PostBrackets.ToList();
+            var firstAuthorBracket = bracketPosts.FirstOrDefault(pb => pb.UserId == prediction.UserId);
+            return bracketPosts.Count(pb => pb.Id != firstAuthorBracket?.Id);
+        case PredictionType.Bingo:
+            var bingoPosts = prediction.PostBingos.ToList();
+            var firstAuthorBingo = bingoPosts.FirstOrDefault(pb => pb.UserId == prediction.UserId);
+            return bingoPosts.Count(pb => pb.Id != firstAuthorBingo?.Id);
+    }
+    return 0;
+}
 
     [HttpGet("debug/{id}")]
     public async Task<ActionResult> DebugPrediction(int id)
@@ -1514,78 +1577,4 @@ public class PostController : BaseAPIController
             });
         }
     }
-[HttpDelete("{id}")]
-public async Task<ActionResult> DeletePrediction(int id)
-{
-    try
-    {
-        var userId = User.GetUserId();
-        Console.WriteLine($"Deleting prediction: ID={id}, User={userId}");
-
-        if (userId <= 0)
-        {
-            return Unauthorized(new { message = "Invalid user authentication" });
-        }
-
-        // Get the prediction with all related data
-        var prediction = await _unitOfWork.PredictionRepository.GetPredictionByIdAsync(
-            id,
-            includeUser: true,
-            includePostRanks: true,
-            includePostBingos: true,
-            includePostBrackets: true
-        );
-
-        if (prediction == null)
-        {
-            return NotFound(new { message = "Prediction not found" });
-        }
-
-        // Verify ownership
-        if (prediction.UserId != userId)
-        {
-            return Unauthorized(new { message = "You can only delete your own predictions" });
-        }
-
-        // Check if prediction has counter predictions
-        var hasCounterPredictions = 
-            prediction.PostRanks.Any(pr => pr.UserId != userId) ||
-            prediction.PostBingos.Any(pb => pb.UserId != userId) ||
-            prediction.PostBrackets.Any(pb => pb.UserId != userId);
-
-        if (hasCounterPredictions && !prediction.IsDraft)
-        {
-            return BadRequest(new { 
-                message = "Cannot delete published predictions with counter predictions",
-                error = "This prediction has responses from other users and cannot be deleted"
-            });
-        }
-
-        // Delete the prediction (cascade should handle related data)
-        var deleteResult = await _unitOfWork.PredictionRepository.DeletePrediction(prediction);
-
-        if (!deleteResult)
-        {
-            Console.WriteLine($"Failed to delete prediction with ID {id}");
-            return BadRequest(new { message = "Failed to delete prediction" });
-        }
-
-        Console.WriteLine($"Successfully deleted prediction with ID {id}");
-        return Ok(new { 
-            message = "Prediction deleted successfully",
-            deletedId = id
-        });
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Error deleting prediction: {ex.Message}");
-        Console.WriteLine($"Stack trace: {ex.StackTrace}");
-        return StatusCode(500, new
-        {
-            message = "An error occurred while deleting the prediction",
-            error = "Please try again later or contact support if the problem persists"
-        });
-    }
-}
-
 }
