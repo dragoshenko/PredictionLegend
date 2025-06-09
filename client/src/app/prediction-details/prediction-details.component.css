@@ -92,6 +92,7 @@
   transition: var(--transition);
   position: relative;
   overflow: hidden;
+
 }
 
 .bingo-cell.has-team {
