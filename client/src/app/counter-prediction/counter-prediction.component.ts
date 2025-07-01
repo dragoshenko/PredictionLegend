@@ -118,7 +118,6 @@ export class CounterPredictionComponent implements OnInit {
 
     this.isCheckingEligibility.set(true);
     try {
-
       const canCounterPredict = await this.counterPredictionService
         .canUserCounterPredict(this.originalPrediction.id)
         .toPromise();
@@ -160,7 +159,6 @@ export class CounterPredictionComponent implements OnInit {
 
   initializeCounterPrediction(): void {
     if (!this.originalPrediction || !this.template) {
-
       this.toastr.warning('Missing prediction or template data');
       return;
     }
@@ -179,7 +177,6 @@ export class CounterPredictionComponent implements OnInit {
     } else {
       this.toastr.warning(`Unsupported prediction type: ${this.originalPrediction.predictionType}`);
     }
-
   }
 
   initializeCounterRanking(): void {
@@ -218,7 +215,6 @@ export class CounterPredictionComponent implements OnInit {
 
       this.postRank.rankTable.rows.push(row);
     }
-
   }
 
   initializeCounterBingo(): void {
@@ -696,7 +692,6 @@ export class CounterPredictionComponent implements OnInit {
     const hasRankTable = !!this.postRank?.rankTable;
     const hasRows = (this.postRank?.rankTable?.rows?.length || 0) > 0;
 
-
     return isRankingType && hasPostRank && hasRankTable && hasRows;
   }
 
@@ -713,17 +708,16 @@ export class CounterPredictionComponent implements OnInit {
 
       return filledSlots === totalSlots && totalSlots > 0;
     } else if ((predType === 'Bingo' || predType === 2 || predType === '2') && this.postBingo?.bingoCells) {
-      // For bingo: ALL cells must be filled
-      const totalCells = this.postBingo.bingoCells.length;
+      // UPDATED: For bingo, allow partial completion - user decides which events to predict
+      // No longer require ALL cells to be filled
       const filledCells = this.postBingo.bingoCells.filter(cell => cell.team !== null).length;
-
-      return filledCells === totalCells && totalCells > 0;
+      return filledCells > 0; // At least one prediction
     }
 
     return false;
   }
 
-  // Get completion percentage (already exists but ensuring it's accurate)
+  // Get completion percentage (updated for bingo)
   getCompletionPercentage(): number {
     const predType = this.originalPrediction?.predictionType;
 
@@ -735,6 +729,7 @@ export class CounterPredictionComponent implements OnInit {
 
       return totalSlots > 0 ? Math.round((filledSlots / totalSlots) * 100) : 0;
     } else if ((predType === 'Bingo' || predType === 2 || predType === '2') && this.postBingo?.bingoCells) {
+      // UPDATED: For bingo, show how many cells have predictions (not requiring 100%)
       const totalCells = this.postBingo.bingoCells.length;
       const filledCells = this.postBingo.bingoCells.filter(cell => cell.team !== null).length;
 
@@ -745,10 +740,19 @@ export class CounterPredictionComponent implements OnInit {
   }
 
   async submitCounterPrediction(): Promise<void> {
+    // UPDATED: Different validation for different prediction types
+    const predType = this.originalPrediction.predictionType;
     const completionPercentage = this.getCompletionPercentage();
 
-    if (completionPercentage < 100) {
+    // For ranking: require 100% completion
+    if ((predType === 'Ranking' || predType === 0 || predType === '0') && completionPercentage < 100) {
       this.toastr.error(`Please fill all positions before submitting (${completionPercentage}% complete)`);
+      return;
+    }
+
+    // For bingo: require at least one prediction
+    if ((predType === 'Bingo' || predType === 2 || predType === '2') && completionPercentage === 0) {
+      this.toastr.error('Please select at least one team for your bingo prediction');
       return;
     }
 
@@ -765,7 +769,6 @@ export class CounterPredictionComponent implements OnInit {
     this.isSubmitting = true;
 
     try {
-      const predType = this.originalPrediction.predictionType;
       let counterPredictionData: any = {
         notes: this.counterPredictionForm.get('notes')?.value || ''
       };
@@ -787,7 +790,6 @@ export class CounterPredictionComponent implements OnInit {
 
       // Validate the data structure before sending
       if (counterPredictionData.postRank) {
-
         // Count assigned teams
         let assignedCount = 0;
         if (counterPredictionData.postRank.rankTable?.rows) {
@@ -800,17 +802,27 @@ export class CounterPredictionComponent implements OnInit {
       }
 
       if (counterPredictionData.postBingo) {
-
         // Count assigned teams
         const assignedCells = counterPredictionData.postBingo.bingoCells?.filter((cell: any) => cell.team) || [];
+        console.log(`Bingo prediction: ${assignedCells.length} cells with teams`);
       }
+
       counterPredictionData.id = this.originalPrediction.id;
+
       // Make the API call
       const result = await this.counterPredictionService
         .createCounterPrediction(counterPredictionData)
         .toPromise();
 
-      this.toastr.success('Counter prediction created successfully!');
+      // UPDATED: Different success messages for different types
+      if (predType === 'Bingo' || predType === 2 || predType === '2') {
+        this.toastr.success(
+          `Bingo counter prediction created! You predicted ${this.getAssignedTeams().length} events.`
+        );
+      } else {
+        this.toastr.success('Counter prediction created successfully!');
+      }
+
       this.showForm.set(false);
       this.resetForm();
 
@@ -822,6 +834,7 @@ export class CounterPredictionComponent implements OnInit {
       window.location.reload();
 
     } catch (error: any) {
+      console.error('Error submitting counter prediction:', error);
 
       let errorMessage = 'Failed to create counter prediction';
 
@@ -846,7 +859,6 @@ export class CounterPredictionComponent implements OnInit {
       this.isSubmitting = false;
     }
   }
-
 
   // UI HELPERS
   toggleForm(): void {
@@ -952,5 +964,72 @@ export class CounterPredictionComponent implements OnInit {
 
   getGridSize(): number {
     return this.postBingo?.gridSize || 5;
+  }
+
+  // UPDATED: Helper methods for different validation messages
+  getValidationMessage(): string {
+    const predType = this.originalPrediction?.predictionType;
+    const completionPercentage = this.getCompletionPercentage();
+    const assignedCount = this.getAssignedTeams().length;
+
+    if (predType === 'Bingo' || predType === 2 || predType === '2') {
+      if (assignedCount === 0) {
+        return 'Select at least one team to make your bingo predictions';
+      } else if (assignedCount < 5) {
+        return `You have ${assignedCount} predictions. Add more for better chances!`;
+      } else {
+        return `Great! You have ${assignedCount} bingo predictions ready to submit`;
+      }
+    } else {
+      // Ranking validation
+      if (completionPercentage === 100) {
+        return 'Perfect! All positions filled - ready to submit';
+      } else {
+        const remaining = this.selectedTeams.length - assignedCount;
+        return `${completionPercentage}% complete - fill all positions to submit (${remaining} remaining)`;
+      }
+    }
+  }
+
+  getSubmitButtonText(): string {
+    const predType = this.originalPrediction?.predictionType;
+    const isValid = this.isValidCounterPrediction();
+
+    if (predType === 'Bingo' || predType === 2 || predType === '2') {
+      if (isValid) {
+        return `Submit Bingo Prediction (${this.getAssignedTeams().length} events)`;
+      } else {
+        return 'Select Teams to Continue';
+      }
+    } else {
+      // Ranking
+      const completionPercentage = this.getCompletionPercentage();
+      if (completionPercentage === 100) {
+        return 'Submit Counter Prediction';
+      } else {
+        return `Complete All Positions (${completionPercentage}%)`;
+      }
+    }
+  }
+
+  shouldShowCompletionRequirement(): boolean {
+    const predType = this.originalPrediction?.predictionType;
+
+    // Only show completion requirement for ranking (needs 100%)
+    // Bingo is flexible and doesn't need 100%
+    return (predType === 'Ranking' || predType === 0 || predType === '0');
+  }
+
+  getBingoHelperText(): string {
+    const assignedCount = this.getAssignedTeams().length;
+    const totalCells = this.getBingoCells().length;
+
+    if (assignedCount === 0) {
+      return `Click on any squares to add your event predictions. You can predict as many or as few events as you want!`;
+    } else if (assignedCount === totalCells) {
+      return `You've filled all ${totalCells} squares! This gives you the maximum number of scoring opportunities.`;
+    } else {
+      return `You have ${assignedCount} predictions out of ${totalCells} possible. Add more to increase your scoring potential!`;
+    }
   }
 }

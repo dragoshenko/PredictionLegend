@@ -16,6 +16,121 @@
     </div>
   </div>
 
+  <!-- NEW: Bingo Results Management (Author Only) -->
+  <div class="mb-4" *ngIf="canShowBingoResultsForm()">
+    <div class="card bg-warning border-warning">
+      <div class="card-header bg-warning border-warning">
+        <div class="d-flex justify-content-between align-items-center">
+          <h5 class="text-dark mb-0">
+            <i class="fa fa-clipboard-check me-2"></i>Publish Bingo Results
+          </h5>
+          <button class="btn btn-dark" (click)="toggleBingoResultsForm()">
+            <i class="fa fa-plus me-2" *ngIf="!showBingoResultsForm"></i>
+            <i class="fa fa-times me-2" *ngIf="showBingoResultsForm"></i>
+            {{ showBingoResultsForm ? 'Cancel' : 'Set Results' }}
+          </button>
+        </div>
+      </div>
+      <div class="card-body" *ngIf="showBingoResultsForm">
+        <p class="text-dark mb-3">
+          <strong>Mark which events actually happened:</strong> Click on each cell to toggle whether that event occurred in real life.
+          This will be used to score the counter predictions.
+        </p>
+
+        <!-- Bingo Results Grid -->
+        <div class="bingo-grid mb-4"
+             [style.grid-template-columns]="'repeat(' + getOriginalBingoData()?.gridSize + ', 1fr)'"
+             [style.gap]="'8px'"
+             [style.display]="'grid'"
+             [style.max-width]="'500px'"
+             [style.margin]="'0 auto'">
+
+          <div *ngFor="let cell of getOriginalBingoCells(); let cellIndex = index"
+               class="bingo-cell p-3 border text-center position-relative"
+               [class.bg-success]="didBingoCellHappen(cell.row, cell.column)"
+               [class.bg-secondary]="!didBingoCellHappen(cell.row, cell.column)"
+               [class.border-success]="didBingoCellHappen(cell.row, cell.column)"
+               [class.border-secondary]="!didBingoCellHappen(cell.row, cell.column)"
+               style="cursor: pointer; min-height: 100px; transition: all 0.2s ease;"
+               (click)="toggleBingoCell(cellIndex)"
+               [title]="didBingoCellHappen(cell.row, cell.column) ? 'This event happened - click to mark as did not happen' : 'This event did not happen - click to mark as happened'">
+
+            <!-- Event Status Indicator -->
+            <div class="position-absolute top-0 end-0 m-1">
+              <i class="fa fa-check-circle text-white"
+                 *ngIf="didBingoCellHappen(cell.row, cell.column)"
+                 style="font-size: 1.2rem; text-shadow: 0 0 3px rgba(0,0,0,0.5);"></i>
+              <i class="fa fa-times-circle text-white"
+                 *ngIf="!didBingoCellHappen(cell.row, cell.column)"
+                 style="font-size: 1.2rem; text-shadow: 0 0 3px rgba(0,0,0,0.5);"></i>
+            </div>
+
+            <!-- Team Display -->
+            <div *ngIf="cell.team">
+              <img *ngIf="cell.team.photoUrl && cell.team.photoUrl.trim()"
+                   [src]="cell.team.photoUrl"
+                   class="rounded mb-2"
+                   width="32" height="32"
+                   alt="Team"
+                   (error)="onImageError($event)">
+              <div class="bg-dark rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center"
+                   *ngIf="!cell.team.photoUrl || !cell.team.photoUrl.trim()"
+                   style="width: 32px; height: 32px;">
+                <i class="fa fa-users text-white"></i>
+              </div>
+              <div class="fw-bold text-white small text-shadow">{{ cell.team.name }}</div>
+              <div class="very-small text-white opacity-75" *ngIf="cell.team.description && cell.team.description.trim()">
+                {{ cell.team.description | slice:0:40 }}{{ cell.team.description.length > 40 ? '...' : '' }}
+              </div>
+            </div>
+            <div *ngIf="!cell.team" class="text-white">
+              <i class="fa fa-square-o fa-2x mb-2"></i>
+              <div class="small">Empty Cell</div>
+            </div>
+
+            <!-- Status Text -->
+            <div class="mt-2">
+              <small class="text-white fw-bold">
+                {{ didBingoCellHappen(cell.row, cell.column) ? 'HAPPENED' : 'DID NOT HAPPEN' }}
+              </small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Results Summary -->
+        <div class="row mb-4">
+          <div class="col-md-6">
+            <div class="card bg-dark border-dark text-center">
+              <div class="card-body">
+                <h4 class="text-success">{{ getHappenedCellsCount() }}</h4>
+                <small class="text-light">Events That Happened</small>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card bg-dark border-dark text-center">
+              <div class="card-body">
+                <h4 class="text-danger">{{ bingoResults.length - getHappenedCellsCount() }}</h4>
+                <small class="text-light">Events That Did Not Happen</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="text-center">
+          <button class="btn btn-success btn-lg"
+                  (click)="submitBingoResults()"
+                  [disabled]="isSubmittingBingoResults">
+            <span *ngIf="isSubmittingBingoResults" class="spinner-border spinner-border-sm me-2"></span>
+            <i class="fa fa-check me-2" *ngIf="!isSubmittingBingoResults"></i>
+            Publish Bingo Results
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Counter Prediction Section - UPDATED FOR NON-AUTHORS ONLY -->
   <div class="mb-4">
     <app-counter-prediction
@@ -85,6 +200,7 @@
                         </div>
                         <div>
                           <div class="fw-bold text-light">{{ column.team.name }}</div>
+                          <!-- FIXED: Show team description -->
                           <div class="small text-muted" *ngIf="column.team.description && column.team.description.trim()">
                             {{ column.team.description }}
                           </div>
@@ -137,6 +253,10 @@
                     <i class="fa fa-users text-dark" style="font-size: 10px;"></i>
                   </div>
                   <div class="small text-light fw-bold">{{ cell.team.name }}</div>
+                  <!-- FIXED: Show team description in bingo cells -->
+                  <div class="very-small text-muted" *ngIf="cell.team.description && cell.team.description.trim()">
+                    {{ cell.team.description | slice:0:20 }}{{ cell.team.description.length > 20 ? '...' : '' }}
+                  </div>
                 </div>
                 <div *ngIf="!cell.team" class="text-muted">
                   <i class="fa fa-square-o fa-lg"></i>
@@ -201,7 +321,6 @@
                 <span class="badge bg-dark text-warning">
                   <i class="fa fa-star me-1"></i>OFFICIAL
                 </span>
-
               </div>
             </div>
           </div>
@@ -239,6 +358,7 @@
                           <div class="fw-bold small text-dark">
                             {{ column.team.name }}
                           </div>
+                          <!-- FIXED: Show team description in official results -->
                           <div class="very-small text-secondary"
                               *ngIf="column.team.description && column.team.description.trim()">
                             {{ column.team.description | slice:0:30 }}{{ column.team.description.length > 30 ? '...' : '' }}
@@ -334,6 +454,10 @@
                     <i class="fa fa-users text-warning" style="font-size: 8px;"></i>
                   </div>
                   <div class="very-small text-dark fw-bold">{{ cell.team.name | slice:0:8 }}{{ cell.team.name.length > 8 ? '...' : '' }}</div>
+                  <!-- FIXED: Show team description in official bingo results -->
+                  <div class="very-small text-secondary" *ngIf="cell.team.description && cell.team.description.trim()">
+                    {{ cell.team.description | slice:0:10 }}{{ cell.team.description.length > 10 ? '...' : '' }}
+                  </div>
                 </div>
                 <div *ngIf="!cell.team" class="text-secondary very-small">
                   <i class="fa fa-square-o"></i>
@@ -451,7 +575,6 @@
                       {{ getAccuracy(counterPrediction) }}% Accuracy
                     </span>
                   </div>
-
                 </div>
               </div>
 
@@ -527,6 +650,7 @@
                             <div class="fw-bold small text-light">
                               {{ column.team.name }}
                             </div>
+                            <!-- FIXED: Show team description in counter predictions -->
                             <div class="very-small text-muted"
                                 *ngIf="column.team.description && column.team.description.trim()">
                               {{ column.team.description | slice:0:30 }}{{ column.team.description.length > 30 ? '...' : '' }}
@@ -564,7 +688,7 @@
           </div>
         </div>
 
-        <!-- Counter Bingo Predictions with Comparison -->
+        <!-- Counter Bingo Predictions with NEW Scoring System -->
         <div *ngIf="isBingoType() && getPaginatedCounterBingos().length > 0">
           <div *ngFor="let counterPrediction of getPaginatedCounterBingos(); let i = index"
               class="card bg-dark border-primary mb-3 counter-prediction-card fade-in-up">
@@ -588,7 +712,7 @@
                   <span class="badge bg-primary">
                     Counter Bingo #{{ getCounterPredictionGlobalIndex(i) }}
                   </span>
-                  <!-- NEW: Accuracy Badge for Bingo -->
+                  <!-- NEW: Accuracy Badge for Bingo based on events that happened -->
                   <div class="mt-1" *ngIf="getOfficialResults().length > 0">
                     <span class="badge" [class]="getAccuracyBadgeClass(getAccuracy(counterPrediction))">
                       <i class="fa fa-target me-1"></i>
@@ -599,13 +723,13 @@
                 </div>
               </div>
 
-              <!-- NEW: Bingo Comparison Summary -->
+              <!-- NEW: Bingo Comparison Summary based on actual events -->
               <div class="mt-2" *ngIf="getOfficialResults().length > 0">
                 <div class="row text-center">
                   <div class="col-4">
                     <div class="small text-success">
                       <i class="fa fa-check-circle me-1"></i>
-                      {{ compareWithOfficialResults(counterPrediction).totalMatches }} Matches
+                      {{ compareWithOfficialResults(counterPrediction).totalMatches }} Hits
                     </div>
                   </div>
                   <div class="col-4">
@@ -639,16 +763,18 @@
                     [title]="getComparisonTooltip(counterPrediction, cell.row, cell.column)"
                     style="min-height: 60px;">
 
-                  <!-- NEW: Match/Mismatch Indicator for Bingo -->
+                  <!-- NEW: Match/Mismatch Indicator for Bingo based on official results -->
                   <div class="position-absolute top-0 end-0"
                       *ngIf="getOfficialResults().length > 0 && cell.team"
                       style="margin-top: -3px; margin-right: -3px; z-index: 10;">
                     <i *ngIf="isPositionMatch(counterPrediction, cell.row, cell.column)"
                       class="fa fa-check-circle text-success"
-                      style="font-size: 10px; background: white; border-radius: 50%;"></i>
+                      style="font-size: 10px; background: white; border-radius: 50%;"
+                      title="This team/event appeared in official results - correct prediction!"></i>
                     <i *ngIf="isPositionMismatch(counterPrediction, cell.row, cell.column)"
                       class="fa fa-times-circle text-danger"
-                      style="font-size: 10px; background: white; border-radius: 50%;"></i>
+                      style="font-size: 10px; background: white; border-radius: 50%;"
+                      title="This team/event did not appear in official results - incorrect prediction"></i>
                   </div>
 
                   <div *ngIf="cell.team">
@@ -664,6 +790,10 @@
                       <i class="fa fa-users text-white" style="font-size: 8px;"></i>
                     </div>
                     <div class="very-small text-light fw-bold">{{ cell.team.name | slice:0:8 }}{{ cell.team.name.length > 8 ? '...' : '' }}</div>
+                    <!-- FIXED: Show team description in counter bingo predictions -->
+                    <div class="very-small text-muted" *ngIf="cell.team.description && cell.team.description.trim()">
+                      {{ cell.team.description | slice:0:8 }}{{ cell.team.description.length > 8 ? '...' : '' }}
+                    </div>
                   </div>
                   <div *ngIf="!cell.team" class="text-muted very-small">
                     <i class="fa fa-square-o"></i>
@@ -678,7 +808,7 @@
                 </div>
                 <div class="col-4 text-center" *ngIf="getOfficialResults().length > 0">
                   <small class="text-success">
-                    <i class="fa fa-bullseye me-1"></i>{{ getAccuracy(counterPrediction) }}% Match
+                    <i class="fa fa-bullseye me-1"></i>{{ getAccuracy(counterPrediction) }}% Hit Rate
                   </small>
                 </div>
                 <div class="col-4 text-end">
@@ -882,7 +1012,10 @@
                 </div>
                 <div>
                   <div class="fw-bold small">{{ team.name }}</div>
-                  <div class="very-small text-muted" *ngIf="team.description">{{ team.description | slice:0:20 }}{{ team.description.length > 20 ? '...' : '' }}</div>
+                  <!-- FIXED: Show team description in sidebar teams list -->
+                  <div class="very-small text-muted" *ngIf="team.description && team.description.trim()">
+                    {{ team.description | slice:0:20 }}{{ team.description.length > 20 ? '...' : '' }}
+                  </div>
                 </div>
               </div>
             </div>
@@ -933,3 +1066,41 @@
   <p class="text-muted">The prediction you're looking for doesn't exist or has been removed.</p>
   <button class="btn btn-primary" (click)="goBack()">Go Back</button>
 </div>
+
+<!-- NEW: Debug Info (can be removed in production) -->
+<div class="mt-4" *ngIf="showDebugInfo">
+  <div class="card bg-dark border-dark">
+    <div class="card-header bg-dark border-dark">
+      <div class="d-flex justify-content-between align-items-center">
+        <h6 class="text-light mb-0">Debug Information</h6>
+        <button class="btn btn-sm btn-outline-light" (click)="showDebugInfo = false">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <h6 class="text-light">Prediction Data:</h6>
+          <pre class="text-light small">{{ predictionDetail | json }}</pre>
+        </div>
+        <div class="col-md-6">
+          <h6 class="text-light">Available Teams:</h6>
+          <pre class="text-light small">{{ getAvailableTeams() | json }}</pre>
+
+          <h6 class="text-light mt-3">Counter Predictions:</h6>
+          <pre class="text-light small">{{ getAllCounterPredictions().length }} total</pre>
+
+          <h6 class="text-light mt-3">Official Results:</h6>
+          <pre class="text-light small">{{ getOfficialResults().length }} total</pre>
+
+          <div *ngIf="isBingoType()">
+            <h6 class="text-light mt-3">Bingo Results:</h6>
+            <pre class="text-light small">{{ bingoResults | json }}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

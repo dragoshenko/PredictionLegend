@@ -73,6 +73,15 @@ interface PositionMismatch {
   mismatchType: 'different-team' | 'extra-team' | 'missing-team';
 }
 
+// NEW: Interface for bingo cell results
+interface BingoCellResult {
+  row: number;
+  column: number;
+  teamId?: number;
+  teamName?: string;
+  happened: boolean; // Whether this event actually occurred
+}
+
 @Component({
   selector: 'app-prediction-details',
   imports: [CommonModule, CounterPredictionComponent, FormsModule],
@@ -93,6 +102,11 @@ export class PredictionDetailsComponent implements OnInit {
   // Counter Predictions Pagination
   counterPredictionsCurrentPage = 1;
   counterPredictionsPerPage = 10;
+
+  // NEW: Bingo Results Management
+  showBingoResultsForm = false;
+  bingoResults: BingoCellResult[] = [];
+  isSubmittingBingoResults = false;
 
   ngOnInit(): void {
     this.route.params.subscribe(params => {
@@ -137,6 +151,11 @@ export class PredictionDetailsComponent implements OnInit {
         console.log('PostRanks count:', this.predictionDetail.postRanks?.length || 0);
         console.log('PostBingos count:', this.predictionDetail.postBingos?.length || 0);
 
+        // Initialize bingo results if this is a bingo prediction and user is the author
+        if (this.isBingoType() && this.isAuthor()) {
+          this.initializeBingoResults();
+        }
+
         // Log different types of predictions
         const originalData = this.getOriginalPostData();
         const officialResults = this.getOfficialResults();
@@ -152,6 +171,126 @@ export class PredictionDetailsComponent implements OnInit {
     } finally {
       this.isLoading = false;
     }
+  }
+
+  // NEW: Initialize bingo results from the original bingo data
+  initializeBingoResults(): void {
+    if (!this.isBingoType() || !this.hasOriginalBingoData()) {
+      return;
+    }
+
+    const originalBingo = this.getOriginalBingoData();
+    this.bingoResults = [];
+
+    if (originalBingo?.bingoCells) {
+      originalBingo.bingoCells.forEach((cell: any) => {
+        this.bingoResults.push({
+          row: cell.row,
+          column: cell.column,
+          teamId: cell.team?.id,
+          teamName: cell.team?.name || 'Empty',
+          happened: false // Default to false, author will mark which ones happened
+        });
+      });
+    }
+
+    console.log('Initialized bingo results:', this.bingoResults);
+  }
+
+  // NEW: Toggle bingo results form
+  toggleBingoResultsForm(): void {
+    this.showBingoResultsForm = !this.showBingoResultsForm;
+    if (this.showBingoResultsForm && this.bingoResults.length === 0) {
+      this.initializeBingoResults();
+    }
+  }
+
+  // NEW: Toggle a bingo cell result
+  toggleBingoCell(cellIndex: number): void {
+    if (cellIndex >= 0 && cellIndex < this.bingoResults.length) {
+      this.bingoResults[cellIndex].happened = !this.bingoResults[cellIndex].happened;
+    }
+  }
+
+  // NEW: Get bingo cell result by row and column
+  getBingoCellResult(row: number, column: number): BingoCellResult | null {
+    return this.bingoResults.find(result => result.row === row && result.column === column) || null;
+  }
+
+  // NEW: Check if a bingo cell happened
+  didBingoCellHappen(row: number, column: number): boolean {
+    const result = this.getBingoCellResult(row, column);
+    return result ? result.happened : false;
+  }
+
+  // NEW: Get count of cells that happened
+  getHappenedCellsCount(): number {
+    return this.bingoResults.filter(result => result.happened).length;
+  }
+
+  // NEW: Submit bingo results
+  async submitBingoResults(): Promise<void> {
+    if (!this.predictionDetail || !this.isBingoType()) {
+      this.toastr.error('Invalid prediction type for bingo results');
+      return;
+    }
+
+    this.isSubmittingBingoResults = true;
+
+    try {
+      const resultsData = {
+        predictionId: this.predictionDetail.id,
+        predictionType: 'Bingo',
+        bingoResults: this.bingoResults.map(result => ({
+          row: result.row,
+          column: result.column,
+          teamId: result.teamId,
+          happened: result.happened
+        })),
+        notes: `Bingo results: ${this.getHappenedCellsCount()} out of ${this.bingoResults.length} events occurred`
+      };
+
+      console.log('Submitting bingo results:', resultsData);
+
+      const response = await this.http.post(
+        `${environment.apiUrl}post/publish-bingo-results`,
+        resultsData
+      ).toPromise();
+
+      this.toastr.success('Bingo results published successfully!');
+      this.showBingoResultsForm = false;
+
+      // Reload the prediction to show the new results
+      await this.loadPredictionDetails(this.predictionDetail.id);
+
+    } catch (error: any) {
+      console.error('Error submitting bingo results:', error);
+
+      let errorMessage = 'Failed to publish bingo results';
+      if (error?.error?.message) {
+        errorMessage = error.error.message;
+      } else if (error?.error && typeof error.error === 'string') {
+        errorMessage = error.error;
+      }
+
+      this.toastr.error(errorMessage);
+    } finally {
+      this.isSubmittingBingoResults = false;
+    }
+  }
+
+  // NEW: Check if user is the author
+  isAuthor(): boolean {
+    const currentUser = this.accountService.currentUser();
+    return currentUser?.id === this.predictionDetail?.userId;
+  }
+
+  // NEW: Check if we can show bingo results form
+  canShowBingoResultsForm(): boolean {
+    return this.isAuthor() &&
+           this.isBingoType() &&
+           this.hasOriginalBingoData() &&
+           !this.hasOfficialResults();
   }
 
   canShowCounterPrediction(): boolean {
@@ -549,6 +688,9 @@ export class PredictionDetailsComponent implements OnInit {
     return total > 0 ? Math.round((assigned / total) * 100) : 0;
   }
 
+  // UPDATED: Bingo scoring methods - remove the old cell-based comparison
+  // getBingoAccuracy method is no longer needed since we use the team-based comparison
+
   getTemplateData(): any {
     const originalData = this.getOriginalPostData();
     if (!originalData) return null;
@@ -654,8 +796,9 @@ export class PredictionDetailsComponent implements OnInit {
 
     if (this.isRankingType() && counterPrediction.postRank && primaryOfficial.postRank) {
       return this.compareRankings(counterPrediction.postRank, primaryOfficial.postRank);
-    } else if (this.isBingoType() && counterPrediction.postBingo && primaryOfficial.postBingo) {
-      return this.compareBingos(counterPrediction.postBingo, primaryOfficial.postBingo);
+    } else if (this.isBingoType() && counterPrediction.postBingo) {
+      // NEW: Use bingo cell results for comparison instead of position matching
+      return this.compareBingoWithResults(counterPrediction.postBingo);
     }
 
     return {
@@ -757,74 +900,75 @@ export class PredictionDetailsComponent implements OnInit {
   }
 
   /**
-   * Compare two bingo predictions
+   * NEW: Compare bingo prediction with official results by checking which teams appear in both
+   * regardless of position
    */
-  private compareBingos(counterBingo: any, officialBingo: any): ComparisonResult {
+  private compareBingoWithResults(counterBingo: any): ComparisonResult {
     const matches: PositionMatch[] = [];
     const mismatches: PositionMismatch[] = [];
 
     const counterCells = counterBingo.bingoCells || [];
-    const officialCells = officialBingo.bingoCells || [];
-
     let totalPositions = 0;
     let totalMatches = 0;
 
-    // Compare each cell
-    const maxCells = Math.max(counterCells.length, officialCells.length);
-
-    for (let cellIndex = 0; cellIndex < maxCells; cellIndex++) {
-      const counterCell = counterCells[cellIndex];
-      const officialCell = officialCells[cellIndex];
-
-      if (!counterCell || !officialCell) continue;
-
-      totalPositions++;
-
-      const counterTeamId = counterCell.team?.id;
-      const officialTeamId = officialCell.team?.id;
-
-      if (counterTeamId && officialTeamId && counterTeamId === officialTeamId) {
-        // Perfect match
-        totalMatches++;
-        matches.push({
-          position: `Cell (${counterCell.row + 1}, ${counterCell.column + 1})`,
-          rowIndex: counterCell.row,
-          colIndex: counterCell.column,
-          teamName: counterCell.team.name,
-          matchType: 'exact'
-        });
-      } else if (counterTeamId && officialTeamId) {
-        // Different teams
-        mismatches.push({
-          position: `Cell (${counterCell.row + 1}, ${counterCell.column + 1})`,
-          rowIndex: counterCell.row,
-          colIndex: counterCell.column,
-          counterTeam: counterCell.team,
-          officialTeam: officialCell.team,
-          mismatchType: 'different-team'
-        });
-      } else if (counterTeamId && !officialTeamId) {
-        // Counter has team, official is empty
-        mismatches.push({
-          position: `Cell (${counterCell.row + 1}, ${counterCell.column + 1})`,
-          rowIndex: counterCell.row,
-          colIndex: counterCell.column,
-          counterTeam: counterCell.team,
-          officialTeam: null,
-          mismatchType: 'extra-team'
-        });
-      } else if (!counterTeamId && officialTeamId) {
-        // Official has team, counter is empty
-        mismatches.push({
-          position: `Cell (${counterCell.row + 1}, ${counterCell.column + 1})`,
-          rowIndex: counterCell.row,
-          colIndex: counterCell.column,
-          counterTeam: null,
-          officialTeam: officialCell.team,
-          mismatchType: 'missing-team'
-        });
-      }
+    // Get all teams from the official results (the events that actually happened)
+    const officialResults = this.getOfficialBingoResults();
+    if (officialResults.length === 0) {
+      return {
+        totalMatches: 0,
+        totalPositions: 0,
+        accuracy: 0,
+        matches: [],
+        mismatches: [],
+        hasComparison: false
+      };
     }
+
+    // Get teams from the first official result
+    const officialBingo = officialResults[0];
+    const officialTeamIds = new Set<number>();
+
+    if (officialBingo.postBingo?.bingoCells) {
+      officialBingo.postBingo.bingoCells.forEach((cell: any) => {
+        if (cell.team?.id) {
+          officialTeamIds.add(cell.team.id);
+        }
+      });
+    }
+
+    console.log('Official teams that happened:', Array.from(officialTeamIds));
+
+    // Check each counter prediction against official results
+    counterCells.forEach((cell: any) => {
+      if (cell.team) { // Only check cells that have teams (predictions)
+        totalPositions++;
+
+        // Check if this team appears in the official results (regardless of position)
+        if (officialTeamIds.has(cell.team.id)) {
+          // This team was in the official results - correct prediction
+          totalMatches++;
+          matches.push({
+            position: `Cell (${cell.row + 1}, ${cell.column + 1})`,
+            rowIndex: cell.row,
+            colIndex: cell.column,
+            teamName: cell.team.name,
+            matchType: 'exact'
+          });
+        } else {
+          // This team was NOT in the official results - incorrect prediction
+          mismatches.push({
+            position: `Cell (${cell.row + 1}, ${cell.column + 1})`,
+            rowIndex: cell.row,
+            colIndex: cell.column,
+            counterTeam: cell.team,
+            officialTeam: null,
+            mismatchType: 'different-team'
+          });
+        }
+      }
+    });
+
+    console.log(`Bingo comparison: ${totalMatches} matches out of ${totalPositions} predictions`);
 
     return {
       totalMatches,
@@ -840,23 +984,33 @@ export class PredictionDetailsComponent implements OnInit {
    * Check if a specific position matches the official result
    */
   isPositionMatch(counterPrediction: CounterPredictionData, rowIndex: number, colIndex: number): boolean {
-    const comparison = this.compareWithOfficialResults(counterPrediction);
-
     if (this.isRankingType()) {
+      const comparison = this.compareWithOfficialResults(counterPrediction);
       return comparison.matches.some(match =>
         match.rowIndex === rowIndex && match.colIndex === colIndex
       );
     } else if (this.isBingoType()) {
-      // For bingo, we need to convert cell index back to row/col
-      const gridSize = counterPrediction.postBingo?.gridSize || 5;
-      const cellIndex = rowIndex * gridSize + colIndex;
+      // NEW: For bingo, check if the team in this cell appears in official results
       const counterCells = counterPrediction.postBingo?.bingoCells || [];
-      const cell = counterCells[cellIndex];
+      const cell = counterCells.find((c: any) => c.row === rowIndex && c.column === colIndex);
 
-      if (cell) {
-        return comparison.matches.some(match =>
-          match.rowIndex === cell.row && match.colIndex === cell.column
-        );
+      if (cell && cell.team) {
+        // Get teams from official results
+        const officialResults = this.getOfficialBingoResults();
+        if (officialResults.length === 0) return false;
+
+        const officialBingo = officialResults[0];
+        const officialTeamIds = new Set<number>();
+
+        if (officialBingo.postBingo?.bingoCells) {
+          officialBingo.postBingo.bingoCells.forEach((officialCell: any) => {
+            if (officialCell.team?.id) {
+              officialTeamIds.add(officialCell.team.id);
+            }
+          });
+        }
+
+        return officialTeamIds.has(cell.team.id);
       }
     }
 
@@ -867,23 +1021,33 @@ export class PredictionDetailsComponent implements OnInit {
    * Check if a specific position is a mismatch
    */
   isPositionMismatch(counterPrediction: CounterPredictionData, rowIndex: number, colIndex: number): boolean {
-    const comparison = this.compareWithOfficialResults(counterPrediction);
-
     if (this.isRankingType()) {
+      const comparison = this.compareWithOfficialResults(counterPrediction);
       return comparison.mismatches.some(mismatch =>
         mismatch.rowIndex === rowIndex && mismatch.colIndex === colIndex
       );
     } else if (this.isBingoType()) {
-      // For bingo, we need to convert cell index back to row/col
-      const gridSize = counterPrediction.postBingo?.gridSize || 5;
-      const cellIndex = rowIndex * gridSize + colIndex;
+      // NEW: For bingo, check if the team in this cell does NOT appear in official results
       const counterCells = counterPrediction.postBingo?.bingoCells || [];
-      const cell = counterCells[cellIndex];
+      const cell = counterCells.find((c: any) => c.row === rowIndex && c.column === colIndex);
 
-      if (cell) {
-        return comparison.mismatches.some(mismatch =>
-          mismatch.rowIndex === cell.row && mismatch.colIndex === cell.column
-        );
+      if (cell && cell.team) {
+        // Get teams from official results
+        const officialResults = this.getOfficialBingoResults();
+        if (officialResults.length === 0) return false;
+
+        const officialBingo = officialResults[0];
+        const officialTeamIds = new Set<number>();
+
+        if (officialBingo.postBingo?.bingoCells) {
+          officialBingo.postBingo.bingoCells.forEach((officialCell: any) => {
+            if (officialCell.team?.id) {
+              officialTeamIds.add(officialCell.team.id);
+            }
+          });
+        }
+
+        return !officialTeamIds.has(cell.team.id);
       }
     }
 
@@ -894,8 +1058,8 @@ export class PredictionDetailsComponent implements OnInit {
    * Get CSS classes for position styling based on comparison
    */
   getPositionComparisonClass(counterPrediction: CounterPredictionData, rowIndex: number, colIndex: number): string {
+    // For bingo, compare against official results; for ranking, compare against official ranking
     const officialResults = this.getOfficialResults();
-
     if (officialResults.length === 0) {
       return ''; // No comparison available
     }
@@ -913,16 +1077,28 @@ export class PredictionDetailsComponent implements OnInit {
    * Get comparison tooltip text
    */
   getComparisonTooltip(counterPrediction: CounterPredictionData, rowIndex: number, colIndex: number): string {
-    const officialResults = this.getOfficialResults();
+    if (this.isBingoType()) {
+      const officialResults = this.getOfficialBingoResults();
+      if (officialResults.length === 0) {
+        return 'No official results available for comparison';
+      }
 
-    if (officialResults.length === 0) {
-      return 'No official results available for comparison';
-    }
+      if (this.isPositionMatch(counterPrediction, rowIndex, colIndex)) {
+        return '✅ Correct! This team/event appeared in the official results';
+      } else if (this.isPositionMismatch(counterPrediction, rowIndex, colIndex)) {
+        return '❌ Incorrect - this team/event did not appear in the official results';
+      }
+    } else if (this.isRankingType()) {
+      const officialResults = this.getOfficialResults();
+      if (officialResults.length === 0) {
+        return 'No official results available for comparison';
+      }
 
-    if (this.isPositionMatch(counterPrediction, rowIndex, colIndex)) {
-      return '✅ Correct! This matches the official result';
-    } else if (this.isPositionMismatch(counterPrediction, rowIndex, colIndex)) {
-      return '❌ Incorrect - different from official result';
+      if (this.isPositionMatch(counterPrediction, rowIndex, colIndex)) {
+        return '✅ Correct! This matches the official result';
+      } else if (this.isPositionMismatch(counterPrediction, rowIndex, colIndex)) {
+        return '❌ Incorrect - different from official result';
+      }
     }
 
     return 'Neutral position';
@@ -932,8 +1108,14 @@ export class PredictionDetailsComponent implements OnInit {
    * Get overall accuracy for a counter prediction
    */
   getAccuracy(counterPrediction: CounterPredictionData): number {
-    const comparison = this.compareWithOfficialResults(counterPrediction);
-    return comparison.accuracy;
+    if (this.isBingoType()) {
+      // NEW: Use the team-based comparison for bingo
+      const comparison = this.compareWithOfficialResults(counterPrediction);
+      return comparison.accuracy;
+    } else {
+      const comparison = this.compareWithOfficialResults(counterPrediction);
+      return comparison.accuracy;
+    }
   }
 
   /**
