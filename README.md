@@ -34,6 +34,6 @@ The PredictionMaker web application is primarily designed to create an interacti
 
 <img width="681" height="910" alt="Screenshot_21" src="https://github.com/user-attachments/assets/aabe29ab-1e55-4bfe-91bb-79696f8be052" /> 
 
-Prediction example<img width="785" height="865" alt="Screenshot_29" src="https://github.com/user-attachments/assets/c46ddab1-440f-43d6-a8fc-894ff0a52df4" /> 
+<img width="785" height="865" alt="Screenshot_29" src="https://github.com/user-attachments/assets/c46ddab1-440f-43d6-a8fc-894ff0a52df4" /> 
 
 
